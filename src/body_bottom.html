@@ -1,0 +1,85 @@
+  </div>
+
+  <!-- ============ Κίνδυνος ============ -->
+  <div class="view" id="v-risk" hidden>
+    <section class="panel" aria-label="Stress test">
+      <div class="phead"><div><h2>Τι γίνεται αν πέσει η αγορά;</h2><div class="muted small">Υποθετικά σενάρια, όχι προβλέψεις</div></div></div>
+      <div class="chips" id="scenChips" role="group" aria-label="Σενάριο"></div>
+      <div id="custWrap" hidden></div>
+      <div id="stressOut"></div>
+    </section>
+    <section class="panel" aria-label="Ημερολόγιο αποφάσεων">
+      <div class="phead"><div><h2>Ημερολόγιο αποφάσεων</h2><div class="muted small">Τι ακολούθησε μετά από κάθε απόφαση, ανά λόγο</div></div></div>
+      <div id="journal"></div>
+    </section>
+  </div>
+
+  <!-- ============ Συναλλαγές και ρυθμίσεις ============ -->
+  <div class="view" id="v-tx" hidden>
+  <section class="panel" aria-label="Συναλλαγές" id="txPanel">
+    <div class="phead"><h2>Συναλλαγές</h2><button class="btn" id="btnImport" type="button">Εισαγωγή από wallet</button></div>
+    <form class="form" id="txForm" novalidate>
+      <div class="f wide"><label for="fAsset">Περιουσιακό στοιχείο</label><select id="fAsset"></select></div>
+      <div class="f custom" id="wrapCName" hidden><label for="fCName">Όνομα</label><input id="fCName" placeholder="π.χ. Διαμέρισμα, ΟΠΑΠ" maxlength="40"></div>
+      <div class="f custom" id="wrapCCls" hidden><label for="fCCls">Κατηγορία</label><select id="fCCls"></select></div>
+      <div class="f custom" id="wrapCNow" hidden><label for="fCNow">Τρέχουσα τιμή €</label><input id="fCNow" type="number" step="any" min="0" inputmode="decimal"></div>
+      <div class="f"><label for="fType">Κίνηση</label><select id="fType"><option value="buy">Αγορά</option><option value="sell">Πώληση</option><option value="div">Μέρισμα ή τόκος (€)</option><option value="reward">Staking ή ανταμοιβή (τεμάχια)</option></select></div>
+      <div class="f"><label for="fDate">Ημερομηνία</label><input id="fDate" type="date"></div>
+      <div class="f"><label for="fQty" id="lQty">Ποσότητα</label><input id="fQty" type="number" step="any" min="0" inputmode="decimal" placeholder="0"></div>
+      <div class="f" id="wrapPrice"><label for="fPrice">Τιμή ανά μονάδα €</label><input id="fPrice" type="number" step="any" min="0" inputmode="decimal"></div>
+      <div class="f" id="wrapFee"><label for="fFee">Προμήθεια €</label><input id="fFee" type="number" step="any" min="0" inputmode="decimal" value="0"></div>
+      <div class="f wide" id="wrapReason"><label for="fReason">Γιατί; (προαιρετικό, για το ημερολόγιο)</label><select id="fReason"></select></div>
+      <div class="f"><button class="btn primary" type="submit">Καταχώρηση</button></div>
+      <p class="f hint" id="typeHint" hidden></p>
+      <div class="formmsg" id="formMsg" role="status"></div>
+    </form>
+    <p class="assume" style="margin:-4px 0 14px">Η τιμή συμπληρώνεται μόνη της με το κλείσιμο εκείνης της εβδομάδας. Βάλε την πραγματική τιμή που πλήρωσες, αν τη θυμάσαι.</p>
+    <div class="tablewrap"><table id="txTable"></table></div>
+  </section>
+
+  <section class="panel" aria-label="Αντίγραφο ασφαλείας" id="backupPanel">
+    <div class="phead"><div><h2>Αντίγραφο ασφαλείας</h2><div class="muted small" id="bkLast"></div></div></div>
+    <div class="bkgrid">
+      <div class="bkcol">
+        <p class="small" style="margin:0">Τα στοιχεία σου υπάρχουν μόνο σε αυτή τη συσκευή και δεν ανεβαίνουν πουθενά. Φτιάξε ένα κρυπτογραφημένο αντίγραφο και κράτα το εσύ, π.χ. σε cloud ή σε email προς τον εαυτό σου. Χωρίς τον κωδικό δεν ανοίγει, ούτε από εμάς.</p>
+        <div class="f"><label for="bkPw">Κωδικός για το αντίγραφο (τουλάχιστον 8 χαρακτήρες)</label><input id="bkPw" type="password" autocomplete="new-password" minlength="8"></div>
+        <div class="settings"><button class="btn primary" id="bkFile" type="button">Αποθήκευση αρχείου</button><button class="btn" id="bkCopy" type="button">Αντιγραφή ως κείμενο</button></div>
+        <p class="small" id="bkMsg" role="status" style="margin:0"></p>
+      </div>
+      <div class="bkcol">
+        <details id="rsDetails"><summary>Επαναφορά από αντίγραφο</summary>
+          <div class="f"><label for="rsFile">Αρχείο αντιγράφου</label><input id="rsFile" type="file" accept=".json,application/json,text/plain"></div>
+          <div class="f"><label for="rsText">ή επικόλλησε το κείμενο</label><textarea id="rsText" spellcheck="false"></textarea></div>
+          <div class="f"><label for="rsPw">Κωδικός</label><input id="rsPw" type="password" autocomplete="current-password"></div>
+          <div><button class="btn primary" id="rsGo" type="button">Επαναφορά</button></div>
+          <p class="small" id="rsMsg" role="status" style="margin:0"></p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="Ρυθμίσεις">
+    <div class="phead"><h2>Ρυθμίσεις</h2></div>
+    <div class="settings langs" role="group" aria-label="Γλώσσα"><button class="btn" type="button" data-lang="el">Ελληνικά</button><button class="btn" type="button" data-lang="en">English</button></div>
+    <div class="settings" style="margin-top:8px"><button class="btn" id="btnGuide" type="button">Οδηγός ξεκινήματος</button><button class="btn" id="btnSample" type="button">Φόρτωση παραδείγματος</button><button class="btn" id="btnClear" type="button">Διαγραφή όλων των στοιχείων</button></div>
+    <p class="foot" style="margin-top:14px">Το wallet χρησιμοποιείται μόνο για τον έλεγχο SKR και, αν το ζητήσεις, για ανάγνωση των υπολοίπων. Η Vestora βλέπει μόνο τη δημόσια διεύθυνση, δεν ζητάει υπογραφές και δεν μπορεί να μετακινήσει τίποτα. Το SKR λειτουργεί ως κλειδί πρόσβασης για το Pro: δεν ξοδεύεται και δεν δεσμεύεται.</p>
+    <p class="foot">Η Vestora περιγράφει και εξηγεί την πορεία των επενδύσεών σου. Δεν αποτελεί επενδυτική συμβουλή και δεν προτείνει αγορές, πωλήσεις ή κατανομή. Οι προβολές βασίζονται σε παραδοχές και δεν είναι προβλέψεις. Τιμές: Yahoo Finance (κλείσιμο ημέρας) και Jupiter (ζωντανές τιμές Solana), μετατροπή σε ευρώ με την ισοτιμία EUR/USD.</p>
+    <div class="legal"><a href="privacy.html">Απόρρητο</a><a href="terms.html">Όροι χρήσης</a><a href="https://github.com/stratanen/stratoshivibes-vestora" rel="noopener">Κώδικας</a></div>
+  </section>
+  </div>
+</div>
+
+<nav class="tabs" aria-label="Ενότητες">
+  <button type="button" data-v="home" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V10M10 19V5M16 19v-7M22 19H2"/></svg>Σύνοψη</button>
+  <button type="button" data-v="plan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>Πλάνο</button>
+  <button type="button" data-v="risk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>Κίνδυνος</button>
+  <button type="button" data-v="tx"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Συναλλαγές</button>
+</nav>
+
+<div class="onb" id="onb" hidden role="dialog" aria-modal="true" aria-label="Ξεκίνημα">
+  <div class="onbin"><div class="onbtop"><div class="onbdots" id="onbDots"></div><button class="btn home" id="onbHome" type="button"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg><span>Αρχική</span></button></div><div id="onbBody"></div></div>
+</div>
+<div class="overlay" id="overlay" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle"></div></div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>

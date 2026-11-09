@@ -1,0 +1,71 @@
+  <section class="panel plan" aria-label="Το πλάνο σου">
+    <div class="phead"><div><h2>Το πλάνο σου</h2><div class="muted small">Από εδώ και πέρα: στόχος, κατανομή και αντοχή. Υπολογισμοί με παραδοχές, όχι προβλέψεις.</div></div></div>
+    <div class="plangrid">
+      <div class="pcol">
+        <h3 class="sub">Στόχος</h3>
+        <div class="pinputs">
+          <div class="f"><label for="pGoal">Στόχος €</label><input id="pGoal" type="number" min="0" step="1000" inputmode="numeric"></div>
+          <div class="f"><label for="pMonthly">Μηνιαία καταβολή €</label><input id="pMonthly" type="number" min="0" step="10" inputmode="numeric"></div>
+          <div class="f"><label for="pYears">Χρόνια <output id="pYearsO" class="num"></output></label><input id="pYears" type="range" min="1" max="40" step="1"></div>
+          <div class="f"><label for="pFee">Ετήσια έξοδα %</label><input id="pFee" type="number" min="0" max="5" step="0.1" inputmode="decimal"></div>
+          <div class="f"><label for="pAss">Παραδοχές απόδοσης</label><select id="pAss"><option value="-0.02">Συντηρητικές</option><option value="0">Μέτριες</option><option value="0.02">Αισιόδοξες</option></select></div>
+          <div class="f"><label for="pReal">Ποσά σε</label><select id="pReal"><option value="1">σημερινά ευρώ (με πληθωρισμό 2,5%)</option><option value="0">ονομαστικά ευρώ</option></select></div>
+          <div class="f wide"><label for="pTol">Πόση πτώση θα άντεχες χωρίς να πουλήσεις;</label><select id="pTol"><option value="10">Έως −10%</option><option value="20">Έως −20%</option><option value="30">Έως −30%</option><option value="40">Έως −40%</option><option value="50">Έως −50%</option><option value="70">Έως −70%</option></select></div>
+        </div>
+        <p class="muted small" id="pHint"></p>
+      </div>
+      <div class="pcol wide">
+        <div id="projHead"></div>
+        <div class="chartbox" id="projBox"><svg id="projChart" role="img" aria-label="Προβολή μελλοντικού κεφαλαίου"></svg></div>
+        <div class="legend" id="projLegend"></div>
+      </div>
+    </div>
+    <div class="tablewrap"><table id="levers"></table></div>
+    <p class="assume" id="projAssume"></p>
+
+    <div class="plangrid two">
+      <div class="pcol">
+        <h3 class="sub">Τι χρειάζεται για τον στόχο</h3>
+        <div id="needBox"></div>
+        <h3 class="sub" style="margin-top:18px">Η πτώση που δήλωσες ότι αντέχεις</h3>
+        <div id="tolBox"></div>
+      </div>
+      <div class="pcol">
+        <h3 class="sub">Πλάνο Β: σύγκριση</h3>
+        <p class="muted small" style="margin:0 0 10px">Άλλαξε ό,τι θέλεις στο Β και δες τα δύο πλάνα δίπλα δίπλα, με τις ίδιες προσομοιωμένες πορείες.</p>
+        <div class="pinputs">
+          <div class="f"><label for="bMonthly">Μηνιαία καταβολή €</label><input id="bMonthly" type="number" min="0" step="10" inputmode="numeric"></div>
+          <div class="f"><label for="bYears">Χρόνια</label><input id="bYears" type="number" min="1" max="50" step="1" inputmode="numeric"></div>
+          <div class="f"><label for="bFee">Ετήσια έξοδα %</label><input id="bFee" type="number" min="0" max="5" step="0.1" inputmode="decimal"></div>
+          <div class="f"><label for="bAss">Παραδοχές απόδοσης</label><select id="bAss"><option value="-0.02">Συντηρητικές</option><option value="0">Μέτριες</option><option value="0.02">Αισιόδοξες</option></select></div>
+        </div>
+        <label class="check"><input type="checkbox" id="bShow"> Δείξε το πλάνο Β στο γράφημα</label>
+        <div class="tablewrap"><table id="planBTable"></table></div>
+      </div>
+    </div>
+
+    <div class="plangrid two">
+      <div class="pcol">
+        <h3 class="sub">Η κατανομή που θέλεις</h3>
+        <p class="muted small" style="margin:0 0 10px">Όρισε εσύ την κατανομή-στόχο. Η εφαρμογή δεν προτείνει κατανομή, απλώς συγκρίνει με τη δική σου.</p>
+        <div id="targetBox"></div>
+        <h3 class="sub" style="margin-top:18px">Έλεγχος νέας καταβολής</h3>
+        <div class="f" style="max-width:220px;margin-bottom:10px"><label for="nAmt">Ποσό νέας καταβολής €</label><input id="nAmt" type="number" min="0" step="10" inputmode="numeric"></div>
+        <div class="tablewrap"><table id="nextTable"></table></div>
+        <p class="assume" style="margin-top:8px">Δείχνει τι αλλάζει με κάθε επιλογή. Δεν κατατάσσει τις επιλογές και δεν προτείνει κάποια.</p>
+      </div>
+      <div class="pcol">
+        <h3 class="sub">Οικονομική αντοχή</h3>
+        <p class="muted small" style="margin:0 0 10px">Πόσα μπορείς να επενδύεις χωρίς να πιεστείς. Προαιρετικό. Τα ποσά μένουν μόνο σε αυτή τη συσκευή.</p>
+        <div class="pinputs">
+          <div class="f"><label for="rInc">Σταθερό μηνιαίο εισόδημα €</label><input id="rInc" type="number" min="0" step="50" inputmode="numeric" placeholder="π.χ. 1500"></div>
+          <div class="f"><label for="rVar">Ασταθές εισόδημα €/μήνα (μ.ό.)</label><input id="rVar" type="number" min="0" step="50" inputmode="numeric" placeholder="π.χ. 300"></div>
+          <div class="f"><label for="rExp">Βασικά μηνιαία έξοδα €</label><input id="rExp" type="number" min="0" step="50" inputmode="numeric" placeholder="π.χ. 1100"></div>
+          <div class="f"><label for="rDebt">Δόσεις οφειλών €/μήνα</label><input id="rDebt" type="number" min="0" step="10" inputmode="numeric" placeholder="π.χ. 0"></div>
+          <div class="f wide"><label for="rRes">Αποθεματικό εκτός επενδύσεων €</label><input id="rRes" type="number" min="0" step="100" inputmode="numeric" placeholder="π.χ. 4000"></div>
+        </div>
+        <div id="reserveOut"></div>
+      </div>
+    </div>
+  </section>
+

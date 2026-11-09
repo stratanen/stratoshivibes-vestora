@@ -46,3 +46,7 @@
 | `.github/workflows/` | Τιμές και κατασκευή APK |
 
 Για να προστεθεί νέο asset στη λίστα, γράψε μια γραμμή στο `CATALOG` του `scripts/build_prices.py` και τρέξε το «Update prices».
+
+## Αλλαγές στον κώδικα
+
+Το `index.html` χτίζεται από τα αρχεία του φακέλου `src/` με `bash src/build.sh`. Τα ελληνικά κείμενα είναι μέσα στον κώδικα και τα αγγλικά στο `src/en_dict.json`.

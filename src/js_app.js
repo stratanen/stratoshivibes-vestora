@@ -1,0 +1,393 @@
+
+/* ---------- wallet and Pro (real: Mobile Wallet Adapter, read-only checks through Helius) ---------- */
+const WKEY='vestora-wallet-v1', THRESH_EUR=20;
+const HELIUS='https://mainnet.helius-rpc.com/?api-key=b9b945b9-2831-4343-aab8-9d8a62c5719f';
+const validAddr=a=>typeof a==='string'&&/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(a);
+let wallet=readJSON(WKEY);if(!wallet||!validAddr(wallet.addr))wallet=null;
+const saveWallet=()=>wallet?LS.set(WKEY,JSON.stringify(wallet)):LS.del(WKEY);
+const isPro=()=>!!wallet&&(!!wallet.genesis||(wallet.skrEur!=null&&wallet.skrEur>=THRESH_EUR));
+const needSkr=()=>skrEur?Math.ceil(THRESH_EUR/skrEur):null;
+const LOCK='<svg class="lk" width="11" height="12" viewBox="0 0 11 12" aria-hidden="true"><rect x="1" y="5" width="9" height="6.5" rx="1.5" fill="currentColor"/><path d="M3 5V3.6a2.5 2.5 0 0 1 5 0V5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
+const short=a=>a.slice(0,4)+'…'+a.slice(-4);
+function rpc(method,params,ms){
+  const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||12000);
+  return fetch(HELIUS,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:'vestora',method,params}),signal:ctl.signal})
+    .then(r=>r.json()).then(j=>{if(j.error)throw new Error(j.error.message||'rpc error');return j.result}).finally(()=>clearTimeout(to));
+}
+/* Seeker Genesis Token check, the same as in the other StratoshiVibes apps (ported from @solana-mobile/skr-genesis-token, Apache-2.0). */
+const SGT_GROUP='GT22s89nU4iWFkNXj1Bw6uYhJJWDRPpShHt4Bk8f99Te', TOKEN_2022='TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
+const B58A='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+function b58enc(bytes){let n=0n;for(const x of bytes)n=n*256n+BigInt(x);let s='';while(n>0n){s=B58A[Number(n%58n)]+s;n/=58n}for(const x of bytes){if(x===0)s='1'+s;else break}return s}
+function b64bytes(str){const bin=atob(str);const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return u}
+function isSgtMint(d){
+  if(d.length<166||d[165]!==1)return false;
+  let off=166,group=null,meta=null,member=false;
+  while(off+4<=d.length){
+    const type=d[off]|(d[off+1]<<8),len=d[off+2]|(d[off+3]<<8),s=off+4,e=s+len;
+    if(type===0||e>d.length)break;
+    if(type===18&&len===64)meta=b58enc(d.subarray(s+32,s+64));
+    else if(type===23&&len===72){group=b58enc(d.subarray(s+32,s+64));member=true}
+    off=e;
+  }
+  return member&&group===SGT_GROUP&&meta===SGT_GROUP;
+}
+async function hasSgt(owner){
+  const ta=await rpc('getTokenAccountsByOwner',[owner,{programId:TOKEN_2022},{encoding:'jsonParsed',commitment:'confirmed'}]);
+  const mints=[...new Set((ta.value||[]).filter(a=>a.account.data.parsed.info.tokenAmount.amount!=='0').map(a=>a.account.data.parsed.info.mint))];
+  for(let i=0;i<mints.length;i+=100){
+    const batch=mints.slice(i,i+100),r=await rpc('getMultipleAccounts',[batch,{encoding:'base64',commitment:'confirmed'}]);
+    if((r.value||[]).some(acc=>acc&&acc.owner===TOKEN_2022&&isSgtMint(b64bytes(acc.data[0]))))return true;
+  }
+  return false;
+}
+async function skrPrice(){
+  if(skrEur)return skrEur;
+  try{const r=await fetch(JUP+MINT.SKR),j=await r.json();const p=j[MINT.SKR]?.usdPrice;if(p>0)skrEur=p/FXL}catch(e){}
+  return skrEur;
+}
+let wBusy=false;
+async function checkWallet(force){
+  if(!wallet||wBusy)return;
+  if(!force&&wallet.status==='ok'&&Date.now()-(wallet.t||0)<5*60e3)return;
+  wBusy=true;renderWallet();if(!$('overlay').hidden&&flow.step==='done')drawSheet();
+  try{
+    const ta=await rpc('getTokenAccountsByOwner',[wallet.addr,{mint:MINT.SKR},{encoding:'jsonParsed',commitment:'confirmed'}]);
+    wallet.skr=(ta.value||[]).reduce((s,a)=>s+(+a.account.data.parsed.info.tokenAmount.uiAmountString||0),0);
+    const p=await skrPrice();wallet.skrEur=p?wallet.skr*p:null;
+    try{wallet.genesis=await hasSgt(wallet.addr)}catch(e){console.warn('sgt',e)}
+    wallet.status='ok';wallet.t=Date.now();
+  }catch(e){console.warn('wallet check',e);wallet.status='error'}
+  finally{wBusy=false;saveWallet();render();if(!$('overlay').hidden&&(flow.step==='done'||flow.step==='info'))drawSheet()}
+}
+let bundleState=0;
+function loadBundle(){
+  if(bundleState)return;bundleState=1;
+  addEventListener('svwallet-ready',()=>{bundleState=2;const re=()=>{if(!$('overlay').hidden&&flow.step==='pick')drawSheet()};try{SVWallet.onList(re)}catch(e){}re()},{once:true});
+  const sc=document.createElement('script');sc.src='wallet.bundle.js';sc.onerror=()=>{bundleState=0};document.head.appendChild(sc);
+}
+
+/* ---------- sheet (dialogs) ---------- */
+let flow={step:'info',arg:null,imp:null};let lastFocus=null;
+function openSheet(step,arg){arm();lastFocus=document.activeElement;flow.step=step||(wallet?'done':'info');flow.arg=arg;$('overlay').hidden=false;if(flow.step==='pick')loadBundle();drawSheet()}
+function closeSheet(){$('overlay').hidden=true;lastFocus?.focus?.()}
+function cmpTable(){
+  const rows=[['Καταχώρηση συναλλαγών, μερισμάτων και staking',1,1],['Ζωντανές τιμές και σύγκριση με S&P 500',1,1],['Συγκέντρωση, κόστος προμηθειών, εισόδημα',1,1],
+    ['Το πλάνο σου: στόχος, τι χρειάζεται, πλάνο Β',1,1],['Οικονομική αντοχή και ανεκτή πτώση',1,1],['Stress test με έτοιμα σενάρια',1,1],['Ημερολόγιο αποφάσεων',1,1],['Αντίγραφο ασφαλείας',1,1],
+    ['Σύγκριση με Nasdaq, Bitcoin, κατάθεση, 80/20, μηνιαία αγορά',0,1],['Απόδοση των χρημάτων σου (MWR) και χρονισμός',0,1],['Επικάλυψη ETF και συσχετίσεις',0,1],
+    ['Μέγιστη πτώση και μεταβλητότητα',0,1],['Stress test με δικό σου σενάριο',0,1],['Εισαγωγή assets από Solana wallet',0,1],
+    ['Ερωτήσεις «τι θα γίνει αν» με AI (σύντομα)',0,2],['Ειδοποιήσεις με δικά σου όρια (σύντομα)',0,2]];
+  return `<div class="cmp"><div class="h">Λειτουργία</div><div class="h c">Δωρεάν</div><div class="h c">Pro</div>${rows.map(([n,f,p])=>`<div>${n}</div><div class="c ${f?'yes':'no'}">${f?'✓':'—'}</div><div class="c ${p===1?'yes':'no'}">${p===1?'✓':p===2?'σύντομα':'—'}</div>`).join('')}</div>`;
+}
+function drawSheet(){
+  const s=$('sheet');const head=t=>`<div class="shead"><h3 id="sheetTitle">${t}</h3><button class="x" type="button" data-act="close" aria-label="Κλείσιμο">×</button></div>`;
+  const st=flow.step;
+  if(st==='info'){
+    const n=needSkr();
+    s.innerHTML=head('Vestora Pro')+`<p>Οι προηγμένες αναλύσεις ξεκλειδώνουν όταν το Solana wallet σου κρατάει SKR. Δεν πληρώνεις, δεν ξοδεύεις και δεν δεσμεύεις τίποτα. Το SKR μένει στο wallet σου.</p>`+cmpTable()+
+    `<div class="rule"><b>Πώς ξεκλειδώνει</b><span>Κράτα SKR αξίας <b class="num">${eur.format(THRESH_EUR)}</b>${n?`, σήμερα περίπου <b class="num">${nf(0).format(n)} SKR</b>`:''}. Το όριο ορίζεται σε ευρώ και αναπροσαρμόζεται, ώστε να μένει δίκαιο όταν η τιμή αλλάζει.</span><span>Κάτοχοι Seeker Genesis Token (κάθε κινητό Seeker έχει ένα): Pro χωρίς όριο SKR.</span></div>`+
+    `<div class="row">${wallet?`<button class="btn" type="button" data-act="done">Κατάσταση wallet</button>`:''}<button class="btn primary" type="button" data-act="pick">${wallet?'Σύνδεση άλλου wallet':'Σύνδεση wallet'}</button></div>`;
+  }else if(st==='pick'){
+    const ws=window.SVWallet?SVWallet.list():[];
+    s.innerHTML=head('Σύνδεση wallet')+`<p class="muted">Η Vestora βλέπει μόνο τη δημόσια διεύθυνσή σου, για να ελέγξει το SKR και, αν το ζητήσεις, να διαβάσει τα υπόλοιπα. Δεν ζητάει ποτέ seed phrase και δεν μπορεί να μετακινήσει τίποτα.</p>`+
+    (ws.length?`<div class="opts">${ws.map((w,i)=>`<button class="opt" type="button" data-act="wallet" data-i="${i}"><img class="ic" src="${esc(w.icon)}" alt=""><span><b>${w.mwa?'Wallet του κινητού':esc(w.name)}</b><small>${w.mwa?'Seeker Wallet ή άλλο, μέσω Mobile Wallet Adapter':'Επέκταση του browser'}</small></span></button>`).join('')}</div>`
+      :`<p>${bundleState===2?'Δεν βρέθηκε wallet. Στο κινητό Seeker άνοιξε τη Vestora από την εφαρμογή. Σε υπολογιστή χρειάζεται επέκταση wallet, π.χ. Phantom ή Solflare.':'Φορτώνει…'}</p>`)+
+    `<p class="muted" id="pickMsg" role="status"></p><div class="row"><button class="btn" type="button" data-act="info">Πίσω</button></div>`;
+  }else if(st==='done'){
+    const w=wallet;if(!w){flow.step='info';return drawSheet()}
+    const ok=isPro(),n=needSkr();
+    s.innerHTML=head('Το wallet σου')+`<dl class="status"><dt>Διεύθυνση</dt><dd class="num">${short(w.addr)}</dd>
+      <dt>SKR</dt><dd class="num">${w.skr==null?'—':nf(2).format(w.skr)}${w.skrEur!=null?` <span class="muted">(${eur2.format(w.skrEur)})</span>`:''}</dd><dt>Seeker Genesis Token</dt><dd>${w.genesis?'Ναι':w.status==='ok'?'Όχι':'—'}</dd></dl>`+
+      (wBusy?`<p class="muted">Ελέγχεται…</p>`:w.status==='error'?`<div class="verdict short">Δεν ήταν δυνατός ο έλεγχος. Έλεγξε τη σύνδεση στο internet και δοκίμασε ξανά.</div>`:
+       ok?`<div class="verdict ok">Το Pro είναι ενεργό${w.genesis?' μέσω Seeker Genesis Token':''}.</div>`
+         :`<div class="verdict short">${n?`Χρειάζονται περίπου ${nf(0).format(Math.max(0,n-(w.skr||0)))} SKR ακόμα για το Pro.`:'Για το Pro χρειάζεται SKR αξίας 20 € ή Seeker Genesis Token.'} Οι δωρεάν λειτουργίες μένουν διαθέσιμες κανονικά.</div>`)+
+      `<p class="muted">Ο έλεγχος ξαναγίνεται κάθε φορά που ανοίγεις την εφαρμογή. Αν το υπόλοιπο πέσει κάτω από το όριο, το Pro κλειδώνει ξανά χωρίς να χαθεί κανένα δεδομένο.</p>`+
+      `<div class="row"><button class="btn" type="button" data-act="disconnect">Αποσύνδεση</button><button class="btn" type="button" data-act="refresh">Έλεγχος ξανά</button>${ok?`<button class="btn" type="button" data-act="import">Εισαγωγή assets</button>`:`<button class="btn" type="button" data-act="info">Τι ξεκλειδώνει</button>`}<button class="btn primary" type="button" data-act="close">Συνέχεια</button></div>`;
+  }else if(st==='import'){
+    const I=flow.imp;
+    if(!I||I.loading){s.innerHTML=head('Εισαγωγή από wallet')+`<p class="muted">Διαβάζονται τα υπόλοιπα του ${wallet?short(wallet.addr):''}…</p>`;if(!I)loadImport();}
+    else if(I.error){s.innerHTML=head('Εισαγωγή από wallet')+`<div class="verdict short">Δεν ήταν δυνατή η ανάγνωση. ${esc(I.error)}</div><div class="row"><button class="btn" type="button" data-act="retryimp">Δοκίμασε ξανά</button><button class="btn" type="button" data-act="done">Πίσω</button></div>`}
+    else{
+      const dup=state.tx.some(t=>t.src==='wallet');
+      s.innerHTML=head('Εισαγωγή από wallet')+`<p class="muted">Βρέθηκαν αυτά τα assets αξίας πάνω από 1 €. Διάλεξε ποια θα προστεθούν. Μπαίνουν σαν αγορά σήμερα, με τη σημερινή τιμή. Αν τα αγόρασες παλιότερα, άλλαξε μετά ημερομηνία και τιμή στις συναλλαγές για σωστή απόδοση.</p>`+
+      (dup?`<div class="verdict short">Έχεις ήδη κάνει εισαγωγή από wallet. Ό,τι επιλέξεις θα προστεθεί ξανά.</div>`:'')+
+      (I.list.length?`<div class="imp">${I.list.map((t,i)=>`<label><input type="checkbox" id="imp${i}" data-i="${i}" checked> <span>${esc(t.id?ASSETS[t.id].name:t.name)} <small class="muted">${esc(t.sym)}${t.xstock?' · xStock':''}${t.id?'':' · χωρίς ιστορικό τιμών'}</small></span><span class="num">${nf(t.qty<1?6:2).format(t.qty)} · ${eur.format(t.qty*t.eur)}</span></label>`).join('')}</div>`:'<p>Δεν βρέθηκαν assets με αξία πάνω από 1 €.</p>')+
+      `<p class="muted">Η ανάγνωση είναι μόνο για προβολή. Το SOL που έχεις σε native stake δεν φαίνεται εδώ: πρόσθεσέ το χειροκίνητα. Liquid staking tokens (π.χ. JitoSOL) εμφανίζονται κανονικά.</p>`+
+      `<div class="row"><button class="btn" type="button" data-act="done">Πίσω</button>${I.list.length?`<button class="btn primary" type="button" data-act="doimport">Προσθήκη επιλεγμένων</button>`:''}</div>`;
+    }
+  }else if(st==='price'){
+    const c=state.custom[flow.arg];if(!c){closeSheet();return}
+    s.innerHTML=head('Τρέχουσα τιμή')+`<p>${esc(c.name)}</p><p class="muted">Η τιμή που βάζεις μένει μέχρι να την αλλάξεις. Για ακίνητο, βάλε την αξία που θα έπαιρνες αν το πουλούσες σήμερα.</p>
+      <div class="f"><label for="pxNew">Νέα τιμή ανά μονάδα €</label><input id="pxNew" type="number" min="0" step="any" inputmode="decimal" value="${+(+c.current||0).toPrecision(8)}"></div>
+      <div class="f"><label for="pxCls">Κατηγορία</label><select id="pxCls">${Object.entries(CUSTOM_CLS).map(([k,v])=>`<option value="${k}"${k===c.cls?' selected':''}>${v}</option>`).join('')}</select></div>
+      <p class="muted" id="pxMsg" role="status"></p><div class="row"><button class="btn" type="button" data-act="close">Άκυρο</button><button class="btn primary" type="button" data-act="setprice">Αποθήκευση</button></div>`;
+  }
+  (s.querySelector('[data-act="pick"],.btn.primary,input')||s.querySelector('.x')).focus();
+}
+async function loadImport(){
+  flow.imp={loading:true};
+  try{
+    const params=o=>({ownerAddress:wallet.addr,page:1,limit:1000,...o});
+    let res;try{res=await rpc('getAssetsByOwner',params({options:{showFungible:true,showNativeBalance:true}}),20000)}
+    catch(e){res=await rpc('getAssetsByOwner',params({displayOptions:{showFungible:true,showNativeBalance:true}}),20000)}
+    const list=[];
+    if(res.nativeBalance?.lamports)list.push({mint:MINT.SOL,id:'SOL',name:'Solana',sym:'SOL',qty:res.nativeBalance.lamports/1e9});
+    for(const it of res.items||[]){
+      if(!/Fungible/.test(it.interface||''))continue;const ti=it.token_info;if(!ti||!ti.balance)continue;
+      const qty=ti.balance/10**(ti.decimals||0),sym=String(ti.symbol||it.content?.metadata?.symbol||'').trim(),mint=it.id;
+      const name=String(it.content?.metadata?.name||sym||'Token').trim().slice(0,40);
+      let id=null,xstock=false;
+      if(mint===MINT.SOL)id='SOL';else if(mint===MINT.BTC)id='BTC';else if(mint===MINT.ETH)id='ETH';
+      else if(/^Xs/.test(mint)&&/^[A-Z.]{1,6}x$/.test(sym)&&ASSETS[sym.slice(0,-1)]){id=sym.slice(0,-1);xstock=true}
+      list.push({mint,id,name,sym,qty,xstock});
+    }
+    const mints=[...new Set(list.map(t=>t.mint))],pr={};
+    for(let i=0;i<mints.length;i+=50){const r=await fetch(JUP+mints.slice(i,i+50).join(','));if(r.ok)Object.assign(pr,await r.json())}
+    const out=list.map(t=>({...t,eur:(pr[t.mint]?.usdPrice||0)/FXL})).filter(t=>t.eur>0&&t.qty*t.eur>=1).sort((a,b)=>b.qty*b.eur-a.qty*a.eur);
+    flow.imp={list:out};
+  }catch(e){console.warn(e);flow.imp={error:'Έλεγξε τη σύνδεση στο internet.'}}
+  if(!$('overlay').hidden&&flow.step==='import')drawSheet();
+}
+$('sheet').addEventListener('click',async e=>{
+  const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act;
+  if(a==='close')return closeSheet();
+  if(a==='info'||a==='pick'||a==='done'){flow.step=a;if(a==='pick')loadBundle();return drawSheet()}
+  if(a==='import'||a==='retryimp'){if(!isPro()){flow.step='info';return drawSheet()}flow.step='import';flow.imp=null;return drawSheet()}
+  if(a==='wallet'){
+    const ws=window.SVWallet?SVWallet.list():[],w=ws[+b.dataset.i];if(!w)return;b.disabled=true;$('pickMsg').textContent='Περιμένει έγκριση στο wallet…';
+    try{const addr=await SVWallet.connect(w.name);if(!validAddr(addr))throw new Error('bad address');
+      if(!wallet||wallet.addr!==addr)wallet={addr};saveWallet();flow.step='done';drawSheet();await checkWallet(true)}
+    catch(err){console.warn(err);b.disabled=false;$('pickMsg').textContent='Η σύνδεση δεν ολοκληρώθηκε. Δοκίμασε ξανά.'}
+    return;
+  }
+  if(a==='refresh'){checkWallet(true);return}
+  if(a==='disconnect'){try{window.SVWallet&&await SVWallet.disconnect()}catch(err){}wallet=null;saveWallet();if(ui.bench!=='SPY')ui.bench='SPY';render();closeSheet();toast('Το wallet αποσυνδέθηκε.');return}
+  if(a==='doimport'){
+    const date=todayIso();let n=0;
+    if(state.sample)state={sample:false,onboarded:true,custom:{},mints:{},tx:[]};
+    $('sheet').querySelectorAll('.imp input:checked').forEach(c=>{const t=flow.imp.list[+c.dataset.i];let id=t.id;
+      if(id){if(t.xstock)state.mints[id]=t.mint;if(PRICES[id])PRICES[id][W-1]=t.eur}
+      else{id='m_'+t.mint;state.custom[id]={name:t.name,sym:t.sym,cls:'crypto',current:t.eur,mint:t.mint}}
+      state.tx.push({id:uid(),a:id,type:'buy',date,qty:t.qty,price:+t.eur.toPrecision(8),fee:0,reason:'',src:'wallet'});n++});
+    state.onboarded=true;save();assetOptions('fAsset');render();closeSheet();if(n)toast(n===1?'Προστέθηκε 1 asset.':`Προστέθηκαν ${n} assets.`);
+    if(!$('onb').hidden)renderOnb();
+    return;
+  }
+  if(a==='setprice'){const v=parseFloat($('pxNew').value);if(!(v>=0)){$('pxMsg').textContent='Βάλε μια τιμή 0 ή μεγαλύτερη.';return}
+    const c=state.custom[flow.arg];c.current=v;c.cls=$('pxCls').value;save();render();closeSheet();toast('Η τιμή ενημερώθηκε.')}
+});
+$('overlay').addEventListener('click',e=>{if(e.target.id==='overlay')closeSheet()});
+document.addEventListener('keydown',e=>{
+  if($('overlay').hidden){if((e.key==='Enter'||e.key===' ')&&e.target.dataset?.pro){e.preventDefault();openSheet('info')}return}
+  if(e.key==='Escape')closeSheet();
+  if(e.key==='Tab'){const f=[...$('sheet').querySelectorAll('button,select,input')].filter(x=>!x.disabled);if(!f.length)return;const i=f.indexOf(document.activeElement);
+    if(e.shiftKey&&i<=0){e.preventDefault();f[f.length-1].focus()}else if(!e.shiftKey&&i===f.length-1){e.preventDefault();f[0].focus()}}
+});
+document.addEventListener('click',e=>{if(e.target.closest('[data-pro]'))openSheet('info')});
+$('btnWallet').addEventListener('click',()=>{if(wallet){openSheet('done');checkWallet(false)}else openSheet('pick')});
+$('btnImport').addEventListener('click',()=>{if(!wallet)return openSheet('pick');if(!isPro())return openSheet('info');flow.imp=null;openSheet('import')});
+function renderWallet(){
+  const b=$('btnWallet'),pro=isPro();
+  b.classList.toggle('on',!!wallet);
+  b.innerHTML=wallet?(pro?'<span class="probadge">PRO</span>':'')+`<span class="num">${short(wallet.addr)}</span>`:'Σύνδεση wallet';
+  $('btnImport').innerHTML='Εισαγωγή από wallet'+(pro?'':LOCK);
+  [...$('segBench').children].forEach(x=>{const lock=x.dataset.v!=='SPY'&&!pro;x.innerHTML=esc(x.dataset.n)+(lock?LOCK:'')});
+  if(!pro&&ui.bench!=='SPY'){ui.bench='SPY';[...$('segBench').children].forEach(x=>x.setAttribute('aria-pressed',x.dataset.v==='SPY'))}
+}
+
+/* ---------- backup: an encrypted file the user keeps (AES-GCM, key from the password with PBKDF2) ---------- */
+const BKEY='vestora-backup-at';
+const b64=u=>btoa(String.fromCharCode(...new Uint8Array(u)));
+const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function deriveKey(pw,salt,iter){
+  const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:iter,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+}
+async function makeBackup(pw){
+  const payload={app:'vestora',v:1,created:new Date().toISOString(),portfolio:state,plan};
+  const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12)),iter=250000;
+  const key=await deriveKey(pw,salt,iter);
+  const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(payload)));
+  return JSON.stringify({format:'vestora-backup',v:1,kdf:'PBKDF2-SHA256',iter,salt:b64(salt),iv:b64(iv),data:b64(ct)});
+}
+async function openBackup(text,pw){
+  let j;try{j=JSON.parse(text.trim())}catch(e){throw new Error('Αυτό δεν είναι αντίγραφο ασφαλείας της Vestora.')}
+  if(j.format!=='vestora-backup')throw new Error('Αυτό δεν είναι αντίγραφο ασφαλείας της Vestora.');
+  const key=await deriveKey(pw,unb64(j.salt),j.iter);
+  let pt;try{pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(j.iv)},key,unb64(j.data))}catch(e){throw new Error('Λάθος κωδικός, ή το αρχείο έχει αλλοιωθεί.')}
+  const p=JSON.parse(new TextDecoder().decode(pt));if(p.app!=='vestora'||!p.portfolio||!Array.isArray(p.portfolio.tx))throw new Error('Το αντίγραφο δεν έχει τα αναμενόμενα στοιχεία.');
+  return p;
+}
+const bkMsg=(t,bad)=>{const m=$('bkMsg');m.textContent=t;m.classList.toggle('neg',!!bad)};
+function bkPw(){const pw=$('bkPw').value;if(pw.length<8){bkMsg('Ο κωδικός πρέπει να έχει τουλάχιστον 8 χαρακτήρες.',true);return null}return pw}
+$('bkFile').addEventListener('click',async()=>{const pw=bkPw();if(!pw)return;
+  try{const txt=await makeBackup(pw);const blob=new Blob([txt],{type:'application/json'});const name='vestora-backup-'+todayIso()+'.json';
+    let done=false;
+    try{const f=new File([blob],name,{type:'application/json'});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:'Vestora backup'});done=true}}catch(e){if(e.name==='AbortError')return}
+    if(!done){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000)}
+    LS.set(BKEY,String(Date.now()));renderBackupNote();bkMsg('Έτοιμο. Κράτα το αρχείο σε ασφαλές μέρος, εκτός κινητού. Χωρίς τον κωδικό δεν ανοίγει.');
+  }catch(e){console.warn(e);bkMsg('Δεν ήταν δυνατή η δημιουργία του αρχείου. Δοκίμασε την «Αντιγραφή ως κείμενο».',true)}});
+$('bkCopy').addEventListener('click',async()=>{const pw=bkPw();if(!pw)return;
+  try{const txt=await makeBackup(pw);let ok=false;try{await navigator.clipboard.writeText(txt);ok=true}catch(e){}
+    if(!ok){$('rsText').value=txt;$('rsDetails').open=true;$('rsText').select()}
+    LS.set(BKEY,String(Date.now()));renderBackupNote();bkMsg(ok?'Αντιγράφηκε. Επικόλλησέ το κάπου ασφαλές, π.χ. σε σημείωση με κωδικό.':'Το κείμενο εμφανίζεται στο πεδίο επαναφοράς: αντέγραψέ το από εκεί.');
+  }catch(e){console.warn(e);bkMsg('Δεν ήταν δυνατή η δημιουργία του αντιγράφου.',true)}});
+$('rsFile').addEventListener('change',async e=>{const f=e.target.files[0];if(f)$('rsText').value=await f.text()});
+let rsArmed=false;
+$('rsGo').addEventListener('click',async()=>{const m=$('rsMsg');m.classList.remove('neg');
+  const txt=$('rsText').value,pw=$('rsPw').value;if(!txt.trim()){m.textContent='Διάλεξε αρχείο ή επικόλλησε το κείμενο.';return}
+  try{const p=await openBackup(txt,pw);
+    if(state.tx.length&&!state.sample&&!rsArmed){rsArmed=true;m.textContent=`Το αντίγραφο έχει ${p.portfolio.tx.length} συναλλαγές και θα αντικαταστήσει τις ${state.tx.length} που υπάρχουν τώρα. Πάτα ξανά για επιβεβαίωση.`;$('rsGo').textContent='Επιβεβαίωση επαναφοράς';return}
+    state=p.portfolio;state.custom=state.custom||{};state.mints=state.mints||{};state.onboarded=true;state.sample=false;save();
+    if(p.plan){plan=Object.assign(plan,p.plan);savePlan()}
+    rsArmed=false;$('rsGo').textContent='Επαναφορά';$('rsText').value='';$('rsPw').value='';targetBuilt=false;
+    assetOptions('fAsset');$('onb').hidden=true;render();m.textContent=`Επαναφέρθηκαν ${state.tx.length} συναλλαγές.`;livePrices();
+  }catch(e){m.textContent=e.message;m.classList.add('neg')}});
+function renderBackupNote(){
+  const t=+LS.get(BKEY)||0,el=$('bkLast'),days=t?Math.floor((Date.now()-t)/DAY):null;
+  el.textContent=t?`Τελευταίο αντίγραφο: ${longDate(iso(new Date(t)))}`:'Δεν έχεις κάνει ακόμα αντίγραφο ασφαλείας.';
+  const need=state.tx.length>0&&!state.sample&&(days==null||days>30);
+  $('bkNudge').hidden=!need;
+}
+$('bkNudgeGo').addEventListener('click',()=>{go('tx');setTimeout(()=>$('backupPanel').scrollIntoView({block:'start'}),50)});
+
+/* ---------- settings ---------- */
+$('btnSample').addEventListener('click',()=>{state=sample();save();targetBuilt=false;plan.target=null;assetOptions('fAsset');render();go('home');toast('Φορτώθηκε το παράδειγμα.')});
+$('btnClear').addEventListener('click',e=>{const b=e.currentTarget;
+  if(!b.classList.contains('danger')){b.classList.add('danger');b.textContent='Σίγουρα; Διαγράφονται όλα';setTimeout(()=>{if(b.isConnected){b.classList.remove('danger');b.textContent='Διαγραφή όλων των στοιχείων'}},4000);return}
+  b.classList.remove('danger');b.textContent='Διαγραφή όλων των στοιχείων';
+  state={sample:false,onboarded:false,custom:{},mints:{},tx:[]};save();LS.del(PKEY);plan={goal:null,monthly:null,years:15,fee:.3,ass:'0',real:'1',target:null,next:null,exp:'',res:'',inc:'',vr:'',debt:'',tol:'30',b:null,bShow:true};targetBuilt=false;
+  assetOptions('fAsset');render();openOnb()});
+$('btnGuide').addEventListener('click',openOnb);
+document.querySelectorAll('[data-lang]').forEach(b=>{b.setAttribute('aria-pressed',b.dataset.lang===LANG);b.addEventListener('click',()=>{if(b.dataset.lang===LANG)return;LS.set('vestora-lang',b.dataset.lang);location.reload()})});
+$('bannerGo').addEventListener('click',()=>{state={sample:false,onboarded:false,custom:{},mints:{},tx:[]};save();plan.target=null;targetBuilt=false;render();openOnb()});
+function renderBanner(){$('banner').hidden=!state.sample}
+
+/* ---------- first-run guide ---------- */
+let onb={step:0,rows:[{a:'',v:'',name:''}],monthly:'',years:15,goal:'',tol:'30'};
+const TOLS=[['10','Έως −10%','Μια μικρή πτώση θα με αγχώσει.'],['20','Έως −20%','Αντέχω μια μέτρια διόρθωση.'],['30','Έως −30%','Αντέχω μια σοβαρή πτώση.'],['50','Έως −50%','Έχω περάσει μεγάλες πτώσεις χωρίς να πουλήσω.'],['70','Έως −70%','Αντέχω πτώσεις τύπου crypto.']];
+function openOnb(){arm();onb={step:0,rows:[{a:'',v:'',name:''}],monthly:plan.monthly!=null&&state.tx.length?String(plan.monthly):'',years:+plan.years||15,goal:plan.goal&&state.tx.length?String(plan.goal):'',tol:plan.tol||'30'};$('onb').hidden=false;renderOnb()}
+function onbAssetSelect(i,r){
+  const groups={crypto:[],etf:[],stock:[],cash:[]};
+  for(const [k,a] of Object.entries(ASSETS).sort((a,b)=>a[1].name.localeCompare(b[1].name,'el')))groups[a.cls]?.push(`<option value="${k}"${r.a===k?' selected':''}>${esc(a.name)}</option>`);
+  return `<select id="ob_a${i}" data-i="${i}" data-k="a" aria-label="Επένδυση ${i+1}"><option value="">Διάλεξε…</option>${['crypto','etf','stock','cash'].map(c=>`<optgroup label="${CLS[c]}">${groups[c].join('')}</optgroup>`).join('')}<option value="__new"${r.a==='__new'?' selected':''}>Ακίνητο ή κάτι άλλο</option></select>`;
+}
+function renderOnb(){
+  const box=$('onbBody'),s=onb.step,dots=[1,2,3,4].map(n=>`<i class="${n<=s?'on':''}"></i>`).join('');
+  $('onbDots').innerHTML=s?dots:'';
+  const mine=state.tx.length>0&&!state.sample;
+  if(s===0){box.innerHTML=`<div class="onbhero"><div class="mark big" aria-hidden="true">${MARK}</div><h1>Vestora</h1><p class="lead">Δες πώς πάνε οι επενδύσεις σου σε σύγκριση με απλές εναλλακτικές, και σχεδίασε τη συνέχεια με ρεαλιστικά νούμερα.</p>
+    <ul class="onbl"><li>Crypto, μετοχές, ETF, χρυσός, ακίνητα και ό,τι άλλο, σε ένα μέρος.</li><li>Τα στοιχεία σου μένουν μόνο σε αυτή τη συσκευή.</li><li>Δεν σου λέει τι να αγοράσεις. Σου δείχνει τι σημαίνει κάθε επιλογή.</li></ul></div>
+    ${mine?'<p class="muted small">Ό,τι προσθέσεις στον οδηγό μπαίνει μαζί με όσα έχεις ήδη. Δεν σβήνεται τίποτα.</p>':''}
+    <div class="onbbtns"><button class="btn primary" type="button" data-o="next">Ξεκίνα</button>${mine?'':'<button class="btn" type="button" data-o="sample">Δες ένα παράδειγμα</button><button class="btn ghost" type="button" data-o="restore">Έχω αντίγραφο ασφαλείας</button>'}${mine?'<button class="btn ghost" type="button" data-o="close">Κλείσιμο</button>':''}</div>`;return}
+  if(s===1){
+    const imp=state.tx.filter(t=>t.src==='wallet').length;
+    box.innerHTML=`<h2>Τι έχεις σήμερα;</h2><p class="muted">Βάλε την αξία που έχει σήμερα κάθε επένδυση, όσο περίπου. Αργότερα, στις συναλλαγές, μπορείς να βάλεις πότε και σε ποια τιμή αγόρασες, για ακριβή απόδοση.</p>
+    <div class="obrows">${onb.rows.map((r,i)=>`<div class="obrow">${onbAssetSelect(i,r)}${r.a==='__new'?`<input id="ob_n${i}" data-i="${i}" data-k="name" placeholder="π.χ. Διαμέρισμα" value="${esc(r.name)}" aria-label="Όνομα">`:''}<input id="ob_v${i}" data-i="${i}" data-k="v" type="number" min="0" step="10" inputmode="decimal" placeholder="Αξία σήμερα €" value="${esc(r.v)}" aria-label="Αξία σήμερα σε ευρώ">${onb.rows.length>1?`<button class="x" type="button" data-o="rm" data-i="${i}" aria-label="Αφαίρεση">×</button>`:''}</div>`).join('')}</div>
+    <button class="btn" type="button" data-o="add">+ Άλλη μία</button>
+    <div class="rule"><b>Έχεις Solana wallet;</b><span>Σύνδεσέ το για να μπουν αυτόματα τα tokens και τα xStocks. Μόνο ανάγνωση, χωρίς υπογραφές.${imp?` <b>Έχουν προστεθεί ${imp} assets από το wallet.</b>`:''}</span><div><button class="btn" type="button" data-o="wallet">${wallet?(isPro()?'Εισαγωγή από wallet':'Κατάσταση wallet'):'Σύνδεση wallet'}</button></div></div>
+    <p class="neg small" id="obMsg" role="status"></p>
+    <div class="onbbtns"><button class="btn primary" type="button" data-o="next">Συνέχεια</button><button class="btn ghost" type="button" data-o="skip">Δεν έχω ακόμα επενδύσεις</button></div>`;return}
+  if(s===2){box.innerHTML=`<h2>Πόσα μπορείς να βάζεις τον μήνα;</h2><p class="muted">Το ποσό που μπορείς να επενδύεις σταθερά, χωρίς να πιεστείς. Μπορεί να είναι και 0.</p>
+    <div class="f"><label for="ob_m">Μηνιαία καταβολή €</label><input id="ob_m" data-k="monthly" type="number" min="0" step="10" inputmode="numeric" value="${esc(onb.monthly)}" placeholder="π.χ. 150"></div>
+    <div class="chips">${[50,100,200,300,500].map(v=>`<button type="button" data-o="setm" data-v="${v}">${v} €</button>`).join('')}</div>
+    <div class="onbbtns"><button class="btn primary" type="button" data-o="next">Συνέχεια</button><button class="btn ghost" type="button" data-o="back">Πίσω</button></div>`;return}
+  if(s===3){box.innerHTML=`<h2>Για πόσο καιρό και για ποιο στόχο;</h2><p class="muted">Ο στόχος μπορεί να είναι ένα ποσό, ένα σπίτι, οικονομική ανεξαρτησία. Βάλε το ποσό που αντιστοιχεί, σε σημερινά ευρώ.</p>
+    <div class="f"><label for="ob_y">Χρόνια <output class="num" id="ob_yo">${onb.years}</output></label><input id="ob_y" data-k="years" type="range" min="1" max="40" value="${onb.years}"></div>
+    <div class="f"><label for="ob_g">Στόχος €</label><input id="ob_g" data-k="goal" type="number" min="0" step="1000" inputmode="numeric" value="${esc(onb.goal)}" placeholder="π.χ. 50000"></div>
+    <div class="onbbtns"><button class="btn primary" type="button" data-o="next">Συνέχεια</button><button class="btn ghost" type="button" data-o="back">Πίσω</button></div>`;return}
+  if(s===4){box.innerHTML=`<h2>Πόση πτώση θα άντεχες χωρίς να πουλήσεις;</h2><p class="muted">Σκέψου την αξία των επενδύσεών σου να πέφτει για μήνες. Μέχρι πού θα έμενες ήρεμος;</p>
+    <div class="opts">${TOLS.map(([v,t,d])=>`<button class="opt${onb.tol===v?' sel':''}" type="button" data-o="tol" data-v="${v}" aria-pressed="${onb.tol===v}"><span><b>${t}</b><small>${d}</small></span></button>`).join('')}</div>
+    <p class="neg small" id="obMsg" role="status"></p>
+    <div class="onbbtns"><button class="btn primary" type="button" data-o="finish">Δες το πλάνο σου</button><button class="btn ghost" type="button" data-o="back">Πίσω</button></div>`;return}
+}
+$('onbBody').addEventListener('input',e=>{const el=e.target,k=el.dataset.k;if(!k)return;
+  if(el.dataset.i!=null){onb.rows[+el.dataset.i][k]=el.value;if(k==='a')renderOnb()}
+  else{onb[k]=el.value;if(k==='years')$('ob_yo').textContent=el.value}});
+$('onbBody').addEventListener('click',e=>{const b=e.target.closest('[data-o]');if(!b)return;const o=b.dataset.o;
+  if(o==='sample'){state=sample();save();plan.target=null;targetBuilt=false;assetOptions('fAsset');$('onb').hidden=true;render();go('home');return}
+  if(o==='restore'){$('onb').hidden=true;go('tx');$('rsDetails').open=true;setTimeout(()=>$('backupPanel').scrollIntoView({block:'start'}),50);return}
+  if(o==='add'){onb.rows.push({a:'',v:'',name:''});renderOnb();$('ob_a'+(onb.rows.length-1))?.focus();return}
+  if(o==='rm'){onb.rows.splice(+b.dataset.i,1);renderOnb();return}
+  if(o==='wallet'){if(!wallet)openSheet('pick');else if(isPro()){flow.imp=null;openSheet('import')}else openSheet('done');return}
+  if(o==='setm'){onb.monthly=b.dataset.v;renderOnb();return}
+  if(o==='tol'){onb.tol=b.dataset.v;renderOnb();return}
+  if(o==='back'){onb.step=Math.max(0,onb.step-1);renderOnb();return}
+  if(o==='skip'){onb.rows=[];onb.step=2;renderOnb();return}
+  if(o==='next'){
+    if(onb.step===1){const bad=onb.rows.find(r=>(r.a||r.v)&&(!r.a||!(+r.v>0)||r.a==='__new'&&!r.name.trim()));
+      if(bad){$('obMsg').textContent='Συμπλήρωσε επένδυση και αξία σε κάθε γραμμή, ή αφαίρεσε τη γραμμή.';return}}
+    onb.step++;renderOnb();$('onbBody').querySelector('input,button')?.focus();return}
+  if(o==='finish')finishOnb();
+  if(o==='close'){$('onb').hidden=true;render()}
+});
+function finishOnb(){
+  if(state.sample)state={sample:false,onboarded:false,custom:{},mints:{},tx:[]};
+  const date=todayIso();
+  for(const r of onb.rows){const v=+r.v;if(!r.a||!(v>0))continue;
+    if(r.a==='__new'){const id='c_'+uid();state.custom[id]={name:r.name.trim(),cls:'other',current:v};state.tx.push({id:uid(),a:id,type:'buy',date,qty:1,price:v,fee:0,reason:''})}
+    else{const p=nowPrice(r.a);if(!(p>0))continue;state.tx.push({id:uid(),a:r.a,type:'buy',date,qty:+(v/p).toPrecision(8),price:+p.toPrecision(8),fee:0,reason:''})}}
+  state.onboarded=true;save();
+  plan.monthly=+onb.monthly||0;plan.years=+onb.years||15;plan.goal=+onb.goal||plan.goal||50000;plan.tol=onb.tol;plan.target=null;plan.next=null;plan.b=null;targetBuilt=false;savePlan();
+  $('onb').hidden=true;assetOptions('fAsset');render();go('plan');toast('Το πλάνο σου είναι έτοιμο. Μπορείς να αλλάξεις ό,τι θέλεις.');
+}
+
+/* ---------- views (bottom tabs) ---------- */
+const VIEWS=['home','plan','risk','tx'];
+function go(v){if(!VIEWS.includes(v))v='home';if(location.hash!=='#'+v)history.replaceState(null,'','#'+v);show(v)}
+function show(v){
+  VIEWS.forEach(k=>{$('v-'+k).hidden=k!==v;const t=document.querySelector(`.tabs [data-v="${k}"]`);t.setAttribute('aria-current',k===v?'page':'false')});
+  $('btnHome').hidden=v==='home';
+  window.scrollTo(0,0);requestAnimationFrame(redraw);if(typeof arm==='function')arm();
+}
+document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('[data-v]');if(b)go(b.dataset.v)});
+addEventListener('hashchange',()=>show(VIEWS.includes(location.hash.slice(1))?location.hash.slice(1):'home'));
+function closeOnb(){$('onb').hidden=true;if(!state.onboarded){state.onboarded=true;save()}render()}
+function goHome(){if(!$('overlay').hidden)closeSheet();if(!$('onb').hidden)closeOnb();go('home')}
+$('onbHome').addEventListener('click',goHome);
+$('btnHome').addEventListener('click',goHome);
+$('brandHome').addEventListener('click',goHome);$('brandHome').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();goHome()}});
+$('btnAdd').addEventListener('click',()=>{go('tx');setTimeout(()=>$('fAsset').focus(),60)});
+/* Android back button: close what is open, step back in the guide, return to Summary, and only then leave the app.
+   One extra history entry acts as a guard; each handled back press re-arms it. */
+let armed=false,booted=false;
+function arm(){if(booted&&!armed){history.pushState({vestora:1},'',location.hash||'#home');armed=true}}
+addEventListener('popstate',()=>{
+  armed=false;let handled=true;
+  if(!$('overlay').hidden)closeSheet();
+  else if(!$('onb').hidden){if(onb.step>0){onb.step--;renderOnb()}else{closeOnb();go('home')}}
+  else if(VIEWS.some(k=>!$('v-'+k).hidden&&k!=='home')){history.replaceState(null,'','#home');show('home')}
+  else handled=false;
+  if(handled)arm();
+  else toast('Πάτα ξανά «πίσω» για έξοδο.');
+});
+
+let toastT;function toast(t){const el=$('toast');el.textContent=t;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,3200)}
+function renderPriceNote(){
+  if(!DATA)return;const u=new Date(DATA.updated),age=(Date.now()-u)/DAY;
+  $('priceNote').innerHTML=`Τιμές: κλείσιμο ${longDate(iso(u))}${liveAt?', ζωντανές για crypto και xStocks':''}.${age>4?' <b class="neg">Οι τιμές δεν έχουν ενημερωθεί για μερικές μέρες.</b>':''}`;
+}
+
+function render(){renderWallet();D=compute();renderSummary(D);renderChart(D);renderStory(D);renderHoldings(D);renderInsights(D);renderPlan(D);renderStress(D);renderJournal();renderTx();renderBanner();renderPriceNote();renderBackupNote()}
+const redraw=()=>{if(!W)return;renderChart(D);if(lastProj)drawProj(lastProj,plan.bShow!==false?lastB:null)};
+let rt;const ro=new ResizeObserver(()=>{clearTimeout(rt);rt=setTimeout(redraw,80)});ro.observe($('chartbox'));ro.observe($('projBox'));
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',redraw);
+const MARK='<svg viewBox="0 0 32 32" width="100%" height="100%"><path d="M5 9 L16 25 L27 9" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="27" cy="9" r="3.2" fill="var(--accent)"/></svg>';
+
+async function boot(){
+  $('loadMsg').textContent='Φορτώνουν οι τιμές…';$('loadRetry').hidden=true;
+  try{const r=await fetch('data/history.json',{cache:'no-cache'});if(!r.ok)throw new Error('HTTP '+r.status);applyData(await r.json())}
+  catch(e){console.warn(e);$('loadMsg').textContent='Δεν ήταν δυνατή η φόρτωση των τιμών. Έλεγξε τη σύνδεση στο internet.';$('loadRetry').hidden=false;return}
+  $('loading').hidden=true;$('app').hidden=false;
+  $('fDate').max=todayIso();$('fDate').min=iso(wDate(0));$('fDate').value=todayIso();
+  assetOptions('fAsset');autoPrice();render();
+  show(VIEWS.includes(location.hash.slice(1))?location.hash.slice(1):'home');
+  if(!state.onboarded&&!state.tx.length)openOnb();
+  booted=true;arm();
+  livePrices();if(wallet)checkWallet(false);
+  setInterval(()=>{if(document.visibilityState==='visible')livePrices()},5*60e3);
+}
+$('loadRetry').addEventListener('click',boot);
+document.querySelectorAll('.markslot').forEach(el=>el.innerHTML=MARK);
+if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+boot();
+})();

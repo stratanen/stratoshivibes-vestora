@@ -23,6 +23,8 @@ Private by design: no account, no tracking, your data stays on your device, with
 
 Pro unlocks while your wallet holds SKR worth 20 € or a Seeker Genesis Token. SKR is never spent or locked.
 
+Available in English and Greek (chosen from your phone's language, switchable in Settings).
+
 Vestora describes and explains. It does not give investment advice and never tells you what to buy or sell.
 
 ## Σύντομη περιγραφή (EL)

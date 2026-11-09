@@ -44,4 +44,4 @@ com.stratoshivibes.vestora
 ## Files in this folder
 - icon-512.png: app icon
 - banner-1200x600.png: banner
-- Screenshots: to add once real prices are live (1080x1920)
+- screenshots-1080x1920/: 7 store screenshots in English (example portfolio, real prices)

@@ -39,7 +39,7 @@ CATALOG = [
     ('COIN', 'COIN', 'Coinbase', 'stock', 1, 'coin.us'),
     ('MSTR', 'MSTR', 'Strategy (MSTR)', 'stock', 1, 'mstr.us'),
     # Athens Stock Exchange
-    ('OPAP', 'OPAP.AT', 'ΟΠΑΠ', 'stock', 0, None),
+    ('ALWN', 'ALWN.AT', 'Allwyn (πρώην ΟΠΑΠ)', 'stock', 0, None),
     ('ETE', 'ETE.AT', 'Εθνική Τράπεζα', 'stock', 0, None),
     ('EUROB', 'EUROB.AT', 'Eurobank', 'stock', 0, None),
     ('TPEIR', 'TPEIR.AT', 'Τράπεζα Πειραιώς', 'stock', 0, None),

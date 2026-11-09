@@ -61,6 +61,15 @@ jobs:
             --keystore-alias stratoshivibes \
             --force < /dev/null
 
+      - name: Back button goes back inside the app, and closes it only when there is nothing to go back to
+        # The web shell template checks webView.canGoBack() only once, while the page loads, so back presses
+        # after that closed the app. This makes the handler always on and checks the history on every press.
+        run: |
+          F=$(grep -rl "BackHandler(enabled = webView.canGoBack())" android/app/src/main/java)
+          perl -0pi -e 's/BackHandler\(enabled = webView\.canGoBack\(\)\) \{\s*webView\.goBack\(\)\s*\}/BackHandler(enabled = true) {\n        if (webView.canGoBack()) webView.goBack() else (context as? android.app.Activity)?.finish()\n    }/' "$F"
+          grep -n -A2 "BackHandler(enabled" "$F"
+          grep -q "BackHandler(enabled = true)" "$F"
+
       - name: Add Android developer verification file (assets/adi-registration.properties)
         run: |
           mkdir -p android/app/src/main/assets

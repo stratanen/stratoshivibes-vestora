@@ -469,7 +469,10 @@
 ", ζωντανές για crypto και xStocks": ", live for crypto and xStocks",
 " <b class=\"neg\">Οι τιμές δεν έχουν ενημερωθεί για μερικές μέρες.</b>": " <b class=\"neg\">Prices have not been updated for a few days.</b>",
 "Φορτώνουν οι τιμές…": "Loading prices…",
-"Δεν ήταν δυνατή η φόρτωση των τιμών. Έλεγξε τη σύνδεση στο internet.": "Prices could not be loaded. Check your internet connection."
+"Δεν ήταν δυνατή η φόρτωση των τιμών. Έλεγξε τη σύνδεση στο internet.": "Prices could not be loaded. Check your internet connection.",
+"</div>\n    <button class=\"btn\" type=\"button\" data-o=\"add\">+ Άλλη μία</button>": "</div>\n    <button class=\"btn\" type=\"button\" data-o=\"add\">+ Add another</button>",
+"<div class=\"rule\"><b>Έχεις Solana wallet;</b><span>Σύνδεσέ το για να μπουν αυτόματα τα tokens και τα xStocks. Μόνο ανάγνωση, χωρίς υπογραφές.": "<div class=\"rule\"><b>Do you have a Solana wallet?</b><span>Connect it to add your tokens and xStocks automatically. Read-only, no signatures.",
+"<p class=\"neg small\" id=\"obMsg\" role=\"status\"></p>\n    <div class=\"onbbtns\"><button class=\"btn primary\" type=\"button\" data-o=\"next\">Συνέχεια</button><button class=\"btn ghost\" type=\"button\" data-o=\"skip\">Δεν έχω ακόμα επενδύσεις</button></div>": "<p class=\"neg small\" id=\"obMsg\" role=\"status\"></p>\n    <div class=\"onbbtns\"><button class=\"btn primary\" type=\"button\" data-o=\"next\">Continue</button><button class=\"btn ghost\" type=\"button\" data-o=\"skip\">I have no investments yet</button></div>"
 },
 "html": {
 "Φορτώνουν οι τιμές…": "Loading prices…",

@@ -5,7 +5,10 @@ const HELIUS='https://mainnet.helius-rpc.com/?api-key=b9b945b9-2831-4343-aab8-9d
 const validAddr=a=>typeof a==='string'&&/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(a);
 let wallet=readJSON(WKEY);if(!wallet||!validAddr(wallet.addr))wallet=null;
 const saveWallet=()=>wallet?LS.set(WKEY,JSON.stringify(wallet)):LS.del(WKEY);
-const isPro=()=>!!wallet&&(!!wallet.genesis||(wallet.skrEur!=null&&wallet.skrEur>=THRESH_EUR));
+/* Google Play edition: the Play app opens ?edition=play. No wallet and no SKR; every feature is free there (Play rules). */
+const PLAY=(()=>{const q=/[?&]edition=play\b/.test(location.search);try{if(q)localStorage.setItem('vestora-edition','play');return localStorage.getItem('vestora-edition')==='play'}catch(e){return q}})();
+if(PLAY){wallet=null;document.documentElement.classList.add('play')}
+const isPro=()=>PLAY||!!wallet&&(!!wallet.genesis||(wallet.skrEur!=null&&wallet.skrEur>=THRESH_EUR));
 const needSkr=()=>skrEur?Math.ceil(THRESH_EUR/skrEur):null;
 const LOCK='<svg class="lk" width="11" height="12" viewBox="0 0 11 12" aria-hidden="true"><rect x="1" y="5" width="9" height="6.5" rx="1.5" fill="currentColor"/><path d="M3 5V3.6a2.5 2.5 0 0 1 5 0V5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
 const short=a=>a.slice(0,4)+'…'+a.slice(-4);
@@ -284,7 +287,7 @@ function renderOnb(){
     box.innerHTML=`<h2>Τι έχεις σήμερα;</h2><p class="muted">Βάλε την αξία που έχει σήμερα κάθε επένδυση, όσο περίπου. Αργότερα, στις συναλλαγές, μπορείς να βάλεις πότε και σε ποια τιμή αγόρασες, για ακριβή απόδοση.</p>
     <div class="obrows">${onb.rows.map((r,i)=>`<div class="obrow">${onbAssetSelect(i,r)}${r.a==='__new'?`<input id="ob_n${i}" data-i="${i}" data-k="name" placeholder="π.χ. Διαμέρισμα" value="${esc(r.name)}" aria-label="Όνομα">`:''}<input id="ob_v${i}" data-i="${i}" data-k="v" type="number" min="0" step="10" inputmode="decimal" placeholder="Αξία σήμερα €" value="${esc(r.v)}" aria-label="Αξία σήμερα σε ευρώ">${onb.rows.length>1?`<button class="x" type="button" data-o="rm" data-i="${i}" aria-label="Αφαίρεση">×</button>`:''}</div>`).join('')}</div>
     <button class="btn" type="button" data-o="add">+ Άλλη μία</button>
-    <div class="rule"><b>Έχεις Solana wallet;</b><span>Σύνδεσέ το για να μπουν αυτόματα τα tokens και τα xStocks. Μόνο ανάγνωση, χωρίς υπογραφές.${imp?` <b>Έχουν προστεθεί ${imp} assets από το wallet.</b>`:''}</span><div><button class="btn" type="button" data-o="wallet">${wallet?(isPro()?'Εισαγωγή από wallet':'Κατάσταση wallet'):'Σύνδεση wallet'}</button></div></div>
+    ${PLAY?'':`<div class="rule"><b>Έχεις Solana wallet;</b><span>Σύνδεσέ το για να μπουν αυτόματα τα tokens και τα xStocks. Μόνο ανάγνωση, χωρίς υπογραφές.${imp?` <b>Έχουν προστεθεί ${imp} assets από το wallet.</b>`:''}</span><div><button class="btn" type="button" data-o="wallet">${wallet?(isPro()?'Εισαγωγή από wallet':'Κατάσταση wallet'):'Σύνδεση wallet'}</button></div></div>`}
     <p class="neg small" id="obMsg" role="status"></p>
     <div class="onbbtns"><button class="btn primary" type="button" data-o="next">Συνέχεια</button><button class="btn ghost" type="button" data-o="skip">Δεν έχω ακόμα επενδύσεις</button></div>`;return}
   if(s===2){box.innerHTML=`<h2>Πόσα μπορείς να βάζεις τον μήνα;</h2><p class="muted">Το ποσό που μπορείς να επενδύεις σταθερά, χωρίς να πιεστείς. Μπορεί να είναι και 0.</p>
@@ -383,7 +386,7 @@ async function boot(){
   show(VIEWS.includes(location.hash.slice(1))?location.hash.slice(1):'home');
   if(!state.onboarded&&!state.tx.length)openOnb();
   booted=true;arm();
-  livePrices();if(wallet)checkWallet(false);
+  livePrices();if(wallet&&!PLAY)checkWallet(false);
   setInterval(()=>{if(document.visibilityState==='visible')livePrices()},5*60e3);
 }
 $('loadRetry').addEventListener('click',boot);

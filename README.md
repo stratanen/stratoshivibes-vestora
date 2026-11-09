@@ -50,3 +50,11 @@
 ## Αλλαγές στον κώδικα
 
 Το `index.html` χτίζεται από τα αρχεία του φακέλου `src/` με `bash src/build.sh`. Τα ελληνικά κείμενα είναι μέσα στον κώδικα και τα αγγλικά στο `src/en_dict.json`.
+
+## Google Play
+
+Η έκδοση Google Play ανοίγει τη `https://vestora.stratoshivibes.com/?edition=play`: χωρίς wallet και χωρίς SKR, με όλες τις λειτουργίες δωρεάν. Πακέτο `com.stratoshivibes.vestora.play`, ξεχωριστό από του dApp Store.
+
+1. **Actions → Build Google Play bundle (AAB) → Run workflow** (version_code 1, version_name 1.0.0). Στα Releases βγαίνουν το `.aab` για το Play Console και ένα `-test.apk` για δοκιμή στο κινητό.
+2. Στο Play Console: νέα εφαρμογή, ανέβασμα του `.aab`.
+3. **Test and release → App integrity → App signing**: αντίγραψε το «SHA-256 certificate fingerprint» του *App signing key* και πρόσθεσέ το στο `.well-known/assetlinks.json`, δίπλα στο υπάρχον. Χωρίς αυτό η εφαρμογή ανοίγει με γραμμή διεύθυνσης στην κορυφή.

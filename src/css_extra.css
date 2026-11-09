@@ -68,5 +68,6 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .legal{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px}
 .legal a{color:var(--accent)}
 .settings{display:flex;flex-wrap:wrap;gap:8px}
+.play #btnWallet,.play #btnImport,.play .wallet-only{display:none!important}
 .langs .btn[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
 .overlay{z-index:40}

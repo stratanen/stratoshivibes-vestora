@@ -1,0 +1,1675 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Vestora</title>
+<meta name="description" content="Δες πώς πάνε οι επενδύσεις σου σε σύγκριση με απλές εναλλακτικές, και σχεδίασε τη συνέχεια. Crypto, μετοχές, ETF και ό,τι άλλο, με τα στοιχεία σου μόνο στη συσκευή.">
+<meta name="theme-color" content="#EDF1EF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0C1412" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+@font-face{font-family:"Commissioner";src:url(fonts/commissioner-greek-400-normal.woff2) format("woff2");font-weight:400;unicode-range:U+0370-03FF,U+1F00-1FFF}
+@font-face{font-family:"Commissioner";src:url(fonts/commissioner-greek-600-normal.woff2) format("woff2");font-weight:500 600;unicode-range:U+0370-03FF,U+1F00-1FFF}
+@font-face{font-family:"Commissioner";src:url(fonts/commissioner-greek-800-normal.woff2) format("woff2");font-weight:700 800;unicode-range:U+0370-03FF,U+1F00-1FFF}
+@font-face{font-family:"Commissioner";src:url(fonts/commissioner-latin-400-normal.woff2) format("woff2");font-weight:400}
+@font-face{font-family:"Commissioner";src:url(fonts/commissioner-latin-600-normal.woff2) format("woff2");font-weight:500 600}
+@font-face{font-family:"Commissioner";src:url(fonts/commissioner-latin-800-normal.woff2) format("woff2");font-weight:700 800}
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px)}
+html,body{margin:0}
+[hidden]{display:none!important}
+img{max-width:100%}
+/* Layout: ledger page — summary band, one wide performance chart, then a two-column working area (holdings | insights), transactions last */
+:root{
+  --bg:#EDF1EF; --surface:#FFFFFF; --ink:#12201B; --muted:#5A6A64; --line:#D4DDD9; --soft:#E3EAE7;
+  --accent:#0E7A5E; --accent-soft:rgba(14,122,94,.14); --bench:#6447C2; --invest:#8A9993;
+  --good:#1B8A4D; --warn:#A86E12; --bad:#C0392F;
+  --c-crypto:#0E7A5E; --c-etf:#6447C2; --c-stock:#2F6FB0; --c-cash:#A86E12; --c-other:#8A9993;
+  --f-ui:"Commissioner",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-num:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0C1412; --surface:#141E1B; --ink:#E3ECE8; --muted:#8E9F99; --line:#25322E; --soft:#1B2724;
+  --accent:#3CC79A; --accent-soft:rgba(60,199,154,.16); --bench:#A68CFF; --invest:#6F807A;
+  --good:#4CC283; --warn:#E1A84A; --bad:#F06C63;
+  --c-crypto:#3CC79A; --c-etf:#A68CFF; --c-stock:#5EA4EC; --c-cash:#E1A84A; --c-other:#6F807A;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0C1412; --surface:#141E1B; --ink:#E3ECE8; --muted:#8E9F99; --line:#25322E; --soft:#1B2724;
+  --accent:#3CC79A; --accent-soft:rgba(60,199,154,.16); --bench:#A68CFF; --invest:#6F807A;
+  --good:#4CC283; --warn:#E1A84A; --bad:#F06C63;
+  --c-crypto:#3CC79A; --c-etf:#A68CFF; --c-stock:#5EA4EC; --c-cash:#E1A84A; --c-other:#6F807A;
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:15px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px;display:grid;gap:20px}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.pos{color:var(--good)} .neg{color:var(--bad)}
+h1,h2,h3{margin:0;text-wrap:balance}
+h2{font-size:17px;font-weight:600}
+.eyebrow{font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* top bar */
+.top{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600}
+.mark{width:28px;height:28px;border-radius:7px;background:var(--ink);display:grid;place-items:center}
+.mark svg{display:block}
+.brand small{color:var(--muted);font-weight:500}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--surface);padding:7px 12px;border-radius:8px;font-size:13.5px;font-weight:500}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+
+.notice{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;color:var(--muted);border:1px dashed var(--line);border-radius:10px;padding:10px 14px}
+.notice b{color:var(--ink);font-weight:600}
+
+/* summary */
+.summary{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,2fr);gap:24px;align-items:end;padding-block:4px}
+.total .big{font-size:clamp(34px,6vw,52px);font-weight:600;letter-spacing:-.02em;line-height:1.05}
+.total .sub{margin-top:6px;color:var(--muted);font-size:14px;display:flex;flex-wrap:wrap;gap:4px 14px}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:2px solid var(--ink)}
+.kpi{padding:10px 12px 4px 0;display:grid;gap:2px;align-content:start}
+.kpi+.kpi{padding-left:12px;border-left:1px solid var(--line)}
+.kpi .v{font-size:22px;font-weight:500}
+.kpi .l{font-size:12.5px;color:var(--muted)}
+@media (max-width:860px){.summary{grid-template-columns:1fr}}
+@media (max-width:520px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi:nth-child(3){padding-left:0;border-left:0}.kpi:nth-child(n+3){border-top:1px solid var(--line)}}
+
+/* panels */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;min-width:0}
+.phead{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:6px 11px;font-size:13px;color:var(--muted)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.chartbox{position:relative}
+#chart{display:block;width:100%}
+#chart text{fill:var(--muted);font-family:var(--f-num);font-size:11px}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--surface);font-size:12px;border-radius:8px;padding:8px 10px;min-width:170px;display:grid;gap:2px;z-index:2}
+.tip .r{display:flex;justify-content:space-between;gap:14px}
+.empty{padding:40px 10px;text-align:center;color:var(--muted)}
+
+.grid2{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:960px){.grid2{grid-template-columns:1fr}}
+
+/* allocation */
+.alloc{display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--soft);margin-bottom:8px}
+.alloc span{display:block;height:100%}
+.alloc span+span{border-left:2px solid var(--surface)}
+.alegend{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12.5px;color:var(--muted);margin-bottom:16px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;text-align:right;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 8px;border-bottom:1px solid var(--soft);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left;padding-left:0}
+td .an{font-weight:600;font-family:var(--f-ui)}
+td .ac{font-size:12px;color:var(--muted);font-family:var(--f-ui)}
+.wbar{display:inline-block;width:42px;height:4px;background:var(--soft);border-radius:2px;vertical-align:middle;margin-left:6px;overflow:hidden}
+.wbar b{display:block;height:100%;background:var(--accent)}
+
+/* insights */
+.insights{display:grid;gap:10px}
+.ins{border:1px solid var(--line);border-radius:10px;padding:12px 14px 10px;display:grid;gap:6px;border-left:4px solid var(--lvl)}
+.ins[data-l="good"]{--lvl:var(--good)} .ins[data-l="warn"]{--lvl:var(--warn)} .ins[data-l="info"]{--lvl:var(--c-stock)}
+.ins .t{display:flex;gap:8px;align-items:center;font-weight:600;font-size:14.5px}
+.chip{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;font-weight:700;color:var(--lvl);border:1px solid var(--lvl);border-radius:20px;padding:1px 7px;white-space:nowrap}
+.ins p{margin:0;font-size:13.5px}
+.ins details{font-size:13px;color:var(--muted)}
+.ins summary{cursor:pointer;color:var(--accent);font-weight:500;width:max-content}
+.ins details p{margin-top:6px;color:var(--muted)}
+
+/* transactions */
+.form{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;align-items:end;margin-bottom:16px}
+.f{display:grid;gap:4px;min-width:0}
+.f label{font-size:12px;color:var(--muted);font-weight:500}
+.f input,.f select{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 10px;min-width:0}
+.f.wide{grid-column:span 2}
+.f.custom[hidden]{display:none}
+.formmsg{grid-column:1/-1;font-size:13px;color:var(--bad);min-height:0}
+@media (max-width:860px){.form{grid-template-columns:repeat(2,minmax(0,1fr))}.f.wide{grid-column:span 2}}
+.typechip{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.typechip.buy{color:var(--good)} .typechip.sell{color:var(--bad)}
+.del{border:0;background:none;color:var(--muted);font-size:12.5px;padding:2px 4px}
+.del:hover{color:var(--bad)} .del.armed{color:var(--bad);font-weight:600}
+.foot{font-size:12.5px;color:var(--muted);max-width:75ch}
+@media (prefers-reduced-motion:no-preference){.ins,.panel{transition:border-color .2s}}
+
+/* wallet + pro */
+.btn.wallet{display:inline-flex;gap:8px;align-items:center}
+.btn.wallet.on{border-color:var(--accent);color:var(--accent)}
+.probadge{font-size:10.5px;font-weight:700;letter-spacing:.08em;background:var(--accent);color:var(--surface);border-radius:4px;padding:1px 6px}
+.lk{display:inline-block;vertical-align:-1px;margin-left:5px;opacity:.75}
+.kpi.locked{cursor:pointer}
+.kpi.locked .v{color:var(--muted);font-size:15px;font-weight:600;display:flex;align-items:center;gap:6px;min-height:33px}
+.kpi.locked:hover .v{color:var(--accent)}
+.ins.locked{border-style:dashed;--lvl:var(--line);cursor:pointer;background:transparent}
+.ins.locked .t{color:var(--muted)}
+.ins.locked .chip{color:var(--muted);border-color:var(--line)}
+.ins.locked p{color:var(--muted)}
+.ins.locked .unlock{color:var(--accent);font-weight:600;font-size:13px}
+.overlay{position:fixed;inset:0;background:rgba(4,10,8,.55);display:grid;place-items:center;z-index:20;padding-top:max(16px,env(safe-area-inset-top,0px));padding-bottom:max(16px,env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.sheet{background:var(--surface);border:1px solid var(--line);border-radius:14px;width:100%;max-width:540px;max-height:100%;overflow:auto;padding:22px;display:grid;gap:16px}
+.sheet h3{font-size:20px;font-weight:600}
+.sheet p{margin:0;font-size:14px}
+.sheet .muted{color:var(--muted);font-size:13px}
+.shead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.x{border:0;background:none;font-size:22px;line-height:1;color:var(--muted);padding:2px 6px}
+.cmp{display:grid;grid-template-columns:minmax(0,1fr) auto auto;font-size:13.5px;border-top:1px solid var(--line)}
+.cmp>div{padding:8px 6px;border-bottom:1px solid var(--soft)}
+.cmp .h{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.cmp .c{text-align:center;min-width:64px}
+.yes{color:var(--good);font-weight:700} .no{color:var(--muted)}
+.rule{border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:4px;font-size:13.5px}
+.opts{display:grid;gap:8px}
+.opt{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:10px;padding:11px 14px;background:var(--bg);text-align:left;width:100%}
+.opt:hover{border-color:var(--accent)}
+.opt .ic{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-weight:700;font-size:13px;color:var(--surface);flex:none}
+.opt small{display:block;color:var(--muted);font-size:12px}
+.msgbox{font-family:var(--f-num);font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;white-space:pre-wrap;word-break:break-all}
+.status{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13.5px}
+.status dt{color:var(--muted)} .status dd{margin:0;text-align:right}
+.verdict{border-radius:10px;padding:12px 14px;font-weight:600;font-size:14px}
+.verdict.ok{background:var(--accent-soft);color:var(--accent)}
+.verdict.short{border:1px solid var(--warn);color:var(--warn)}
+.row{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.imp label{display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--soft);font-size:14px}
+.imp label span.num{margin-left:auto}
+.f select#fScenario{background:var(--bg)}
+
+/* alternative story, stress, journal, AI */
+.muted{color:var(--muted)} .small{font-size:12.5px}
+.grid2.even{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width:960px){.grid2.even{grid-template-columns:1fr}}
+.story{margin:12px 0 0;font-size:14px;max-width:75ch}
+.story:empty{display:none}
+.alts{margin-top:12px}
+.alts tr.sel td{background:var(--accent-soft)}
+.alts tr[data-b]{cursor:pointer}
+.alts tr[data-b]:hover td{background:var(--soft)}
+.alts td:first-child{font-weight:500}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.chips button{border:1px solid var(--line);background:var(--bg);border-radius:20px;padding:5px 12px;font-size:13px}
+.chips button[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.sliders{display:grid;gap:10px;margin-bottom:14px}
+.sl{display:grid;grid-template-columns:minmax(0,1fr) 64px;gap:4px 10px;align-items:center;font-size:13px}
+.sl label{grid-column:1/-1;color:var(--muted)}
+.sl input{width:100%;accent-color:var(--accent)}
+.sl output{text-align:right}
+.hit{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:baseline;margin-bottom:12px}
+.hit .big2{font-size:30px;font-weight:600;letter-spacing:-.01em}
+.bars{display:grid;gap:7px;margin-bottom:12px}
+.bar{display:grid;grid-template-columns:minmax(0,110px) minmax(0,1fr) auto;gap:10px;align-items:center;font-size:13px}
+.bar .tr{height:8px;background:var(--soft);border-radius:4px;overflow:hidden}
+.bar .tr b{display:block;height:100%;background:var(--bad);border-radius:4px}
+.bar .tr b.up{background:var(--good)}
+.bar span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.assume{font-size:12.5px;color:var(--muted);margin:0}
+.pattern{display:grid;gap:8px;margin-bottom:16px}
+.pat{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:13.5px}
+.pat b{font-weight:600} .pat .num{text-align:right}
+.pat small{grid-column:1/-1;color:var(--muted);font-size:12.5px}
+.rtag{font-size:12px;border:1px solid var(--line);border-radius:12px;padding:1px 8px;white-space:nowrap;font-family:var(--f-ui)}
+.qchips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.qchips button{border:1px dashed var(--line);background:transparent;border-radius:8px;padding:5px 10px;font-size:12.5px;text-align:left;color:var(--ink)}
+.qchips button:hover{border-color:var(--accent);color:var(--accent)}
+.aiform{display:flex;gap:8px}
+.aiform textarea{flex:1;min-width:0;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:9px 10px;resize:vertical;min-height:44px;font:inherit}
+.aians{margin-top:12px;border-left:3px solid var(--accent);padding:4px 0 4px 14px;font-size:14px;white-space:pre-wrap;min-height:0}
+.aians:empty{display:none}
+.aians .q{display:block;color:var(--muted);font-size:12.5px;margin-bottom:6px}
+.ailock{display:grid;gap:12px}
+.ailock .qchips button{color:var(--muted);cursor:pointer}
+
+/* plan */
+.plan{display:grid;gap:16px}
+.plan .phead{margin-bottom:0}
+.plangrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:24px;align-items:start}
+.plangrid.two{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);border-top:1px solid var(--line);padding-top:18px}
+@media (max-width:900px){.plangrid,.plangrid.two{grid-template-columns:1fr}}
+.pcol{min-width:0}
+h3.sub{font-size:13px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0 0 10px}
+.pinputs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.pinputs .f input[type=range]{padding:0;border:0;background:none;accent-color:var(--accent);height:34px}
+.pinputs .f label output{float:right;color:var(--ink)}
+.projhead{display:flex;flex-wrap:wrap;gap:8px 24px;align-items:baseline;margin-bottom:6px}
+.projhead .big2{font-size:30px;font-weight:600}
+.projhead .lbl{font-size:12.5px;color:var(--muted)}
+.projhead div{display:grid}
+.goalchip{font-size:12.5px;font-weight:600;border-radius:20px;padding:3px 10px;border:1px solid var(--line)}
+#projChart{display:block;width:100%}
+#projChart text{fill:var(--muted);font-family:var(--f-num);font-size:11px}
+.trow{display:grid;grid-template-columns:110px minmax(0,1fr) 64px 48px;gap:8px;align-items:center;font-size:13px;padding:5px 0}
+.trow input{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:4px 6px;text-align:right}
+.tbars{position:relative;height:10px;background:var(--soft);border-radius:5px}
+.tbars b{position:absolute;left:0;top:0;bottom:0;border-radius:5px;opacity:.85}
+.tbars i{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink)}
+.tsum{font-size:12.5px;margin-top:6px}
+.reserve{display:grid;gap:8px;margin-top:12px}
+.reserve .big2{font-size:28px;font-weight:600}
+#levers tr.sel td{background:var(--accent-soft)}
+.check{display:flex;gap:8px;align-items:center;font-size:13.5px;margin:12px 0 8px;cursor:pointer}
+.check input{accent-color:var(--accent);width:16px;height:16px}
+.split{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--soft);margin:8px 0 4px;max-width:420px}
+.split b{display:block;height:100%}
+.splitl{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:var(--muted)}
+.needs{display:grid;gap:8px}
+.need{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;align-items:baseline;border-bottom:1px solid var(--soft);padding:6px 0;font-size:13.5px}
+.need b{font-size:17px;font-weight:600}
+.need small{grid-column:1/-1;color:var(--muted);font-size:12.5px}
+.tolrow{display:grid;grid-template-columns:minmax(0,1fr) 64px auto;gap:4px 10px;align-items:center;font-size:13px;padding:5px 0}
+.tolrow .tr{grid-column:1/-1;position:relative;height:8px;background:var(--soft);border-radius:4px}
+.tolrow .tr b{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--bad)}
+.tolrow .tr b.in{background:var(--warn)}
+.tolrow .tr i{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink)}
+.pill{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border-radius:20px;padding:1px 8px;border:1px solid currentColor;white-space:nowrap}
+.pill.ok{color:var(--good)} .pill.over{color:var(--bad)} .pill.wait{color:var(--muted)} .pill.hit{color:var(--warn)}
+.res{display:grid;gap:10px;margin-top:12px}
+.resk{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:520px){.resk{grid-template-columns:1fr 1fr}}
+.resk div{display:grid;gap:2px;border-top:2px solid var(--line);padding-top:6px}
+.resk .v{font-size:20px;font-weight:600}
+.resk .l{font-size:12px;color:var(--muted)}
+.ckl{display:grid;gap:8px}
+.ck{border:1px solid var(--line);border-left:4px solid var(--lvl);border-radius:10px;padding:9px 12px;font-size:13.5px;display:grid;gap:2px}
+.ck[data-l="good"]{--lvl:var(--good)} .ck[data-l="warn"]{--lvl:var(--warn)} .ck[data-l="bad"]{--lvl:var(--bad)}
+.ck b{font-weight:600}
+.ck span{color:var(--muted);font-size:12.5px}
+.alist{display:grid;gap:0}
+.al{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 14px;align-items:start;padding:12px 0;border-bottom:1px solid var(--soft)}
+.al:last-child{border-bottom:0}
+.al .sw{margin-top:3px;accent-color:var(--accent);width:18px;height:18px}
+.al .nm{font-weight:600;font-size:14px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.al .why{font-size:13px;color:var(--muted);margin-top:2px}
+.al .thr{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);font-weight:400}
+.al .thr input{width:62px;border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:3px 6px;text-align:right;font:inherit;color:var(--ink)}
+.al.off .nm,.al.off .why{opacity:.55}
+.notifprev{border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;gap:4px;background:var(--bg);font-size:13.5px;max-width:520px}
+.notifprev .h{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--muted)}
+.notifprev .h .mark{width:18px;height:18px;border-radius:5px}
+.alertgrid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:900px){.alertgrid{grid-template-columns:1fr}}
+
+/* ---------- Vestora app shell ---------- */
+:root{--f-num:"Commissioner",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--tabh:62px}
+.num{font-feature-settings:"tnum" 1,"lnum" 1}
+body{min-height:100vh;padding-bottom:calc(var(--tabh) + env(safe-area-inset-bottom,0px) + 8px)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{padding-block:14px 32px}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:8px;margin-block:-8px 0}
+.brand .mark{color:var(--surface)}
+.brand .mark svg{width:18px;height:18px}
+.brand b{font-weight:700;letter-spacing:-.01em;font-size:17px}
+.view{display:grid;gap:20px}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:15;background:var(--surface);border-top:1px solid var(--line);
+  display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:env(safe-area-inset-bottom,0px);
+  padding-left:max(0px,env(safe-area-inset-left,0px));padding-right:max(0px,env(safe-area-inset-right,0px))}
+.tabs button{border:0;background:none;height:var(--tabh);display:grid;place-items:center;align-content:center;gap:3px;font-size:12px;color:var(--muted);font-weight:500}
+.tabs svg{width:22px;height:22px}
+.tabs button[aria-current="page"]{color:var(--accent);font-weight:600}
+@media (min-width:900px){.tabs{left:50%;right:auto;transform:translateX(-50%);bottom:12px;width:520px;border:1px solid var(--line);border-radius:14px;box-shadow:0 6px 24px rgba(0,0,0,.08)}}
+.banner{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;border:1px solid var(--warn);color:var(--ink);border-radius:10px;padding:10px 14px;font-size:13.5px}
+.banner b{color:var(--warn)}
+.pricenote{font-size:12.5px;color:var(--muted);margin:0}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--tabh) + env(safe-area-inset-bottom,0px) + 14px);z-index:30;background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:10px;font-size:14px;max-width:calc(100% - 32px);text-align:center}
+.loading{min-height:70vh;display:grid;place-items:center;align-content:center;gap:14px;text-align:center;color:var(--muted);padding-inline:24px}
+.loading .mark{width:52px;height:52px;border-radius:14px;color:var(--surface)}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+.del.edit{color:var(--accent);padding:2px 0;font-size:12px}
+.typechip.div,.typechip.reward{color:var(--c-cash)}
+.f.hint{grid-column:1/-1;font-size:12.5px;color:var(--muted)}
+.opt img.ic{background:var(--soft);object-fit:contain}
+.opt.sel{border-color:var(--accent);background:var(--accent-soft)}
+.imp label{gap:10px}
+.imp label>span:first-of-type{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.imp label span.num{white-space:nowrap}
+/* first-run guide */
+.onb{position:fixed;inset:0;z-index:25;background:var(--bg);overflow:auto;padding-top:max(16px,env(safe-area-inset-top,0px));padding-bottom:max(16px,env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.onbin{max-width:520px;margin:0 auto;display:grid;gap:18px;padding-block:8px 24px}
+.onbdots{display:flex;gap:6px;min-height:6px}
+.onbdots i{flex:1;height:4px;border-radius:2px;background:var(--line)}
+.onbdots i.on{background:var(--accent)}
+#onbBody{display:grid;gap:14px}
+#onbBody h2{font-size:22px;font-weight:700;letter-spacing:-.01em}
+#onbBody p{margin:0}
+.onbhero{display:grid;gap:14px;padding-top:6vh}
+.onbhero h1{font-size:40px;font-weight:800;letter-spacing:-.03em;line-height:1}
+.onbhero .lead{font-size:18px;line-height:1.45}
+.mark.big{width:64px;height:64px;border-radius:18px;color:var(--surface)}
+.onbl{margin:0;padding-left:20px;display:grid;gap:6px;color:var(--muted);font-size:14.5px}
+.onbbtns{display:grid;gap:8px;margin-top:6px}
+.onbbtns .btn{padding:12px 14px;font-size:15px}
+.obrows{display:grid;gap:8px}
+.obrow{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto;gap:8px;align-items:center}
+.obrow:has(input[data-k="name"]){grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,.9fr) auto}
+.obrow select,.obrow input,.onb .f input{width:100%;min-width:0;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px;font:inherit;color:inherit}
+.onb .f input[type=range]{padding:0;border:0;background:none;accent-color:var(--accent);height:34px}
+.onb .f label output{float:right;color:var(--ink);font-weight:600}
+@media (max-width:440px){.obrow,.obrow:has(input[data-k="name"]){grid-template-columns:minmax(0,1fr) auto}.obrow input{grid-column:1}}
+/* backup */
+.bkgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:760px){.bkgrid{grid-template-columns:1fr}}
+.bkcol{display:grid;gap:10px;min-width:0}
+.bkcol textarea{width:100%;min-height:90px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:9px 10px;font:12px/1.4 ui-monospace,Menlo,monospace;color:inherit;resize:vertical}
+.bkcol summary{cursor:pointer;color:var(--accent);font-weight:600}
+.bkcol details[open]{display:grid;gap:10px}
+.legal{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px}
+.legal a{color:var(--accent)}
+.settings{display:flex;flex-wrap:wrap;gap:8px}
+.overlay{z-index:40}
+</style>
+</head>
+<body>
+<div class="loading" id="loading">
+  <div class="mark markslot" aria-hidden="true"></div>
+  <p id="loadMsg">Φορτώνουν οι τιμές…</p>
+  <button class="btn" id="loadRetry" type="button" hidden>Δοκίμασε ξανά</button>
+</div>
+
+<div class="wrap" id="app" hidden>
+  <header class="top">
+    <div class="brand">
+      <div class="mark markslot" aria-hidden="true"></div>
+      <span><b>Vestora</b> <small>by StratoshiVibes</small></span>
+    </div>
+    <div class="btns">
+      <button class="btn wallet" id="btnWallet" type="button">Σύνδεση wallet</button>
+      <button class="btn primary" id="btnAdd" type="button">+ Συναλλαγή</button>
+    </div>
+  </header>
+
+  <div class="banner" id="banner" hidden>
+    <span><b>Παράδειγμα.</b> Πραγματικές τιμές, φανταστικές αγορές. Δεν είναι τα δικά σου στοιχεία.</span>
+    <button class="btn primary" id="bannerGo" type="button">Ξεκίνα με τα δικά σου</button>
+  </div>
+
+  <!-- ============ Σύνοψη ============ -->
+  <div class="view" id="v-home">
+  <section class="summary" aria-label="Σύνοψη">
+    <div class="total">
+      <div class="eyebrow">Συνολική αξία</div>
+      <div class="big num" id="totVal">—</div>
+      <div class="sub" id="totSub"></div>
+    </div>
+    <div class="kpis" id="kpis"></div>
+  </section>
+  <p class="pricenote" id="priceNote"></p>
+
+  <div class="banner" id="bkNudge" hidden>
+    <span>Τα στοιχεία σου υπάρχουν μόνο σε αυτή τη συσκευή. <b>Κράτα ένα αντίγραφο ασφαλείας</b>, για να μη χαθούν αν αλλάξεις κινητό.</span>
+    <button class="btn" id="bkNudgeGo" type="button">Αντίγραφο</button>
+  </div>
+
+  <section class="panel" aria-label="Απόδοση">
+    <div class="phead">
+      <div><h2>Η εναλλακτική σου ιστορία</h2><div class="muted small">Τα ίδια ποσά, τις ίδιες μέρες, σε άλλες επιλογές</div></div>
+      <div class="btns">
+        <div class="seg" role="group" aria-label="Προβολή" id="segMode">
+          <button type="button" data-v="value" aria-pressed="true">Αξία €</button>
+          <button type="button" data-v="pct" aria-pressed="false">Απόδοση %</button>
+        </div>
+        <div class="seg" role="group" aria-label="Σύγκριση με" id="segBench">
+          <button type="button" data-v="SPY" data-n="S&amp;P 500" aria-pressed="true">S&amp;P 500</button>
+          <button type="button" data-v="QQQ" data-n="Nasdaq 100" aria-pressed="false">Nasdaq 100</button>
+          <button type="button" data-v="BTC" data-n="Bitcoin" aria-pressed="false">Bitcoin</button>
+          <button type="button" data-v="DEP" data-n="Κατάθεση 2%" aria-pressed="false">Κατάθεση 2%</button>
+          <button type="button" data-v="MIX" data-n="80/20 S&amp;P–BTC" aria-pressed="false">80/20 S&amp;P–BTC</button>
+          <button type="button" data-v="DCA" data-n="Μηνιαία αγορά" aria-pressed="false">Μηνιαία αγορά</button>
+        </div>
+      </div>
+    </div>
+    <div class="chartbox" id="chartbox"><svg id="chart" role="img" aria-label="Γράφημα απόδοσης χαρτοφυλακίου"></svg><div class="tip" id="tip" hidden></div></div>
+    <div class="legend" id="legend"></div>
+    <p class="story" id="story"></p>
+    <div class="tablewrap"><table class="alts" id="alts"></table></div>
+  </section>
+
+  <div class="grid2">
+    <section class="panel" aria-label="Θέσεις">
+      <div class="phead"><h2>Θέσεις</h2><span class="eyebrow" id="posCount"></span></div>
+      <div class="alloc" id="alloc"></div>
+      <div class="alegend" id="alegend"></div>
+      <div class="tablewrap"><table id="holdings"></table></div>
+    </section>
+    <section class="panel" aria-label="Παρατηρήσεις">
+      <div class="phead"><h2>Τι δείχνουν τα νούμερα</h2></div>
+      <div class="insights" id="insights"></div>
+    </section>
+  </div>
+  </div>
+
+  <!-- ============ Πλάνο ============ -->
+  <div class="view" id="v-plan" hidden>
+  <section class="panel plan" aria-label="Το πλάνο σου">
+    <div class="phead"><div><h2>Το πλάνο σου</h2><div class="muted small">Από εδώ και πέρα: στόχος, κατανομή και αντοχή. Υπολογισμοί με παραδοχές, όχι προβλέψεις.</div></div></div>
+    <div class="plangrid">
+      <div class="pcol">
+        <h3 class="sub">Στόχος</h3>
+        <div class="pinputs">
+          <div class="f"><label for="pGoal">Στόχος €</label><input id="pGoal" type="number" min="0" step="1000" inputmode="numeric"></div>
+          <div class="f"><label for="pMonthly">Μηνιαία καταβολή €</label><input id="pMonthly" type="number" min="0" step="10" inputmode="numeric"></div>
+          <div class="f"><label for="pYears">Χρόνια <output id="pYearsO" class="num"></output></label><input id="pYears" type="range" min="1" max="40" step="1"></div>
+          <div class="f"><label for="pFee">Ετήσια έξοδα %</label><input id="pFee" type="number" min="0" max="5" step="0.1" inputmode="decimal"></div>
+          <div class="f"><label for="pAss">Παραδοχές απόδοσης</label><select id="pAss"><option value="-0.02">Συντηρητικές</option><option value="0">Μέτριες</option><option value="0.02">Αισιόδοξες</option></select></div>
+          <div class="f"><label for="pReal">Ποσά σε</label><select id="pReal"><option value="1">σημερινά ευρώ (με πληθωρισμό 2,5%)</option><option value="0">ονομαστικά ευρώ</option></select></div>
+          <div class="f wide"><label for="pTol">Πόση πτώση θα άντεχες χωρίς να πουλήσεις;</label><select id="pTol"><option value="10">Έως −10%</option><option value="20">Έως −20%</option><option value="30">Έως −30%</option><option value="40">Έως −40%</option><option value="50">Έως −50%</option><option value="70">Έως −70%</option></select></div>
+        </div>
+        <p class="muted small" id="pHint"></p>
+      </div>
+      <div class="pcol wide">
+        <div id="projHead"></div>
+        <div class="chartbox" id="projBox"><svg id="projChart" role="img" aria-label="Προβολή μελλοντικού κεφαλαίου"></svg></div>
+        <div class="legend" id="projLegend"></div>
+      </div>
+    </div>
+    <div class="tablewrap"><table id="levers"></table></div>
+    <p class="assume" id="projAssume"></p>
+
+    <div class="plangrid two">
+      <div class="pcol">
+        <h3 class="sub">Τι χρειάζεται για τον στόχο</h3>
+        <div id="needBox"></div>
+        <h3 class="sub" style="margin-top:18px">Η πτώση που δήλωσες ότι αντέχεις</h3>
+        <div id="tolBox"></div>
+      </div>
+      <div class="pcol">
+        <h3 class="sub">Πλάνο Β: σύγκριση</h3>
+        <p class="muted small" style="margin:0 0 10px">Άλλαξε ό,τι θέλεις στο Β και δες τα δύο πλάνα δίπλα δίπλα, με τις ίδιες προσομοιωμένες πορείες.</p>
+        <div class="pinputs">
+          <div class="f"><label for="bMonthly">Μηνιαία καταβολή €</label><input id="bMonthly" type="number" min="0" step="10" inputmode="numeric"></div>
+          <div class="f"><label for="bYears">Χρόνια</label><input id="bYears" type="number" min="1" max="50" step="1" inputmode="numeric"></div>
+          <div class="f"><label for="bFee">Ετήσια έξοδα %</label><input id="bFee" type="number" min="0" max="5" step="0.1" inputmode="decimal"></div>
+          <div class="f"><label for="bAss">Παραδοχές απόδοσης</label><select id="bAss"><option value="-0.02">Συντηρητικές</option><option value="0">Μέτριες</option><option value="0.02">Αισιόδοξες</option></select></div>
+        </div>
+        <label class="check"><input type="checkbox" id="bShow"> Δείξε το πλάνο Β στο γράφημα</label>
+        <div class="tablewrap"><table id="planBTable"></table></div>
+      </div>
+    </div>
+
+    <div class="plangrid two">
+      <div class="pcol">
+        <h3 class="sub">Η κατανομή που θέλεις</h3>
+        <p class="muted small" style="margin:0 0 10px">Όρισε εσύ την κατανομή-στόχο. Η εφαρμογή δεν προτείνει κατανομή, απλώς συγκρίνει με τη δική σου.</p>
+        <div id="targetBox"></div>
+        <h3 class="sub" style="margin-top:18px">Έλεγχος νέας καταβολής</h3>
+        <div class="f" style="max-width:220px;margin-bottom:10px"><label for="nAmt">Ποσό νέας καταβολής €</label><input id="nAmt" type="number" min="0" step="10" inputmode="numeric"></div>
+        <div class="tablewrap"><table id="nextTable"></table></div>
+        <p class="assume" style="margin-top:8px">Δείχνει τι αλλάζει με κάθε επιλογή. Δεν κατατάσσει τις επιλογές και δεν προτείνει κάποια.</p>
+      </div>
+      <div class="pcol">
+        <h3 class="sub">Οικονομική αντοχή</h3>
+        <p class="muted small" style="margin:0 0 10px">Πόσα μπορείς να επενδύεις χωρίς να πιεστείς. Προαιρετικό. Τα ποσά μένουν μόνο σε αυτή τη συσκευή.</p>
+        <div class="pinputs">
+          <div class="f"><label for="rInc">Σταθερό μηνιαίο εισόδημα €</label><input id="rInc" type="number" min="0" step="50" inputmode="numeric" placeholder="π.χ. 1500"></div>
+          <div class="f"><label for="rVar">Ασταθές εισόδημα €/μήνα (μ.ό.)</label><input id="rVar" type="number" min="0" step="50" inputmode="numeric" placeholder="π.χ. 300"></div>
+          <div class="f"><label for="rExp">Βασικά μηνιαία έξοδα €</label><input id="rExp" type="number" min="0" step="50" inputmode="numeric" placeholder="π.χ. 1100"></div>
+          <div class="f"><label for="rDebt">Δόσεις οφειλών €/μήνα</label><input id="rDebt" type="number" min="0" step="10" inputmode="numeric" placeholder="π.χ. 0"></div>
+          <div class="f wide"><label for="rRes">Αποθεματικό εκτός επενδύσεων €</label><input id="rRes" type="number" min="0" step="100" inputmode="numeric" placeholder="π.χ. 4000"></div>
+        </div>
+        <div id="reserveOut"></div>
+      </div>
+    </div>
+  </section>
+
+  </div>
+
+  <!-- ============ Κίνδυνος ============ -->
+  <div class="view" id="v-risk" hidden>
+    <section class="panel" aria-label="Stress test">
+      <div class="phead"><div><h2>Τι γίνεται αν πέσει η αγορά;</h2><div class="muted small">Υποθετικά σενάρια, όχι προβλέψεις</div></div></div>
+      <div class="chips" id="scenChips" role="group" aria-label="Σενάριο"></div>
+      <div id="custWrap" hidden></div>
+      <div id="stressOut"></div>
+    </section>
+    <section class="panel" aria-label="Ημερολόγιο αποφάσεων">
+      <div class="phead"><div><h2>Ημερολόγιο αποφάσεων</h2><div class="muted small">Τι ακολούθησε μετά από κάθε απόφαση, ανά λόγο</div></div></div>
+      <div id="journal"></div>
+    </section>
+  </div>
+
+  <!-- ============ Συναλλαγές και ρυθμίσεις ============ -->
+  <div class="view" id="v-tx" hidden>
+  <section class="panel" aria-label="Συναλλαγές" id="txPanel">
+    <div class="phead"><h2>Συναλλαγές</h2><button class="btn" id="btnImport" type="button">Εισαγωγή από wallet</button></div>
+    <form class="form" id="txForm" novalidate>
+      <div class="f wide"><label for="fAsset">Περιουσιακό στοιχείο</label><select id="fAsset"></select></div>
+      <div class="f custom" id="wrapCName" hidden><label for="fCName">Όνομα</label><input id="fCName" placeholder="π.χ. Διαμέρισμα, ΟΠΑΠ" maxlength="40"></div>
+      <div class="f custom" id="wrapCCls" hidden><label for="fCCls">Κατηγορία</label><select id="fCCls"></select></div>
+      <div class="f custom" id="wrapCNow" hidden><label for="fCNow">Τρέχουσα τιμή €</label><input id="fCNow" type="number" step="any" min="0" inputmode="decimal"></div>
+      <div class="f"><label for="fType">Κίνηση</label><select id="fType"><option value="buy">Αγορά</option><option value="sell">Πώληση</option><option value="div">Μέρισμα ή τόκος (€)</option><option value="reward">Staking ή ανταμοιβή (τεμάχια)</option></select></div>
+      <div class="f"><label for="fDate">Ημερομηνία</label><input id="fDate" type="date"></div>
+      <div class="f"><label for="fQty" id="lQty">Ποσότητα</label><input id="fQty" type="number" step="any" min="0" inputmode="decimal" placeholder="0"></div>
+      <div class="f" id="wrapPrice"><label for="fPrice">Τιμή ανά μονάδα €</label><input id="fPrice" type="number" step="any" min="0" inputmode="decimal"></div>
+      <div class="f" id="wrapFee"><label for="fFee">Προμήθεια €</label><input id="fFee" type="number" step="any" min="0" inputmode="decimal" value="0"></div>
+      <div class="f wide" id="wrapReason"><label for="fReason">Γιατί; (προαιρετικό, για το ημερολόγιο)</label><select id="fReason"></select></div>
+      <div class="f"><button class="btn primary" type="submit">Καταχώρηση</button></div>
+      <p class="f hint" id="typeHint" hidden></p>
+      <div class="formmsg" id="formMsg" role="status"></div>
+    </form>
+    <p class="assume" style="margin:-4px 0 14px">Η τιμή συμπληρώνεται μόνη της με το κλείσιμο εκείνης της εβδομάδας. Βάλε την πραγματική τιμή που πλήρωσες, αν τη θυμάσαι.</p>
+    <div class="tablewrap"><table id="txTable"></table></div>
+  </section>
+
+  <section class="panel" aria-label="Αντίγραφο ασφαλείας" id="backupPanel">
+    <div class="phead"><div><h2>Αντίγραφο ασφαλείας</h2><div class="muted small" id="bkLast"></div></div></div>
+    <div class="bkgrid">
+      <div class="bkcol">
+        <p class="small" style="margin:0">Τα στοιχεία σου υπάρχουν μόνο σε αυτή τη συσκευή και δεν ανεβαίνουν πουθενά. Φτιάξε ένα κρυπτογραφημένο αντίγραφο και κράτα το εσύ, π.χ. σε cloud ή σε email προς τον εαυτό σου. Χωρίς τον κωδικό δεν ανοίγει, ούτε από εμάς.</p>
+        <div class="f"><label for="bkPw">Κωδικός για το αντίγραφο (τουλάχιστον 8 χαρακτήρες)</label><input id="bkPw" type="password" autocomplete="new-password" minlength="8"></div>
+        <div class="settings"><button class="btn primary" id="bkFile" type="button">Αποθήκευση αρχείου</button><button class="btn" id="bkCopy" type="button">Αντιγραφή ως κείμενο</button></div>
+        <p class="small" id="bkMsg" role="status" style="margin:0"></p>
+      </div>
+      <div class="bkcol">
+        <details id="rsDetails"><summary>Επαναφορά από αντίγραφο</summary>
+          <div class="f"><label for="rsFile">Αρχείο αντιγράφου</label><input id="rsFile" type="file" accept=".json,application/json,text/plain"></div>
+          <div class="f"><label for="rsText">ή επικόλλησε το κείμενο</label><textarea id="rsText" spellcheck="false"></textarea></div>
+          <div class="f"><label for="rsPw">Κωδικός</label><input id="rsPw" type="password" autocomplete="current-password"></div>
+          <div><button class="btn primary" id="rsGo" type="button">Επαναφορά</button></div>
+          <p class="small" id="rsMsg" role="status" style="margin:0"></p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="Ρυθμίσεις">
+    <div class="phead"><h2>Ρυθμίσεις</h2></div>
+    <div class="settings"><button class="btn" id="btnSample" type="button">Φόρτωση παραδείγματος</button><button class="btn" id="btnClear" type="button">Διαγραφή όλων των στοιχείων</button></div>
+    <p class="foot" style="margin-top:14px">Το wallet χρησιμοποιείται μόνο για τον έλεγχο SKR και, αν το ζητήσεις, για ανάγνωση των υπολοίπων. Η Vestora βλέπει μόνο τη δημόσια διεύθυνση, δεν ζητάει υπογραφές και δεν μπορεί να μετακινήσει τίποτα. Το SKR λειτουργεί ως κλειδί πρόσβασης για το Pro: δεν ξοδεύεται και δεν δεσμεύεται.</p>
+    <p class="foot">Η Vestora περιγράφει και εξηγεί την πορεία των επενδύσεών σου. Δεν αποτελεί επενδυτική συμβουλή και δεν προτείνει αγορές, πωλήσεις ή κατανομή. Οι προβολές βασίζονται σε παραδοχές και δεν είναι προβλέψεις. Τιμές: Yahoo Finance (κλείσιμο ημέρας) και Jupiter (ζωντανές τιμές Solana), μετατροπή σε ευρώ με την ισοτιμία EUR/USD.</p>
+    <div class="legal"><a href="privacy.html">Απόρρητο</a><a href="terms.html">Όροι χρήσης</a><a href="https://github.com/stratanen/stratoshivibes-vestora" rel="noopener">Κώδικας</a></div>
+  </section>
+  </div>
+</div>
+
+<nav class="tabs" aria-label="Ενότητες">
+  <button type="button" data-v="home" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V10M10 19V5M16 19v-7M22 19H2"/></svg>Σύνοψη</button>
+  <button type="button" data-v="plan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>Πλάνο</button>
+  <button type="button" data-v="risk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>Κίνδυνος</button>
+  <button type="button" data-v="tx"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Συναλλαγές</button>
+</nav>
+
+<div class="onb" id="onb" hidden role="dialog" aria-modal="true" aria-label="Ξεκίνημα">
+  <div class="onbin"><div class="onbdots" id="onbDots"></div><div id="onbBody"></div></div>
+</div>
+<div class="overlay" id="overlay" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle"></div></div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(function(){
+'use strict';
+/* ---------- data: weekly prices in EUR, built daily by GitHub Actions (data/history.json) ---------- */
+const DAY=864e5;
+const MONTHS=['Ιαν','Φεβ','Μαρ','Απρ','Μαΐ','Ιουν','Ιουλ','Αυγ','Σεπ','Οκτ','Νοε','Δεκ'];
+const CLS={crypto:'Crypto',etf:'ETF',stock:'Μετοχές',cash:'Καταθέσεις',other:'Άλλα'};
+const CUSTOM_CLS={other:'Ακίνητα ή άλλο',stock:'Μετοχή (π.χ. ΧΑ)',etf:'ETF',crypto:'Crypto',cash:'Καταθέσεις'};
+let W=0, START=0, FXL=1.1, DATA=null;
+let ASSETS={}, PRICES={};
+/* Live prices come from Jupiter (Solana) by token address. Wrapped BTC/ETH on Solana follow BTC/ETH closely. */
+const MINT={SOL:'So11111111111111111111111111111111111111112',SKR:'SKRbvo6Gf7GondiT3BbTfuRDPqLWei4j2Qy2NPGZhW3',
+  BTC:'cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij',ETH:'7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs'};
+const JUP='https://lite-api.jup.ag/price/v3?ids=';
+let liveAt=0;
+
+function applyData(d){
+  DATA=d; W=d.weeks; START=Date.parse(d.start+'T00:00:00Z'); FXL=d.eurusdLast||d.eurusd[d.eurusd.length-1]||1.1;
+  ASSETS={}; PRICES={};
+  for(const [id,a] of Object.entries(d.assets)){
+    const w=a.w.slice();let first=w.find(v=>v!=null);if(first==null)continue;
+    for(let i=0;i<w.length;i++){if(w[i]==null)w[i]=first;else first=w[i]}
+    ASSETS[id]={name:a.name,sym:id,cls:a.cls,usd:a.usd??1};PRICES[id]=w;
+  }
+  ASSETS.DEP={name:'Κατάθεση με τόκο 2%',sym:'',cls:'cash',usd:0,fixed:.02};
+  PRICES.DEP=Array.from({length:W},(_,t)=>Math.pow(1.02,t/52));
+}
+async function livePrices(){
+  if(!DATA)return;
+  const ids={...MINT,...(state.mints||{})};
+  for(const [k,c] of Object.entries(state.custom))if(c.mint)ids[k]=c.mint;
+  const mints=[...new Set(Object.values(ids))];
+  try{
+    const out={};
+    for(let i=0;i<mints.length;i+=50){const r=await fetch(JUP+mints.slice(i,i+50).join(','));if(!r.ok)throw new Error('jup '+r.status);Object.assign(out,await r.json())}
+    let changed=false;
+    for(const [k,m] of Object.entries(ids)){
+      const p=out[m]?.usdPrice;if(!(p>0))continue;const e=p/FXL;
+      if(k==='SKR'){skrEur=e;continue}
+      if(PRICES[k]){PRICES[k][W-1]=e;ASSETS[k].live=true;changed=true}
+      else if(state.custom[k]){state.custom[k].current=e;changed=true}
+    }
+    liveAt=Date.now();if(changed){save();render()}else renderPriceNote();
+  }catch(e){console.warn('live prices',e);renderPriceNote()}
+}
+
+/* ---------- helpers ---------- */
+function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const eur=new Intl.NumberFormat('el-GR',{style:'currency',currency:'EUR',maximumFractionDigits:0});
+const eur2=new Intl.NumberFormat('el-GR',{style:'currency',currency:'EUR',minimumFractionDigits:2,maximumFractionDigits:2});
+const nf=(d)=>new Intl.NumberFormat('el-GR',{maximumFractionDigits:d});
+const price=v=>v>=1000?eur.format(v):v>=1?eur2.format(v):'€'+nf(6).format(v);
+const pct=(v,d=1)=>v==null||!isFinite(v)?'—':(v>0?'+':'')+nf(d).format(v*100)+'%';
+const sgn=v=>v>0?'pos':v<0?'neg':'';
+const wDate=i=>new Date(START+i*7*DAY);
+const iso=d=>d.toISOString().slice(0,10);
+const todayIso=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+const toWeek=s=>{const w=Math.floor((Date.parse(s)-START)/(7*DAY));return Math.max(0,Math.min(W-1,w))};
+const shortDate=d=>MONTHS[d.getUTCMonth()]+' '+String(d.getUTCFullYear()).slice(2);
+const longDate=s=>{const d=new Date(s+'T00:00:00Z');return d.getUTCDate()+' '+MONTHS[d.getUTCMonth()]+' '+d.getUTCFullYear()};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Math.random().toString(36).slice(2,9);
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const $=id=>document.getElementById(id);
+const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+const readJSON=k=>{try{return JSON.parse(LS.get(k))}catch(e){return null}};
+
+/* ---------- state (stays on this device) ---------- */
+const KEY='vestora-portfolio-v1';
+let state=readJSON(KEY);
+if(!state||!Array.isArray(state.tx))state={sample:false,onboarded:false,custom:{},mints:{},tx:[]};
+state.custom=state.custom||{};state.mints=state.mints||{};
+function save(){LS.set(KEY,JSON.stringify(state))}
+let ui={mode:'value',bench:'SPY'};
+let skrEur=null;
+
+function sample(){
+  /* An example portfolio with real prices and invented trades, clearly marked as an example in the app. */
+  const rows=[[104,'SPY','buy',1500,2,'long'],[104,'BTC','buy',1000,3,'long'],[96,'NVDA','buy',800,2,'opp'],[88,'SOL','buy',500,1.5,'opp'],
+    [78,'ETH','buy',600,2,'fomo'],[70,'SPY','buy',700,1,'long'],[60,'SOL','sell',.5,1,'fear'],[52,'BTC','buy',600,2.5,'opp'],
+    [40,'QQQ','buy',800,1,'rebal'],[28,'DEP','buy',2000,0,''],[14,'TSLA','buy',500,1,'fomo']];
+  const tx=[];const held={};
+  for(const [back,a,type,amt,fee,reason] of rows){
+    if(!PRICES[a])continue;const w=Math.max(0,W-1-back),p=PRICES[a][w];
+    let qty=type==='sell'?(held[a]||0)*amt:amt/p;held[a]=(held[a]||0)+(type==='sell'?-qty:qty);
+    tx.push({id:uid(),date:iso(wDate(w)),a,type,qty:+qty.toPrecision(6),fee,reason,price:+p.toPrecision(6)});
+  }
+  return {sample:true,onboarded:true,custom:{},mints:{},tx};
+}
+
+function meta(a){return ASSETS[a]||{name:state.custom[a]?.name||'Άλλο',sym:state.custom[a]?.sym||'',cls:state.custom[a]?.cls||'other',usd:state.custom[a]?.mint?1:0,custom:true}}
+function series(a){
+  if(PRICES[a])return PRICES[a];
+  const c=state.custom[a];const txs=state.tx.filter(t=>t.a===a&&t.type!=='div').sort((x,y)=>x.date.localeCompare(y.date));
+  if(!c||!txs.length)return new Array(W).fill(0);
+  const w0=toWeek(txs[0].date),p0=txs[0].price||c.current||0,p1=c.current??p0;
+  return Array.from({length:W},(_,t)=>t<=w0?p0:p0+(p1-p0)*(t-w0)/Math.max(1,W-1-w0));
+}
+const nowPrice=a=>{const s=series(a);return s[W-1]||0};
+
+/* ---------- engine ----------
+   F = net money in (+) or out (−) of the portfolio each week (used for TWR and XIRR); cash income counts as money out.
+   C = the user's own contributions only (used for "money you put in" and the "same amounts, same dates" alternatives). */
+function compute(){
+  if(!W)return null;
+  const txs=state.tx.map(t=>({...t,w:toWeek(t.date)})).sort((x,y)=>x.w-y.w||x.date.localeCompare(y.date));
+  if(!txs.length)return null;
+  const ids=[...new Set(txs.map(t=>t.a))];
+  const S={};ids.forEach(i=>S[i]=series(i));
+  const qty={},cost={};ids.forEach(i=>{qty[i]=0;cost[i]=0});
+  const V=Array(W).fill(0),F=Array(W).fill(0),C=Array(W).fill(0),INV=Array(W).fill(0);
+  let k=0,inv=0,fees=0,bought=0,income=0,rewardsEur=0;
+  for(let w=0;w<W;w++){
+    while(k<txs.length&&txs[k].w===w){
+      const t=txs[k++];fees+=t.fee||0;
+      if(t.type==='buy'){const c=t.qty*t.price+(t.fee||0);qty[t.a]+=t.qty;cost[t.a]+=c;F[w]+=c;C[w]+=c;bought+=t.qty*t.price}
+      else if(t.type==='sell'){const q=Math.min(t.qty,qty[t.a]);if(qty[t.a]>0)cost[t.a]-=cost[t.a]*q/qty[t.a];qty[t.a]-=q;const c=q*t.price-(t.fee||0);F[w]-=c;C[w]-=c}
+      else if(t.type==='reward'){qty[t.a]+=t.qty;rewardsEur+=t.qty*(S[t.a][w]||0)}
+      else if(t.type==='div'){F[w]-=t.qty;income+=t.qty}
+    }
+    inv+=C[w];INV[w]=inv;
+    let v=0;for(const i of ids)v+=qty[i]*S[i][w];V[w]=v;
+  }
+  const w0=txs[0].w;
+  const r=Array(W).fill(null),idx=Array(W).fill(null);idx[w0]=1;
+  for(let w=w0+1;w<W;w++){const rr=V[w-1]>0?(V[w]-F[w])/V[w-1]-1:0;r[w]=rr;idx[w]=idx[w-1]*(1+rr)}
+  const years=(W-1-w0)/52;
+  const twr=idx[W-1]-1, twrA=years>=1?Math.pow(idx[W-1],1/years)-1:null;
+  const cfs=[];for(let w=0;w<W;w++)if(F[w])cfs.push([(w-w0)/52,-F[w]]);cfs.push([(W-1-w0)/52,V[W-1]]);
+  const npv=x=>cfs.reduce((s,[t,c])=>s+c/Math.pow(1+x,t),0);
+  let lo=-.99,hi=10,mwr=null;
+  if(years>=1&&npv(lo)*npv(hi)<0){for(let i=0;i<120;i++){const m=(lo+hi)/2;(npv(lo)*npv(m)<=0)?hi=m:lo=m}mwr=(lo+hi)/2}
+  let peak=0,mdd=0,mddW=w0;for(let w=w0;w<W;w++){peak=Math.max(peak,idx[w]);const d=idx[w]/peak-1;if(d<mdd){mdd=d;mddW=w}}
+  const rs=r.filter(x=>x!=null);const mean=rs.reduce((a,b)=>a+b,0)/(rs.length||1);
+  const vol=rs.length>8?Math.sqrt(rs.reduce((s,x)=>s+(x-mean)**2,0)/(rs.length-1))*Math.sqrt(52):null;
+  const bench={};
+  for(const b of ['SPY','QQQ','BTC','DEP']){
+    const p=PRICES[b];if(!p)continue;let u=0;const B=Array(W).fill(0);
+    for(let w=0;w<W;w++){u+=C[w]/p[w];if(u<0)u=0;B[w]=u*p[w]}
+    bench[b]={B,idx:p.map((x,w)=>w<w0?null:x/p[w0])};
+  }
+  if(PRICES.SPY&&PRICES.BTC){const s=PRICES.SPY,b=PRICES.BTC;let us=0,ub=0;const B=Array(W).fill(0);
+   for(let w=0;w<W;w++){us+=.8*C[w]/s[w];ub+=.2*C[w]/b[w];if(us<0)us=0;if(ub<0)ub=0;B[w]=us*s[w]+ub*b[w]}
+   bench.MIX={B,idx:s.map((x,w)=>w<w0?null:.8*x/s[w0]+.2*b[w]/b[w0])};}
+  if(PRICES.SPY){const s=PRICES.SPY;const months=[];for(let w=w0;w<W;w+=4)months.push(w);
+   const amt=Math.max(0,INV[W-1])/months.length;let u=0;const B=Array(W).fill(0);
+   for(let w=0;w<W;w++){if(months.includes(w))u+=amt/s[w];B[w]=u*s[w]}
+   bench.DCA={B,idx:bench.SPY.idx,amt};}
+  const end=V[W-1];
+  const hold=ids.filter(i=>qty[i]>1e-12).map(i=>{const val=qty[i]*S[i][W-1];return{a:i,qty:qty[i],avg:cost[i]/qty[i],now:S[i][W-1],val,pl:val-cost[i],plp:cost[i]>0?val/cost[i]-1:0,wt:end>0?val/end:0}}).sort((x,y)=>y.val-x.val);
+  return {txs,ids,V,F,C,INV,r,idx,w0,years,twr,twrA,mwr,mdd,mddW,vol,bench,hold,end,inv:INV[W-1],fees,bought,income,rewardsEur,short:W-1-w0<8};
+}
+
+/* ---------- render: summary ---------- */
+function renderSummary(D){
+  if(!D){$('totVal').textContent=eur.format(0);$('totSub').innerHTML='<span>Πρόσθεσε τι έχεις για να ξεκινήσει η παρακολούθηση.</span>';$('kpis').innerHTML='';return}
+  const gain=D.end-D.inv+D.income;
+  $('totVal').textContent=eur.format(D.end);
+  $('totSub').innerHTML=`<span>Καθαρό κεφάλαιο που έβαλες <b class="num">${eur.format(D.inv)}</b></span><span>Κέρδος/ζημιά <b class="num ${sgn(gain)}">${(gain>0?'+':'')+eur.format(gain)}</b></span>${D.income?`<span>Από αυτό, εισόδημα που εισέπραξες <b class="num pos">${eur.format(D.income)}</b></span>`:''}`;
+  const b=D.bench[ui.bench];const diff=b?D.end-b.B[W-1]:0;
+  const k=[
+    [D.short?'—':D.twrA!=null?pct(D.twrA):pct(D.twr),D.twrA!=null?'Απόδοση επιλογών / έτος (TWR)':'Απόδοση επιλογών (TWR)',sgn(D.twr)],
+    [pct(D.mwr),'Απόδοση των χρημάτων σου / έτος (MWR)',sgn(D.mwr),true],
+    [D.short?'—':(diff>0?'+':'')+eur.format(diff),'Έναντι '+benchName(ui.bench),sgn(diff)],
+    [D.short?'—':pct(D.mdd),'Μέγιστη πτώση από κορυφή','neg',true]
+  ];
+  const pro=isPro();
+  $('kpis').innerHTML=k.map(([v,l,c,p])=>p&&!pro
+    ?`<div class="kpi locked" role="button" tabindex="0" data-pro="1"><span class="v">${LOCK} Pro</span><span class="l">${l}</span></div>`
+    :`<div class="kpi"><span class="v num ${c}">${v}</span><span class="l">${l}</span></div>`).join('');
+}
+const BN={SPY:['S&P 500','Ίδια ποσά σε S&P 500','S&P 500'],QQQ:['Nasdaq 100','Ίδια ποσά σε Nasdaq 100','Nasdaq 100'],
+  BTC:['Bitcoin','Ίδια ποσά σε Bitcoin','Bitcoin'],DEP:['κατάθεσης 2%','Ίδια ποσά σε κατάθεση 2%','Κατάθεση 2%'],
+  MIX:['80/20 S&P–BTC','Ίδια ποσά σε 80% S&P 500 / 20% BTC','80% S&P / 20% BTC'],
+  DCA:['μηνιαίας αγοράς','Ίδιο σύνολο, ισόποσα κάθε μήνα σε S&P 500','S&P 500 με μηνιαία αγορά']};
+const benchName=b=>BN[b][0];
+
+/* ---------- render: chart ---------- */
+let CH=null;
+function nice(min,max,n){const span=max-min||Math.abs(max)||1;const raw=span/n;const mag=Math.pow(10,Math.floor(Math.log10(raw)));const st=[1,2,2.5,5,10].map(m=>m*mag).find(s=>s>=raw);const lo=Math.floor(min/st)*st,hi=Math.ceil(max/st)*st;const t=[];for(let v=lo;v<=hi+st/2;v+=st)t.push(+v.toFixed(10));return{lo,hi,t}}
+function renderChart(D){
+  const svg=$('chart'),box=$('chartbox');$('tip').hidden=true;box.querySelector('.empty')?.remove();
+  const msg=t=>{svg.setAttribute('height',0);svg.innerHTML='';$('legend').innerHTML='';box.insertAdjacentHTML('afterbegin',`<div class="empty">${t}</div>`);CH=null};
+  if(!D)return msg('Δεν υπάρχουν ακόμα επενδύσεις. Πρόσθεσε τι έχεις για να δεις τη σύγκριση.');
+  if(D.short)return msg('Η σύγκριση χρειάζεται τουλάχιστον δύο μήνες ιστορικού. Αν έχεις τις επενδύσεις από παλιότερα, βάλε στις συναλλαγές πότε και σε ποια τιμή τις αγόρασες.');
+  const cw=Math.max(300,box.clientWidth),ch=cw<560?240:320;
+  svg.setAttribute('viewBox',`0 0 ${cw} ${ch}`);svg.setAttribute('height',ch);
+  const P={l:cw<560?50:62,r:12,t:12,b:26};
+  const w0=D.w0,b=D.bench[ui.bench];
+  let lines;
+  if(ui.mode==='value')lines=[{k:'p',v:D.V,c:css('--accent'),n:'Χαρτοφυλάκιο'},{k:'b',v:b.B,c:css('--bench'),n:BN[ui.bench][1]},{k:'i',v:D.INV,c:css('--invest'),n:'Κεφάλαιο που έβαλες',dash:'4 4'}];
+  else lines=[{k:'p',v:D.idx.map(x=>x==null?null:(x-1)*100),c:css('--accent'),n:'Απόδοση επιλογών (TWR)'},{k:'b',v:b.idx.map(x=>x==null?null:(x-1)*100),c:css('--bench'),n:BN[ui.bench][2]}];
+  let mn=Infinity,mx=-Infinity;lines.forEach(L=>{for(let w=w0;w<W;w++){const v=L.v[w];if(v!=null){mn=Math.min(mn,v);mx=Math.max(mx,v)}}});
+  if(ui.mode==='value')mn=Math.min(0,mn);
+  const Y=nice(mn,mx,5);
+  const x=w=>P.l+(w-w0)/Math.max(1,W-1-w0)*(cw-P.l-P.r);
+  const y=v=>P.t+(1-(v-Y.lo)/(Y.hi-Y.lo))*(ch-P.t-P.b);
+  const fmtY=v=>ui.mode==='value'?(Math.abs(v)>=1000?nf(0).format(v/1000)+'k':nf(0).format(v)):nf(0).format(v)+'%';
+  let g='';
+  Y.t.forEach(v=>{g+=`<line x1="${P.l}" x2="${cw-P.r}" y1="${y(v)}" y2="${y(v)}" stroke="${css(v===0&&ui.mode==='pct'?'--muted':'--line')}" stroke-width="1"/><text x="${P.l-8}" y="${y(v)+4}" text-anchor="end">${fmtY(v)}</text>`});
+  const nT=cw<560?3:6;for(let i=0;i<=nT;i++){const w=Math.round(w0+i*(W-1-w0)/nT);const anchor=i===0?'start':i===nT?'end':'middle';g+=`<text x="${x(w)}" y="${ch-6}" text-anchor="${anchor}">${shortDate(wDate(w))}</text>`}
+  const path=v=>{let d='';for(let w=w0;w<W;w++){if(v[w]==null)continue;d+=(d?'L':'M')+x(w).toFixed(1)+','+y(v[w]).toFixed(1)}return d};
+  const pl=lines[0];const base=y(Math.max(Y.lo,Math.min(Y.hi,0)));
+  g+=`<defs><linearGradient id="ga" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${pl.c}" stop-opacity=".22"/><stop offset="1" stop-color="${pl.c}" stop-opacity="0"/></linearGradient></defs>`;
+  g+=`<path d="${path(pl.v)}L${x(W-1)},${base}L${x(w0)},${base}Z" fill="url(#ga)" stroke="none"/>`;
+  [...lines].reverse().forEach(L=>{g+=`<path d="${path(L.v)}" fill="none" stroke="${L.c}" stroke-width="${L.k==='p'?2.4:1.7}" ${L.dash?`stroke-dasharray="${L.dash}"`:''} stroke-linejoin="round"/>`});
+  lines.forEach(L=>{if(L.k!=='i')g+=`<circle cx="${x(W-1)}" cy="${y(L.v[W-1])}" r="${L.k==='p'?4.5:3.5}" fill="${L.c}" stroke="${css('--surface')}" stroke-width="2"/>`});
+  const dv=diverge(D,ui.bench);
+  if(dv&&dv.w>w0+1&&dv.w<W-3){const xd=x(dv.w);const right=xd>cw*.7;
+    g+=`<line x1="${xd}" x2="${xd}" y1="${P.t}" y2="${ch-P.b}" stroke="${css('--ink')}" stroke-width="1" stroke-opacity=".45"/><text x="${right?xd-6:xd+6}" y="${P.t+12}" text-anchor="${right?'end':'start'}" style="fill:var(--ink)">εδώ ανοίγει η διαφορά</text>`}
+  g+=`<line id="hx" y1="${P.t}" y2="${ch-P.b}" stroke="${css('--muted')}" stroke-width="1" stroke-dasharray="2 3" visibility="hidden"/>`;
+  g+=`<rect id="hit" x="${P.l}" y="${P.t}" width="${cw-P.l-P.r}" height="${ch-P.t-P.b}" fill="transparent"/>`;
+  svg.innerHTML=g;
+  $('legend').innerHTML=lines.map(L=>`<span><i style="background:${L.c}${L.dash?';opacity:.8':''}"></i>${L.n}</span>`).join('');
+  CH={x,lines,w0,cw,P};
+}
+function diverge(D,bk){
+  const B=D.bench[bk].B,gap=w=>D.V[w]-B[w];const s=Math.sign(gap(W-1));if(!s)return null;
+  let w=W-1;while(w>D.w0&&Math.sign(gap(w-1))===s)w--;
+  return {w,s,diff:gap(W-1)};
+}
+function renderStory(D){
+  const st=$('story'),al=$('alts');
+  if(!D||D.short){st.textContent='';al.innerHTML='';return}
+  const dv=diverge(D,ui.bench),bn=BN[ui.bench][2];
+  let t='';
+  if(dv){const pos=dv.s>0;
+    t=dv.w<=D.w0+1?`Από την αρχή το χαρτοφυλάκιό σου είναι ${pos?'πάνω':'κάτω'} από την εναλλακτική «${bn}».`
+      :`Μέχρι τις ${longDate(iso(wDate(dv.w)))} οι δύο πορείες εναλλάσσονταν. Από εκεί και πέρα το χαρτοφυλάκιό σου μένει σταθερά ${pos?'πάνω':'κάτω'} από την εναλλακτική «${bn}».`;
+    t+=` Σήμερα η διαφορά είναι ${(dv.diff>0?'+':'')+eur.format(dv.diff)}.`;
+    if(ui.bench==='DCA')t+=` Στη μηνιαία αγορά, το ίδιο συνολικό κεφάλαιο (${eur.format(D.inv)}) μπαίνει ισόποσα κάθε μήνα, ${eur.format(D.bench.DCA.amt)} τη φορά.`;}
+  if(D.income)t+=` Το εισόδημα που εισέπραξες (${eur.format(D.income)}) δεν περιλαμβάνεται στην αξία σήμερα.`;
+  st.textContent=t;
+  const pro=isPro();
+  al.innerHTML=`<thead><tr><th>Εναλλακτική</th><th>Σήμερα θα είχες</th><th>Διαφορά από σένα</th></tr></thead><tbody>`+
+    `<tr><td>Το χαρτοφυλάκιό σου</td><td class="num">${eur.format(D.end)}</td><td class="num">—</td></tr>`+
+    Object.keys(BN).filter(k=>D.bench[k]).map(k=>{const locked=k!=='SPY'&&!pro;const v=D.bench[k].B[W-1],d=D.end-v;
+      return locked?`<tr data-b="${k}"><td>${BN[k][2]}</td><td class="num muted">${LOCK} Pro</td><td class="num muted">—</td></tr>`
+        :`<tr data-b="${k}" class="${k===ui.bench?'sel':''}"><td>${BN[k][2]}</td><td class="num">${eur.format(v)}</td><td class="num ${sgn(d)}">${(d>0?'+':'')+eur.format(d)}</td></tr>`}).join('')+'</tbody>';
+}
+$('alts').addEventListener('click',e=>{const r=e.target.closest('tr[data-b]');if(!r)return;const k=r.dataset.b;
+  if(k!=='SPY'&&!isPro())return openSheet('info');
+  ui.bench=k;[...$('segBench').children].forEach(x=>x.setAttribute('aria-pressed',x.dataset.v===k));render()});
+
+/* ---------- stress test ---------- */
+const SCN=[{id:'btc',n:'Bitcoin −50%'},{id:'ndq',n:'Nasdaq −30%'},{id:'world',n:'Μετοχές παγκόσμια −25%'},{id:'fx',n:'Ευρώ +10% έναντι $'},{id:'all',n:'Όλα μαζί'},{id:'custom',n:'Δικό σου σενάριο',pro:true}];
+const TECH=new Set(['NVDA','TSLA','COIN','MSTR']), MEGA=new Set(['AAPL','MSFT','AMZN','GOOGL','META']), NDQ=new Set(['QQQ','EQQQ']), GOLD=new Set(['GLD','XGLD']);
+/* Market move (before currency) for each scenario, by asset. */
+function baseShock(a,id){
+  const m=meta(a),c=m.cls;
+  if(id==='fx'||c==='cash'||m.custom&&c==='other')return 0;
+  const crypto=c==='crypto'?(a==='BTC'?{btc:-.5,ndq:-.3,world:-.3}:{btc:-.6,ndq:-.4,world:-.4}):null;
+  if(crypto)return crypto[id]??Math.min(crypto.btc,crypto.ndq,crypto.world);
+  if(GOLD.has(a))return 0;
+  const S=NDQ.has(a)?{ndq:-.3,world:-.28}:TECH.has(a)?{ndq:-.45,world:-.38}:MEGA.has(a)?{ndq:-.32,world:-.28}:c==='etf'?{ndq:-.22,world:-.25}:{ndq:-.18,world:-.3};
+  if(id==='btc')return TECH.has(a)&&(a==='COIN'||a==='MSTR')?-.4:0;
+  if(id==='all')return Math.min(S.ndq,S.world,(a==='COIN'||a==='MSTR')?-.4:0);
+  return S[id]||0;
+}
+const SDESC={btc:'Το Bitcoin χάνει το μισό. Τα άλλα crypto πέφτουν συνήθως περισσότερο (−60%), όπως και οι μετοχές που εξαρτώνται από το Bitcoin.',
+  ndq:'Πτώση στην τεχνολογία. Το S&P 500 πέφτει λιγότερο (−22%), οι μεμονωμένες τεχνολογικές περισσότερο, τα crypto ακολουθούν εν μέρει.',
+  world:'Γενική πτώση μετοχών. Τα crypto ακολουθούν, όπως συνέβη σε προηγούμενες κρίσεις.',
+  fx:'Οι τιμές σε δολάρια δεν αλλάζουν, αλλά σε ευρώ αξίζουν λιγότερο. Επηρεάζει ό,τι εξαρτάται από το δολάριο.',
+  all:'Για κάθε θέση εφαρμόζεται η χειρότερη πτώση από τα τρία σενάρια αγοράς, μαζί με την άνοδο του ευρώ.',
+  custom:'Όρισε εσύ πόσο κινείται κάθε κατηγορία.'};
+let sui={id:'btc',c:{crypto:-40,eq:-20,gold:0,fx:5}};
+function shockOf(a,id){
+  const m=meta(a),usd=m.usd||0;let s=0,fx=0;
+  if(id==='custom'){const c=m.cls;s=(c==='crypto'?sui.c.crypto:GOLD.has(a)?sui.c.gold:(c==='stock'||c==='etf')?sui.c.eq:0)/100;fx=sui.c.fx/100}
+  else{s=baseShock(a,id);fx=id==='fx'||id==='all'?.1:0}
+  return (1+s)*(1-usd+usd/(1+fx))-1;
+}
+function stressCalc(D,id){const rows=D.hold.map(h=>{const sh=shockOf(h.a,id);return{a:h.a,sh,d:h.val*sh}});const tot=rows.reduce((s,r)=>s+r.d,0);return{rows,tot,pct:D.end>0?tot/D.end:0}}
+function renderStress(D){
+  const pro=isPro();if(sui.id==='custom'&&!pro)sui.id='btc';
+  $('scenChips').innerHTML=SCN.map(s=>`<button type="button" data-s="${s.id}" aria-pressed="${s.id===sui.id}">${s.n}${s.pro&&!pro?LOCK:''}</button>`).join('');
+  const cw=$('custWrap');cw.hidden=sui.id!=='custom';
+  if(!D||!D.hold.length){$('stressOut').innerHTML='<div class="empty">Πρόσθεσε θέσεις για να δεις τα σενάρια.</div>';return}
+  if(sui.id==='custom'&&!cw.childElementCount){
+    const S=[['crypto','Crypto',-90,50],['eq','Μετοχές και ETF',-60,40],['gold','Χρυσός',-40,40],['fx','Ευρώ έναντι δολαρίου',-15,15]];
+    cw.innerHTML=`<div class="sliders">${S.map(([k,l,mn,mx])=>`<div class="sl"><label for="sl_${k}">${l}</label><input type="range" id="sl_${k}" data-k="${k}" min="${mn}" max="${mx}" step="5" value="${sui.c[k]}"><output class="num" id="o_${k}">${sui.c[k]>0?'+':''}${sui.c[k]}%</output></div>`).join('')}</div>`;
+  }
+  const r=stressCalc(D,sui.id);
+  const mx=Math.max(...r.rows.map(x=>Math.abs(x.d)),1);
+  $('stressOut').innerHTML=`<p class="assume" style="margin-bottom:10px">${SDESC[sui.id]}</p>
+   <div class="hit"><span class="big2 num ${sgn(r.tot)}">${(r.tot>0?'+':'')+eur.format(r.tot)}</span><span class="num ${sgn(r.pct)}">${pct(r.pct)}</span><span class="muted">νέα αξία <span class="num">${eur.format(D.end+r.tot)}</span></span></div>
+   <div class="bars">${r.rows.filter(x=>Math.abs(x.d)>.5).sort((a,b)=>a.d-b.d).map(x=>`<div class="bar"><span>${esc(meta(x.a).name)}</span><span class="tr"><b class="${x.d>0?'up':''}" style="width:${Math.abs(x.d)/mx*100}%"></b></span><span class="num ${sgn(x.d)}">${(x.d>0?'+':'')+eur.format(x.d)}</span></div>`).join('')||'<div class="muted small">Καμία θέση δεν επηρεάζεται σε αυτό το σενάριο.</div>'}</div>
+   <p class="assume">Υποθετικός υπολογισμός πάνω στη σημερινή αξία. Δεν είναι πρόβλεψη. Οι καταθέσεις και τα ακίνητα ή άλλα χειροκίνητα στοιχεία θεωρούνται σταθερά, και οι πραγματικές κρίσεις μπορεί να είναι χειρότερες.</p>`;
+}
+$('scenChips').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  const s=SCN.find(x=>x.id===b.dataset.s);if(s.pro&&!isPro())return openSheet('info');
+  sui.id=s.id;renderStress(D)});
+$('custWrap').addEventListener('input',e=>{const k=e.target.dataset.k;if(!k)return;sui.c[k]=+e.target.value;$('o_'+k).textContent=(sui.c[k]>0?'+':'')+sui.c[k]+'%';renderStress(D)});
+
+/* ---------- decision journal ---------- */
+const REASONS={long:'Μακροπρόθεσμη επένδυση',opp:'Βραχυπρόθεσμη ευκαιρία',rebal:'Αναδιάρθρωση',fear:'Αντίδραση σε πτώση',fomo:'Αντίδραση σε άνοδο',fund:'Αλλαγή θεμελιωδών'};
+$('fReason').innerHTML='<option value="">— χωρίς λόγο —</option>'+Object.entries(REASONS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
+function journalCalc(){
+  const spy=PRICES.SPY;
+  const items=state.tx.filter(t=>t.reason&&t.a!=='DEP'&&(t.type==='buy'||t.type==='sell')).map(t=>{const w=toWeek(t.date),p=series(t.a);
+    const after=h=>w+h<W&&p[w]>0?p[w+h]/p[w]-1:null,spyA=h=>w+h<W?spy[w+h]/spy[w]-1:null;
+    return{t,w,a3:after(13),a6:after(26),s3:spyA(13),s6:spyA(26)}}).sort((x,y)=>y.t.date.localeCompare(x.t.date));
+  const groups={};
+  items.filter(i=>i.a3!=null).forEach(i=>{const k=i.t.type+':'+i.t.reason;(groups[k]=groups[k]||[]).push(i.t.type==='buy'?i.a3-i.s3:i.a3)});
+  const pats=Object.entries(groups).map(([k,v])=>{const [type,reason]=k.split(':');return{type,reason,n:v.length,avg:v.reduce((a,b)=>a+b,0)/v.length}}).sort((a,b)=>b.n-a.n);
+  return{items,pats};
+}
+function renderJournal(){
+  const J=journalCalc(),box=$('journal');
+  if(!J.items.length){box.innerHTML='<div class="empty">Όταν καταχωρείς μια αγορά ή πώληση, διάλεξε προαιρετικά τον λόγο. Μετά από 3 και 6 μήνες εδώ θα φαίνεται τι ακολούθησε.</div>';return}
+  const pats=J.pats.map(p=>{const buy=p.type==='buy';
+    const line=buy?`Μετά από τέτοιες αγορές, το asset ${p.avg>=0?'ξεπέρασε':'υστέρησε του'} S&P 500 κατά μέσο όρο <b class="num ${sgn(p.avg)}">${nf(1).format(Math.abs(p.avg*100))} μον.</b> στους 3 μήνες.`
+      :`Μετά από τέτοιες πωλήσεις, το asset κινήθηκε κατά μέσο όρο <b class="num ${sgn(p.avg)}">${pct(p.avg)}</b> στους 3 μήνες.`;
+    return `<div class="pat"><span><b>${buy?'Αγορές':'Πωλήσεις'}: ${REASONS[p.reason]}</b></span><span class="muted small num">${p.n} ${p.n===1?'απόφαση':'αποφάσεις'}</span><small>${line}${p.n<3?' Λίγα δεδομένα ακόμα, όχι μοτίβο.':''}</small></div>`}).join('');
+  const rows=J.items.map(i=>{const t=i.t,buy=t.type==='buy';const left=13-(W-1-i.w);
+    let note;
+    if(i.a3==null)note=`<span class="muted">Αξιολόγηση σε ${left} εβδ.</span>`;
+    else if(buy){const d=(i.a6??i.a3)-(i.s6??i.s3);note=d>=0?'Πήγε καλύτερα από το S&P 500':'Πήγε χειρότερα από το S&P 500'}
+    else{const a=i.a6??i.a3;note=a>0?'Το asset ανέβηκε μετά την πώληση':'Το asset συνέχισε να πέφτει'}
+    return `<tr><td class="num">${longDate(t.date)}</td><td>${buy?'Αγορά':'Πώληση'} ${esc(meta(t.a).name)}</td><td><span class="rtag">${REASONS[t.reason]}</span></td>
+      <td class="num ${sgn(i.a3)}">${i.a3==null?'—':pct(i.a3)}</td><td class="num ${sgn(i.a6)}">${i.a6==null?'—':pct(i.a6)}</td><td class="num muted">${i.s6==null?(i.s3==null?'—':pct(i.s3)):pct(i.s6)}</td><td>${note}</td></tr>`}).join('');
+  box.innerHTML=(pats?`<div class="pattern">${pats}</div>`:'')+
+    `<div class="tablewrap"><table><thead><tr><th>Ημερομηνία</th><th>Απόφαση</th><th>Λόγος</th><th>Asset +3μ</th><th>Asset +6μ</th><th>S&amp;P ίδιο διάστημα</th><th>Τι ακολούθησε</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="assume" style="margin-top:10px">Δεν είναι βαθμολογία. Μια απόφαση μπορεί να ήταν λογική ακόμα κι αν η αγορά κινήθηκε αντίθετα. Το ημερολόγιο δείχνει τι ακολούθησε, ώστε να εντοπίζεις μοτίβα στη δική σου συμπεριφορά.</p>`;
+}
+
+function hover(ev){
+  if(!CH)return;const svg=$('chart'),r=svg.getBoundingClientRect();
+  const px=(ev.clientX-r.left)*(CH.cw/r.width);
+  let w=Math.round(CH.w0+(px-CH.P.l)/(CH.cw-CH.P.l-CH.P.r)*(W-1-CH.w0));w=Math.max(CH.w0,Math.min(W-1,w));
+  const hx=$('hx');hx.setAttribute('x1',CH.x(w));hx.setAttribute('x2',CH.x(w));hx.setAttribute('visibility','visible');
+  const f=v=>ui.mode==='value'?eur.format(v):pct(v/100);
+  const tip=$('tip');tip.hidden=false;
+  tip.innerHTML=`<div class="r"><b>${longDate(iso(wDate(w)))}</b></div>`+CH.lines.map(L=>`<div class="r"><span>${L.n.split(' (')[0]}</span><span class="num">${L.v[w]==null?'—':f(L.v[w])}</span></div>`).join('');
+  const left=CH.x(w)*(r.width/CH.cw);const tw=tip.offsetWidth;
+  tip.style.left=Math.max(0,Math.min(r.width-tw,left+12>r.width-tw?left-tw-12:left+12))+'px';tip.style.top='8px';
+}
+$('chartbox').addEventListener('pointermove',e=>{if(e.target.id==='hit')hover(e)});
+$('chartbox').addEventListener('pointerleave',()=>{$('tip').hidden=true;const hx=$('hx');if(hx)hx.setAttribute('visibility','hidden')});
+
+/* ---------- render: holdings ---------- */
+function renderHoldings(D){
+  if(!D||!D.hold.length){$('alloc').innerHTML='';$('alegend').innerHTML='';$('holdings').innerHTML='<tbody><tr><td class="empty" colspan="7">Καμία ανοιχτή θέση.</td></tr></tbody>';$('posCount').textContent='';return}
+  $('posCount').textContent=D.hold.length+(D.hold.length===1?' θέση':' θέσεις');
+  const by={};D.hold.forEach(h=>{const c=meta(h.a).cls;by[c]=(by[c]||0)+h.wt});
+  const cls=Object.entries(by).sort((a,b)=>b[1]-a[1]);
+  $('alloc').innerHTML=cls.map(([c,w])=>`<span style="width:${w*100}%;background:var(--c-${c})" title="${CLS[c]}"></span>`).join('');
+  $('alegend').innerHTML=cls.map(([c,w])=>`<span><i class="dot" style="background:var(--c-${c})"></i>${CLS[c]} <span class="num">${nf(0).format(w*100)}%</span></span>`).join('');
+  $('holdings').innerHTML=`<thead><tr><th>Στοιχείο</th><th>Ποσότητα</th><th>Μέση τιμή</th><th>Τρέχουσα</th><th>Αξία</th><th>Κέρδος</th><th>Βάρος</th></tr></thead><tbody>`+
+  D.hold.map(h=>{const m=meta(h.a),manual=m.custom&&!state.custom[h.a]?.mint;return `<tr><td><div class="an">${esc(m.name)}</div><div class="ac">${m.sym&&!m.custom?esc(m.sym)+' · ':''}${CLS[m.cls]}${ASSETS[h.a]?.live?' · ζωντανή τιμή':''}</div></td>
+  <td class="num">${nf(h.qty<1?4:2).format(h.qty)}</td><td class="num">${price(h.avg)}</td><td class="num">${price(h.now)}${manual?`<div><button class="del edit" type="button" data-price="${esc(h.a)}">Αλλαγή τιμής</button></div>`:''}</td><td class="num">${eur.format(h.val)}</td>
+  <td class="num ${sgn(h.pl)}">${(h.pl>0?'+':'')+eur.format(h.pl)}<div class="ac ${sgn(h.pl)}">${pct(h.plp)}</div></td>
+  <td class="num">${nf(0).format(h.wt*100)}%<span class="wbar"><b style="width:${h.wt*100}%"></b></span></td></tr>`}).join('')+'</tbody>';
+}
+$('holdings').addEventListener('click',e=>{const b=e.target.closest('[data-price]');if(b)openSheet('price',b.dataset.price)});
+
+/* ---------- render: insights ---------- */
+const PROTEASE={'Χρονισμός':'Σε βοήθησε ή σου κόστισε ο χρονισμός των αγορών;','Επικάλυψη':'Έχεις την ίδια έκθεση από δύο δρόμους;','Crypto':'Πόσο κινούνται τα crypto σου μαζί με τις μετοχές;','Κίνδυνος':'Ποια ήταν η χειρότερη στιγμή του χαρτοφυλακίου;'};
+function corr(a,b){const n=a.length;const ma=a.reduce((s,x)=>s+x,0)/n,mb=b.reduce((s,x)=>s+x,0)/n;let c=0,va=0,vb=0;for(let i=0;i<n;i++){c+=(a[i]-ma)*(b[i]-mb);va+=(a[i]-ma)**2;vb+=(b[i]-mb)**2}return c/Math.sqrt(va*vb)}
+function renderInsights(D){
+  const box=$('insights');
+  if(!D){box.innerHTML='<div class="empty">Οι παρατηρήσεις εμφανίζονται μόλις υπάρχουν θέσεις.</div>';return}
+  const out=[];const pro=isPro();
+  const push0=out.push.bind(out);let tagPro=false;out.push=o=>push0({...o,pro:tagPro});
+  if(!D.short&&D.bench.SPY){const sp=D.bench.SPY.B[W-1],d=D.end-sp;
+  out.push({l:d>=0?'good':'warn',chip:d>=0?'Πάνω από αγορά':'Κάτω από αγορά',t:'Τι θα είχες με ένα απλό ETF',
+    p:`Αν τα ίδια ποσά, τις ίδιες ημερομηνίες, πήγαιναν όλα στο S&P 500, σήμερα θα είχες <b class="num">${eur.format(sp)}</b>. Το χαρτοφυλάκιό σου είναι <b class="num ${sgn(d)}">${(d>0?'+':'')+eur.format(d)}</b> ${d>=0?'πάνω':'κάτω'} από αυτό.`,
+    e:'Ένας δείκτης όπως το S&P 500 είναι η «χωρίς κόπο» εναλλακτική. Αν μια πιο σύνθετη επιλογή δεν τον ξεπερνά σε βάθος χρόνου, ο επιπλέον κίνδυνος και χρόνος δεν αποζημιώνεται. Ένα μεμονωμένο διάστημα δεν αποδεικνύει τίποτα, η σύγκριση έχει νόημα σε βάθος ετών.'})}
+  tagPro=true;
+  if(D.mwr!=null&&D.twrA!=null){const gap=D.mwr-D.twrA;if(Math.abs(gap)>.02)out.push({l:gap<0?'warn':'good',chip:'Χρονισμός',t:gap<0?'Ο χρονισμός των αγορών σου κόστισε':'Ο χρονισμός των αγορών σε βοήθησε',
+    p:`Οι επιλογές σου απέδωσαν <b class="num">${pct(D.twrA)}</b> τον χρόνο, αλλά τα δικά σου χρήματα <b class="num">${pct(D.mwr)}</b>. ${gap<0?'Έβαλες περισσότερα κεφάλαια κοντά σε υψηλά.':'Έβαλες περισσότερα κεφάλαια σε χαμηλότερα επίπεδα.'}`,
+    e:'Η TWR μετράει πόσο καλά απέδωσαν τα assets που διάλεξες, ανεξάρτητα από το πότε έβαλες χρήματα. Η MWR μετράει τι έβγαλαν πραγματικά τα δικά σου ευρώ. Η διαφορά τους δείχνει την επίδραση του χρονισμού. Πολλές εφαρμογές δείχνουν μόνο ένα απλό ποσοστό που τα ανακατεύει.'})}
+  tagPro=false;
+  const top=D.hold[0];if(top){const m=meta(top.a);out.push({l:top.wt>.4?'warn':'info',chip:'Συγκέντρωση',t:top.wt>.4?`Το ${nf(0).format(top.wt*100)}% είναι σε ένα στοιχείο`:'Η μεγαλύτερη θέση σου',
+    p:`Η μεγαλύτερη θέση είναι ${esc(m.name)} με <b class="num">${nf(0).format(top.wt*100)}%</b> της αξίας. Μια πτώση 30% σε αυτό θα σήμαινε περίπου <b class="num neg">−${eur.format(top.val*.3)}</b> στο σύνολο.`,
+    e:'Η συγκέντρωση δεν είναι από μόνη της λάθος, αλλά καθορίζει πόσο πολύ μια κακή εξέλιξη σε ένα asset επηρεάζει όλο το κεφάλαιο. Είναι καλό να είναι επιλογή και όχι κάτι που προέκυψε επειδή ανέβηκε μια θέση.'})}
+  tagPro=true;
+  const has=a=>D.hold.some(h=>h.a===a);
+  const sp500=['SPY','SXR8'].some(has),ndq=['QQQ','EQQQ'].some(has),world=['VWCE','EUNL'].some(has);
+  const inIdx=[...MEGA,...TECH].filter(a=>has(a)&&a!=='COIN'&&a!=='MSTR').map(a=>ASSETS[a].name);
+  const idxN=[sp500,ndq,world].filter(Boolean).length;
+  if(idxN&&(inIdx.length||idxN>1))out.push({l:'info',chip:'Επικάλυψη',t:'Έχεις την ίδια έκθεση από δύο δρόμους',
+    p:`${idxN>1?'Οι δείκτες που κατέχεις (S&P 500, Nasdaq 100, παγκόσμιοι) μοιράζονται πολλές από τις μεγαλύτερες εταιρείες. ':''}${inIdx.length?`Η θέση σε ${inIdx.join(', ')} υπάρχει ήδη μέσα στους δείκτες που κατέχεις.`:''} Η πραγματική σου έκθεση στις μεγάλες αμερικανικές τεχνολογικές είναι μεγαλύτερη από όσο δείχνει η λίστα.`,
+    e:'Ένα ETF σε δείκτη κατέχει εκατοντάδες εταιρείες με βάρη ανάλογα της αξίας τους. Όταν αγοράζεις και μεμονωμένα μια από τις μεγάλες, αυξάνεις τη συγκέντρωση σε αυτή χωρίς να το βλέπεις στη λίστα θέσεων.'});
+  const cryptoW=D.hold.filter(h=>meta(h.a).cls==='crypto').reduce((s,h)=>s+h.wt,0);
+  if(cryptoW>0&&!D.short&&PRICES.BTC&&PRICES.QQQ){const a=[],b=[];for(let w=D.w0+1;w<W;w++){a.push(PRICES.BTC[w]/PRICES.BTC[w-1]-1);b.push(PRICES.QQQ[w]/PRICES.QQQ[w-1]-1)}const c=corr(a,b);
+    out.push({l:cryptoW>.5?'warn':'info',chip:'Crypto',t:`Crypto: ${nf(0).format(cryptoW*100)}% του χαρτοφυλακίου`,
+    p:`Στο ίδιο διάστημα το Bitcoin κινήθηκε με συσχέτιση <b class="num">${nf(2).format(c)}</b> προς το Nasdaq. ${c>.3?'Σε αναταραχές της αγοράς είναι πιθανό να πέφτουν μαζί, άρα η διαφοροποίηση είναι μικρότερη απ’ όσο φαίνεται.':'Σε αυτό το διάστημα κινήθηκε αρκετά ανεξάρτητα.'}`,
+    e:'Η συσχέτιση παίρνει τιμές από −1 έως 1. Κοντά στο 1 σημαίνει ότι δύο assets ανεβοκατεβαίνουν μαζί, κοντά στο 0 ότι κινούνται ανεξάρτητα. Η διαφοροποίηση προστατεύει μόνο όταν τα assets δεν πέφτουν ταυτόχρονα.'})}
+  if(!D.short)out.push({l:D.mdd<-.3?'warn':'info',chip:'Κίνδυνος',t:`Η χειρότερη στιγμή: ${pct(D.mdd)}`,
+    p:`Γύρω στις ${longDate(iso(wDate(D.mddW)))} το χαρτοφυλάκιο ήταν ${pct(-D.mdd).replace('+','')} κάτω από την προηγούμενη κορυφή του. Ετήσια μεταβλητότητα: <b class="num">${D.vol!=null?nf(0).format(D.vol*100)+'%':'—'}</b>.`,
+    e:'Η μέγιστη πτώση (drawdown) δείχνει την πιο δύσκολη στιγμή που θα έπρεπε να αντέξεις ψυχολογικά. Αν σε μια τέτοια πτώση θα πουλούσες από πανικό, ο κίνδυνος του χαρτοφυλακίου είναι μεγαλύτερος από όσο σου ταιριάζει.'});
+  tagPro=false;
+  if(D.bought>0){const fr=D.fees/D.bought;
+  out.push({l:fr<.005?'good':'warn',chip:'Κόστος',t:`Πλήρωσες ${eur2.format(D.fees)} σε προμήθειες`,
+    p:`Αντιστοιχεί στο <b class="num">${nf(2).format(fr*100)}%</b> του ποσού των αγορών σου. ${fr<.005?'Χαμηλό κόστος.':'Το κόστος αυτό είναι υψηλότερο από 0,5% των αγορών.'}`,
+    e:'Οι προμήθειες και τα spreads είναι το μόνο σίγουρο στοιχείο μιας επένδυσης. Μικρά ποσοστά σε κάθε συναλλαγή γίνονται σημαντικά όταν οι αγορές είναι συχνές.'})}
+  if(D.income||D.rewardsEur)out.push({l:'good',chip:'Εισόδημα',t:'Εισόδημα από τις επενδύσεις σου',
+    p:`${D.income?`Μερίσματα και τόκοι: <b class="num">${eur2.format(D.income)}</b>. `:''}${D.rewardsEur?`Ανταμοιβές staking, με την τιμή της ημέρας που τις πήρες: <b class="num">${eur2.format(D.rewardsEur)}</b>.`:''}`,
+    e:'Το εισόδημα μετράει στην απόδοση. Τα μερίσματα και οι τόκοι που εισπράττεις μετρούν ως χρήματα που βγήκαν από το χαρτοφυλάκιο προς εσένα. Οι ανταμοιβές staking αυξάνουν την ποσότητα που κατέχεις χωρίς να βάλεις νέα χρήματα.'});
+  const order=[...out.filter(o=>!o.pro),...out.filter(o=>o.pro)];
+  box.innerHTML=order.map(o=>o.pro&&!pro
+    ?`<article class="ins locked" role="button" tabindex="0" data-pro="1"><div class="t"><span class="chip">${LOCK} ${o.chip}</span><span>${PROTEASE[o.chip]||'Ανάλυση Pro'}</span></div><p>Διαθέσιμο με το Pro.</p><span class="unlock">Ξεκλείδωσε με SKR →</span></article>`
+    :`<article class="ins" data-l="${o.l}"><div class="t"><span class="chip">${o.chip}</span><span>${o.t}</span></div><p>${o.p}</p><details><summary>Τι σημαίνει αυτό;</summary><p>${o.e}</p></details></article>`).join('')||'<div class="empty">Οι παρατηρήσεις εμφανίζονται όταν υπάρξει αρκετό ιστορικό.</div>';
+}
+
+/* ---------- transactions ---------- */
+function assetOptions(sel,withNew=true){
+  const groups={crypto:[],etf:[],stock:[],cash:[]};
+  const names=Object.entries(ASSETS).sort((a,b)=>a[1].name.localeCompare(b[1].name,'el'));
+  for(const [k,a] of names)groups[a.cls]?.push(`<option value="${k}">${esc(a.name)}</option>`);
+  let h='';for(const c of ['crypto','etf','stock','cash'])if(groups[c].length)h+=`<optgroup label="${CLS[c]}">${groups[c].join('')}</optgroup>`;
+  const cust=Object.entries(state.custom);
+  if(cust.length)h+=`<optgroup label="Δικά σου">${cust.map(([k,c])=>`<option value="${k}">${esc(c.name)}</option>`).join('')}</optgroup>`;
+  if(withNew)h+=`<option value="__new">+ Άλλο: ακίνητο, μετοχή ΧΑ ή ό,τι άλλο (δική σου τιμή)</option>`;
+  const el=$(sel),cur=el.value;el.innerHTML=h;if(cur&&[...el.options].some(o=>o.value===cur))el.value=cur;
+}
+let priceTouched=false;
+const TYPE_HINT={buy:'',sell:'',div:'Μέρισμα ή τόκος που εισέπραξες σε μετρητά από αυτό το στοιχείο.',reward:'Ανταμοιβή staking ή άλλο εισόδημα σε τεμάχια. Προσθέτει ποσότητα χωρίς νέα χρήματα.'};
+function autoPrice(){
+  const a=$('fAsset').value,isNew=a==='__new',type=$('fType').value;
+  $('wrapCName').hidden=!isNew;$('wrapCNow').hidden=!isNew;$('wrapCCls').hidden=!isNew;
+  $('lQty').textContent=type==='div'?'Ποσό €':'Ποσότητα';
+  $('wrapPrice').hidden=type==='div'||type==='reward';$('wrapFee').hidden=type==='reward';$('wrapReason').hidden=type==='div'||type==='reward';
+  $('typeHint').textContent=TYPE_HINT[type];$('typeHint').hidden=!TYPE_HINT[type];
+  if(priceTouched)return;
+  if(PRICES[a]&&$('fDate').value){const p=PRICES[a][toWeek($('fDate').value)];$('fPrice').value=+p.toPrecision(6)}
+  else if(!isNew&&state.custom[a])$('fPrice').value=+(+state.custom[a].current||0).toPrecision(6);
+  else $('fPrice').value='';
+}
+$('fAsset').addEventListener('change',()=>{priceTouched=false;autoPrice()});
+$('fType').addEventListener('change',()=>{autoPrice()});
+$('fDate').addEventListener('change',()=>{priceTouched=false;autoPrice()});
+$('fPrice').addEventListener('input',()=>{priceTouched=true});
+$('fCCls').innerHTML=Object.entries(CUSTOM_CLS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
+
+const heldOn=(a,date)=>state.tx.filter(t=>t.a===a&&t.date<=date&&t.type!=='div').reduce((s,t)=>s+(t.type==='sell'?-t.qty:t.qty),0);
+$('txForm').addEventListener('submit',e=>{
+  e.preventDefault();const msg=$('formMsg');msg.textContent='';
+  let a=$('fAsset').value;const type=$('fType').value,date=$('fDate').value;
+  const qty=parseFloat($('fQty').value),fee=type==='reward'?0:(parseFloat($('fFee').value)||0);
+  let pr=parseFloat($('fPrice').value);
+  if(!date){msg.textContent='Διάλεξε ημερομηνία.';return}
+  if(date>todayIso()){msg.textContent='Η ημερομηνία δεν μπορεί να είναι στο μέλλον.';return}
+  if(!(qty>0)){msg.textContent=type==='div'?'Το ποσό πρέπει να είναι μεγαλύτερο από 0.':'Η ποσότητα πρέπει να είναι μεγαλύτερη από 0.';return}
+  if(type==='div'||type==='reward')pr=type==='div'?1:(series(a)[toWeek(date)]||0);
+  else if(!(pr>0)){msg.textContent='Συμπλήρωσε την τιμή ανά μονάδα.';return}
+  if(a==='__new'&&!$('fCName').value.trim()){msg.textContent='Δώσε όνομα στο νέο στοιχείο.';return}
+  if(a==='__new'&&type!=='buy'){msg.textContent='Ένα νέο στοιχείο ξεκινά με αγορά.';return}
+  if(state.sample)state={sample:false,onboarded:true,custom:{},mints:{},tx:[]};
+  if(a==='__new'){const now=parseFloat($('fCNow').value);a='c_'+uid();state.custom[a]={name:$('fCName').value.trim(),cls:$('fCCls').value,current:now>0?now:pr}}
+  if(type==='sell'||type==='div'){const held=heldOn(a,date);
+    if(type==='sell'&&qty>held+1e-9){msg.textContent=`Μπορείς να πουλήσεις έως ${nf(6).format(Math.max(0,held))} μονάδες σε αυτή την ημερομηνία.`;return}
+    if(type==='div'&&!(held>0)){msg.textContent='Δεν κατείχες αυτό το στοιχείο εκείνη την ημερομηνία.';return}}
+  state.tx.push({id:uid(),a,type,date,qty,price:pr,fee,reason:type==='buy'||type==='sell'?$('fReason').value:''});$('fReason').value='';
+  $('fQty').value='';$('fFee').value='0';$('fCName').value='';$('fCNow').value='';priceTouched=false;
+  save();assetOptions('fAsset');$('fAsset').value=a;autoPrice();render();
+  msg.textContent='';toast('Καταχωρήθηκε.');
+});
+const TYPE_N={buy:'Αγορά',sell:'Πώληση',div:'Μέρισμα/τόκος',reward:'Staking/ανταμοιβή'};
+function renderTx(){
+  const t=$('txTable');
+  if(!state.tx.length){t.innerHTML='';return}
+  const rows=[...state.tx].sort((x,y)=>y.date.localeCompare(x.date));
+  t.innerHTML=`<thead><tr><th>Ημερομηνία</th><th>Στοιχείο</th><th>Κίνηση</th><th>Λόγος</th><th>Ποσότητα</th><th>Τιμή</th><th>Προμήθεια</th><th>Σύνολο</th><th></th></tr></thead><tbody>`+
+  rows.map(r=>`<tr><td class="num">${longDate(r.date)}</td><td>${esc(meta(r.a).name)}</td><td><span class="typechip ${r.type}">${TYPE_N[r.type]}</span>${r.src==='wallet'?' <span class="muted small">από wallet</span>':''}</td><td>${r.reason?`<span class="rtag">${REASONS[r.reason]}</span>`:'<span class="muted">—</span>'}</td>
+  <td class="num">${r.type==='div'?'—':nf(6).format(r.qty)}</td><td class="num">${r.type==='div'?'—':price(r.price)}</td><td class="num">${eur2.format(r.fee||0)}</td><td class="num">${eur.format(r.type==='div'?r.qty:r.qty*r.price)}</td>
+  <td><button class="del" type="button" data-id="${r.id}">Διαγραφή</button></td></tr>`).join('')+'</tbody>';
+}
+$('txTable').addEventListener('click',e=>{
+  const b=e.target.closest('.del');if(!b)return;
+  if(!b.classList.contains('armed')){b.classList.add('armed');b.textContent='Σίγουρα;';setTimeout(()=>{if(b.isConnected){b.classList.remove('armed');b.textContent='Διαγραφή'}},3000);return}
+  state.tx=state.tx.filter(t=>t.id!==b.dataset.id);
+  for(const k of Object.keys(state.custom))if(!state.tx.some(t=>t.a===k))delete state.custom[k];
+  save();assetOptions('fAsset');render();
+});
+
+function seg(id,key){$(id).addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  if(key==='bench'&&b.dataset.v!=='SPY'&&!isPro()){openSheet('info');return}
+  ui[key]=b.dataset.v;[...$(id).children].forEach(x=>x.setAttribute('aria-pressed',x===b));render()})}
+seg('segMode','mode');seg('segBench','bench');
+
+let D=null;
+/* ---------- plan ---------- */
+const PKEY='vestora-plan-v1';
+const PC={eq:{n:'Μετοχές & ETF',mu:.06,s:.16,c:'var(--c-etf)'},crypto:{n:'Crypto',mu:.08,s:.65,c:'var(--c-crypto)'},
+  cash:{n:'Καταθέσεις',mu:.02,s:.005,c:'var(--c-cash)'},other:{n:'Άλλα',mu:.03,s:.10,c:'var(--c-other)'}};
+const PK=Object.keys(PC);
+const RHO={'eq|crypto':.5,'eq|other':.3,'crypto|other':.2};
+const CSHOCK={eq:(1-.28)/1.1-1,crypto:(1-.5)/1.1-1,cash:0,other:0};
+const ASSN={'-0.02':'συντηρητικές','0':'μέτριες','0.02':'αισιόδοξες'};
+const pcls=c=>c==='stock'||c==='etf'?'eq':c==='crypto'?'crypto':c==='cash'?'cash':'other';
+let plan={goal:null,monthly:null,years:15,fee:.3,ass:'0',real:'1',target:null,next:null,exp:'',res:'',inc:'',vr:'',debt:'',tol:'30',b:null,bShow:true};
+try{Object.assign(plan,JSON.parse(localStorage.getItem(PKEY))||{})}catch(e){}
+const savePlan=()=>{try{localStorage.setItem(PKEY,JSON.stringify(plan))}catch(e){}};
+function curAlloc(Dd){const a={eq:0,crypto:0,cash:0,other:0};if(Dd)Dd.hold.forEach(h=>a[pcls(meta(h.a).cls)]+=h.val);return a}
+const toW=a=>{const t=Object.values(a).reduce((s,x)=>s+x,0)||1;return Object.fromEntries(PK.map(k=>[k,a[k]/t]))};
+function histMonthly(Dd){if(!Dd)return 200;let s=0;for(let w=Math.max(0,W-52);w<W;w++)s+=Dd.C[w];return Math.max(0,Math.round(s/12/10)*10)}
+const targetSum=()=>plan.target?PK.reduce((s,k)=>s+(+plan.target[k]||0),0):0;
+const targetValid=()=>!!plan.target&&Math.abs(targetSum()-100)<.5;
+function riskParams(w,ass){let mu=0,v=0;
+  PK.forEach(k=>{mu+=w[k]*(PC[k].mu+(k==='cash'?0:ass));v+=w[k]**2*PC[k].s**2});
+  for(let i=0;i<PK.length;i++)for(let j=i+1;j<PK.length;j++){const r=RHO[PK[i]+'|'+PK[j]]||0;v+=2*w[PK[i]]*w[PK[j]]*r*PC[PK[i]].s*PC[PK[j]].s}
+  return{mu,s:Math.sqrt(v)}}
+function project({initial,monthly,years,fee,mu,s,real,goal}){
+  const Rn=rng(424242),g=()=>{let u=0,v=0;while(!u)u=Rn();while(!v)v=Rn();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)};
+  const P=400,inf=.025,m=(mu-fee-s*s/2)/12,sd=s/Math.sqrt(12);
+  const yv=Array.from({length:years+1},()=>new Float64Array(P));
+  for(let p=0;p<P;p++){let v=initial;yv[0][p]=v;for(let y=1;y<=years;y++){for(let k=0;k<12;k++)v=v*Math.exp(m+sd*g())+monthly;yv[y][p]=v}}
+  const q=(arr,f)=>{const a=Array.from(arr).sort((x,y)=>x-y);return a[Math.floor(f*(a.length-1))]};
+  const defl=y=>real?Math.pow(1+inf,y):1;
+  const band=yv.map((arr,y)=>({y,p10:q(arr,.1)/defl(y),p50:q(arr,.5)/defl(y),p90:q(arr,.9)/defl(y),contrib:(initial+monthly*12*y)/defl(y)}));
+  let hit=0;for(let p=0;p<P;p++)if(yv[years][p]/defl(years)>=goal)hit++;
+  const hitY=yv.map((arr,y)=>{let h=0;for(let p=0;p<P;p++)if(arr[p]/defl(y)>=goal)h++;return h/P});
+  return{band,hit:hit/P,hitY,last:band[years]};
+}
+function planRun(o={}){
+  const w=targetValid()?Object.fromEntries(PK.map(k=>[k,plan.target[k]/100])):toW(curAlloc(D));
+  const ass=+(o.ass??plan.ass);const {mu,s}=riskParams(w,ass);
+  const args={initial:D?D.end:0,monthly:Math.max(0,+(o.monthly??plan.monthly)||0),years:Math.max(1,Math.min(50,Math.round(+(o.years??plan.years)||1))),
+    fee:Math.max(0,+(o.fee??plan.fee)||0)/100,mu,s,real:(o.real??plan.real)==='1'||(o.real??plan.real)===true,goal:Math.max(0,+(o.goal??plan.goal)||0)};
+  return{...project(args),args,w,mu,s};
+}
+function nextRows(amt){
+  const cur=curAlloc(D),tot=Object.values(cur).reduce((s,x)=>s+x,0);const base=D?stressCalc(D,'all').tot:0;
+  const dev=a=>targetValid()?PK.reduce((s,k)=>s+Math.abs(a[k]/(tot+amt||1)*100-plan.target[k]),0)/2:null;
+  const mk=(label,add)=>{const a={...cur};PK.forEach(k=>a[k]+=add[k]||0);const st=base+PK.reduce((s,k)=>s+(add[k]||0)*CSHOCK[k],0);
+    const T=Object.values(a).reduce((s,x)=>s+x,0)||1;return{label,w:Object.fromEntries(PK.map(k=>[k,a[k]/T])),dev:dev(a),st,stp:st/T}};
+  const rows=[mk('Χωρίς νέα καταβολή (σήμερα)',{})];rows[0].dev=targetValid()?PK.reduce((s,k)=>s+Math.abs(cur[k]/(tot||1)*100-plan.target[k]),0)/2:null;rows[0].stp=base/(tot||1);
+  PK.forEach(k=>rows.push(mk('Όλο σε '+PC[k].n,{[k]:amt})));
+  if(targetValid())rows.push(mk('Μοιρασμένο όπως η κατανομή-στόχος',Object.fromEntries(PK.map(k=>[k,amt*plan.target[k]/100]))));
+  return rows;
+}
+let targetBuilt=false,lastProj=null,lastNeed=null,lastB=null,lastRes=null;
+function renderPlan(D){
+  if(plan.monthly==null)plan.monthly=histMonthly(D);
+  if(plan.goal==null)plan.goal=150000;
+  if(!plan.target&&D&&D.hold.length){const w=toW(curAlloc(D));const t=Object.fromEntries(PK.map(k=>[k,Math.round(w[k]*20)*5]));const diff=100-PK.reduce((s,k)=>s+t[k],0);t.eq+=diff;plan.target=t}
+  const set=(id,v)=>{const el=$(id);if(document.activeElement!==el)el.value=v};
+  set('pGoal',plan.goal);set('pMonthly',plan.monthly);set('pYears',plan.years);set('pFee',plan.fee);set('pAss',plan.ass);set('pReal',plan.real);set('pTol',plan.tol);
+  $('pYearsO').textContent=plan.years;
+  if(plan.next==null)plan.next=plan.monthly;set('nAmt',plan.next);
+  set('rExp',plan.exp);set('rRes',plan.res);
+  $('pHint').textContent=D?`Ξεκινά από τη σημερινή αξία (${eur.format(D.end)}).`+(D.years>=1?` Τους τελευταίους 12 μήνες έβαλες κατά μέσο όρο περίπου ${eur.format(histMonthly(D))} τον μήνα.`:''):'Πρόσθεσε θέσεις ή ξεκίνα από το μηδέν με μηνιαία καταβολή.';
+  const R0=planRun(),L=R0.last,real=R0.args.real;
+  $('projHead').innerHTML=`<div class="projhead"><div><span class="lbl">Μεσαίο σενάριο σε ${R0.args.years} χρόνια</span><span class="big2 num">${eur.format(L.p50)}</span></div>
+    <div><span class="lbl">Εύρος (8 στα 10 σενάρια)</span><span class="num">${eur.format(L.p10)} – ${eur.format(L.p90)}</span></div>
+    <div><span class="lbl">Δικά σου χρήματα</span><span class="num">${eur.format(L.contrib)}</span></div>
+    <span class="goalchip" style="color:${R0.hit>=.7?'var(--good)':R0.hit>=.4?'var(--warn)':'var(--bad)'};border-color:currentColor">Στόχος ${eur.format(R0.args.goal)}: σε ${Math.round(R0.hit*100)} από τα 100 σενάρια</span></div>`+splitHtml(L);
+  // levers
+  const f=+plan.fee,lv=[['Το πλάνο σου όπως είναι',{}],['+50 € τον μήνα',{monthly:R0.args.monthly+50}],['−50 € τον μήνα',{monthly:Math.max(0,R0.args.monthly-50)}],
+    ['+3 χρόνια',{years:R0.args.years+3}],[f>=.5?'Έξοδα −0,5 μονάδα':'Χωρίς έξοδα',{fee:f>=.5?f-.5:0}]];
+  $('levers').innerHTML=`<thead><tr><th>Αν αλλάξει…</th><th>Μεσαίο σενάριο</th><th>Δυσμενές (1 στα 10)</th><th>Δικά σου χρήματα</th><th>Σενάρια με στόχο</th></tr></thead><tbody>`+
+    lv.map(([n,o],i)=>{const r=i?planRun(o):R0,d=r.last.p50-L.p50;return `<tr${i?'':' class="sel"'}><td>${n}</td><td class="num">${eur.format(r.last.p50)}${i?` <span class="${sgn(d)} small">${(d>0?'+':'')+eur.format(d)}</span>`:''}</td><td class="num">${eur.format(r.last.p10)}</td><td class="num">${eur.format(r.last.contrib)}</td><td class="num">${Math.round(r.hit*100)}/100</td></tr>`}).join('')+'</tbody>';
+  lastProj=R0;
+  lastNeed=renderNeed(R0);renderTol(R0);lastB=renderPlanB(R0);drawProj(R0,plan.bShow!==false?lastB:null);
+  $('projAssume').textContent=`Παραδοχές (${ASSN[plan.ass]}): ετήσια απόδοση μετοχών ${nf(0).format((PC.eq.mu+ +plan.ass)*100)}%, crypto ${nf(0).format((PC.crypto.mu+ +plan.ass)*100)}%, καταθέσεων 2%, με διακυμάνσεις αντίστοιχες κάθε κατηγορίας. Εφαρμόζονται ${targetValid()?'στην κατανομή-στόχο σου':'στη σημερινή σου κατανομή'}: αναμενόμενη απόδοση ${nf(1).format(R0.mu*100)}% και διακύμανση ${nf(0).format(R0.s*100)}% τον χρόνο. 400 προσομοιωμένες πορείες, καταβολή στο τέλος κάθε μήνα, χωρίς φόρους.${real?' Τα ποσά είναι σε σημερινά ευρώ, με πληθωρισμό 2,5%.':''} Δεν είναι πρόβλεψη: οι πραγματικές αποδόσεις μπορεί να βγουν έξω από το εύρος.`;
+  renderTarget();renderNext();lastRes=renderReserve();
+}
+function drawProj(R0,RB){
+  const svg=$('projChart'),box=$('projBox');const cw=Math.max(280,box.clientWidth),ch=cw<560?220:260;
+  svg.setAttribute('viewBox',`0 0 ${cw} ${ch}`);svg.setAttribute('height',ch);
+  const P={l:cw<560?46:58,r:12,t:14,b:24},B=R0.band,goal=R0.args.goal;
+  const Y=Math.max(R0.args.years,RB?RB.args.years:0);
+  const mx=Math.max(B[B.length-1].p90,RB?RB.band[RB.band.length-1].p50*1.05:0,goal*1.05,1);const T=nice(0,mx,4);
+  const x=y=>P.l+y/Y*(cw-P.l-P.r),yy=v=>P.t+(1-(v-T.lo)/(T.hi-T.lo))*(ch-P.t-P.b);
+  const fm=v=>v>=1e6?nf(1).format(v/1e6)+'M':v>=1000?nf(0).format(v/1000)+'k':nf(0).format(v);
+  let g='';T.t.forEach(v=>g+=`<line x1="${P.l}" x2="${cw-P.r}" y1="${yy(v)}" y2="${yy(v)}" stroke="${css('--line')}"/><text x="${P.l-8}" y="${yy(v)+4}" text-anchor="end">${fm(v)}</text>`);
+  const step=Y<=10?1:Y<=20?5:10;for(let y=0;y<=Y;y+=step)g+=`<text x="${x(y)}" y="${ch-6}" text-anchor="${y===0?'start':'middle'}">${y===0?'σήμερα':y+'ε'}</text>`;
+  const pth=(Bd,k)=>Bd.map((b,i)=>(i?'L':'M')+x(b.y).toFixed(1)+','+yy(b[k]).toFixed(1)).join('');
+  g+=`<path d="${pth(B,'p90')}L${B.slice().reverse().map(b=>x(b.y).toFixed(1)+','+yy(b.p10).toFixed(1)).join('L')}Z" fill="${css('--accent')}" fill-opacity=".16" stroke="none"/>`;
+  g+=`<path d="${pth(B,'contrib')}" fill="none" stroke="${css('--invest')}" stroke-width="1.6" stroke-dasharray="4 4"/>`;
+  if(RB)g+=`<path d="${pth(RB.band,'p50')}" fill="none" stroke="${css('--c-stock')}" stroke-width="2" stroke-dasharray="7 3"/><circle cx="${x(RB.args.years)}" cy="${yy(RB.last.p50)}" r="4" fill="${css('--c-stock')}" stroke="${css('--surface')}" stroke-width="2"/>`;
+  g+=`<path d="${pth(B,'p50')}" fill="none" stroke="${css('--accent')}" stroke-width="2.4"/>`;
+  if(goal>0){g+=`<line x1="${P.l}" x2="${cw-P.r}" y1="${yy(goal)}" y2="${yy(goal)}" stroke="${css('--bench')}" stroke-width="1.4" stroke-dasharray="6 3"/><text x="${P.l+6}" y="${yy(goal)-5}" style="fill:var(--bench)">στόχος</text>`}
+  g+=`<circle cx="${x(R0.args.years)}" cy="${yy(R0.last.p50)}" r="4.5" fill="${css('--accent')}" stroke="${css('--surface')}" stroke-width="2"/>`;
+  svg.innerHTML=g;
+  $('projLegend').innerHTML=`<span><i style="background:${css('--accent')}"></i>Μεσαίο σενάριο</span><span><i style="background:${css('--accent')};opacity:.3;height:8px"></i>Εύρος 8 στα 10 σενάρια</span><span><i style="background:${css('--invest')}"></i>Δικά σου χρήματα</span><span><i style="background:${css('--bench')}"></i>Στόχος</span>${RB?`<span><i style="background:${css('--c-stock')}"></i>Πλάνο Β, μεσαίο σενάριο</span>`:''}`;
+}
+function splitHtml(L){
+  const gr=L.p50-L.contrib,tot=L.contrib+Math.max(0,gr)||1;
+  return `<div class="split" aria-hidden="true"><b style="width:${L.contrib/tot*100}%;background:var(--invest)"></b><b style="width:${Math.max(0,gr)/tot*100}%;background:var(--accent)"></b></div>
+   <div class="splitl"><span><i class="dot" style="background:var(--invest)"></i>Σημερινή αξία και καταβολές <b class="num">${eur.format(L.contrib)}</b></span><span><i class="dot" style="background:var(--accent)"></i>Υποθετική ανάπτυξη στο μεσαίο σενάριο <b class="num ${sgn(gr)}">${(gr>0?'+':'')+eur.format(gr)}</b></span></div>`;
+}
+function solveMonthly(frac,o={}){
+  const run=m=>planRun({...o,monthly:m}).hit;
+  if(run(0)>=frac)return 0;
+  let lo=0,hi=Math.max(500,(+(o.goal??plan.goal)||0)/120),it=0;
+  while(run(hi)<frac&&it<8){lo=hi;hi*=2;it++}
+  if(run(hi)<frac)return null;
+  for(let i=0;i<16;i++){const m=(lo+hi)/2;run(m)>=frac?hi=m:lo=m}
+  return Math.ceil(hi/10)*10;
+}
+function yearsToGoal(frac,o={}){const r=planRun({...o,years:50});const y=r.hitY.findIndex(h=>h>=frac);return y<0?null:y}
+function renderNeed(R0){
+  const box=$('needBox'),a=R0.args;
+  if(!(a.goal>0)){box.innerHTML='<p class="muted small" style="margin:0">Όρισε έναν στόχο σε ευρώ για να δεις τι χρειάζεται.</p>';return null}
+  const m50=solveMonthly(.5),m75=solveMonthly(.75),y50=yearsToGoal(.5);
+  const rel=m=>m==null?'Δεν φτάνει ούτε με πολλαπλάσια καταβολή μέσα σε αυτά τα χρόνια.':m<=a.monthly?`Η σημερινή καταβολή (${eur.format(a.monthly)}) αρκεί ήδη.`:`${eur.format(m-a.monthly)} τον μήνα περισσότερα από τη σημερινή καταβολή.`;
+  const line=(lbl,v,sub)=>`<div class="need"><span>${lbl}</span><b class="num">${v}</b><small>${sub}</small></div>`;
+  box.innerHTML=`<div class="needs">
+    ${line('Καταβολή για τον στόχο στα μισά σενάρια',m50==null?'—':eur.format(m50)+' /μήνα',rel(m50))}
+    ${line('Καταβολή για τον στόχο σε 3 στα 4 σενάρια',m75==null?'—':eur.format(m75)+' /μήνα',rel(m75))}
+    ${line('Χρόνια με τη σημερινή καταβολή (μισά σενάρια)',y50==null?'πάνω από 50':y50+' χρόνια',y50==null?'Με αυτή την καταβολή ο στόχος δεν πιάνεται στα μισά σενάρια μέσα σε 50 χρόνια.':y50<=a.years?`Μέσα στον ορίζοντα των ${a.years} ετών που έβαλες.`:`${y50-a.years} χρόνια μετά τον ορίζοντα που έβαλες.`)}
+  </div>
+  <p class="assume" style="margin-top:8px">Ίδιες παραδοχές και ίδιες πορείες με την προβολή. Δείχνει ποιες μεταβλητές κάνουν τον στόχο πιο ή λιγότερο εφικτό. Δεν υπόσχεται ότι θα επιτευχθεί.</p>`;
+  return {μηνιαία_για_50_στα_100:m50,μηνιαία_για_75_στα_100:m75,χρόνια_για_50_στα_100_με_σημερινή_καταβολή:y50};
+}
+function renderTol(R0){
+  const box=$('tolBox'),tol=(+plan.tol||30)/100,base=D?D.end:0;
+  const it=[];
+  if(D&&D.hold.length){const s=stressCalc(D,'all');it.push({l:'Σενάριο «Όλα μαζί» στο σημερινό χαρτοφυλάκιο',dd:Math.max(0,-s.pct),e:s.tot});
+    if(!D.short)it.push({l:'Η χειρότερη πτώση που έχει ήδη περάσει',dd:Math.max(0,-D.mdd),e:null})}
+  const sh=PK.reduce((s,k)=>s+R0.w[k]*CSHOCK[k],0);
+  it.push({l:targetValid()?'Το ίδιο σενάριο στην κατανομή-στόχο σου':'Το ίδιο σενάριο στην κατανομή του πλάνου',dd:Math.max(0,-sh),e:sh*base});
+  const mx=Math.max(.6,tol*1.25,...it.map(x=>x.dd*1.1));
+  const over=it.filter(x=>x.dd>tol).length;
+  box.innerHTML=`<p class="small" style="margin:0 0 8px">Δήλωσες ότι αντέχεις πτώση έως <b class="num">−${nf(0).format(tol*100)}%</b>${base?`, δηλαδή περίπου <b class="num neg">−${eur.format(base*tol)}</b> με τη σημερινή αξία`:''}.</p>`+
+   it.map(x=>`<div class="tolrow"><span>${x.l}</span><span class="num neg" style="text-align:right">−${nf(0).format(x.dd*100)}%</span><span class="pill ${x.dd>tol?'over':'ok'}">${x.dd>tol?'πάνω από το όριο':'μέσα στο όριο'}</span><span class="tr"><b class="${x.dd>tol?'':'in'}" style="width:${x.dd/mx*100}%"></b><i style="left:calc(${tol/mx*100}% - 1px)"></i></span></div>`).join('')+
+   `<p class="assume" style="margin-top:8px">${over?`Σε ${over} από τα ${it.length} μέτρα η πτώση ξεπερνά αυτό που δήλωσες. Αν συμβεί κάτι τέτοιο, το πιθανότερο ρίσκο είναι να πουλήσεις μέσα στην κρίση και να κλειδώσεις τη ζημιά.`:'Όλα τα μέτρα είναι μέσα στο όριο που δήλωσες.'} Η γραμμή δείχνει το όριό σου. Η εφαρμογή δεν προτείνει αλλαγή κατανομής.</p>`;
+}
+function bArgs(){if(!plan.b)plan.b={monthly:(+plan.monthly||0)+50,years:+plan.years||15,fee:+plan.fee||0,ass:plan.ass};return plan.b}
+function renderPlanB(R0){
+  const b=bArgs();const set=(id,v)=>{const el=$(id);if(document.activeElement!==el)el.value=v};
+  set('bMonthly',b.monthly);set('bYears',b.years);set('bFee',b.fee);set('bAss',b.ass);$('bShow').checked=plan.bShow!==false;
+  const RB=planRun({monthly:b.monthly,years:b.years,fee:b.fee,ass:b.ass});
+  const A=R0,Bp=RB,diff=(f,fmt)=>{const d=f(Bp)-f(A);return `<span class="num ${sgn(d)}">${Math.abs(d)>1e-9?(d>0?'+':'−')+fmt(Math.abs(d)):'—'}</span>`};
+  const rows=[
+    ['Μηνιαία καταβολή',r=>r.args.monthly,eur.format],
+    ['Χρόνια',r=>r.args.years,v=>nf(0).format(v)],
+    ['Ετήσια έξοδα',r=>r.args.fee*100,v=>nf(1).format(v)+'%'],
+    ['Δικά σου χρήματα',r=>r.last.contrib,eur.format],
+    ['Μεσαίο σενάριο',r=>r.last.p50,eur.format],
+    ['Δυσμενές (1 στα 10)',r=>r.last.p10,eur.format],
+    ['Ευνοϊκό (1 στα 10)',r=>r.last.p90,eur.format],
+    ['Σενάρια με στόχο',r=>Math.round(r.hit*100),v=>v+'/100']];
+  $('planBTable').innerHTML=`<thead><tr><th></th><th>Α (σημερινό)</th><th>Β</th><th>Β − Α</th></tr></thead><tbody>`+
+    rows.map(([n,f,fmt])=>`<tr><td>${n}</td><td class="num">${fmt(f(A))}</td><td class="num">${fmt(f(Bp))}</td><td>${diff(f,fmt)}</td></tr>`).join('')+
+    `<tr><td>Παραδοχές</td><td>${ASSN[plan.ass]}</td><td>${ASSN[b.ass]}</td><td></td></tr></tbody>`;
+  return RB;
+}
+function renderTarget(){
+  const box=$('targetBox'),w=toW(curAlloc(D));
+  if(!plan.target){box.innerHTML='<div class="muted small">Πρόσθεσε θέσεις για να οριστεί η κατανομή.</div>';targetBuilt=false;return}
+  if(!targetBuilt){box.innerHTML=`<div class="trow muted small"><span></span><span>σήμερα (μπάρα) · στόχος (γραμμή)</span><span style="text-align:right">στόχος</span><span style="text-align:right">σήμερα</span></div>`+
+    PK.map(k=>`<div class="trow"><span>${PC[k].n}</span><span class="tbars"><b id="tb_${k}" style="background:${PC[k].c}"></b><i id="tm_${k}"></i></span><input id="tg_${k}" data-t="${k}" type="number" min="0" max="100" step="5" inputmode="numeric" aria-label="Στόχος ${PC[k].n} %"><span class="num" id="tc_${k}" style="text-align:right"></span></div>`).join('')+
+    `<div class="tsum" id="tsum"></div>`;targetBuilt=true}
+  PK.forEach(k=>{$('tb_'+k).style.width=(w[k]*100)+'%';$('tm_'+k).style.left=`calc(${Math.min(100,+plan.target[k]||0)}% - 1px)`;
+    const el=$('tg_'+k);if(document.activeElement!==el)el.value=plan.target[k];$('tc_'+k).textContent=nf(0).format(w[k]*100)+'%'});
+  const s=targetSum();$('tsum').innerHTML=targetValid()?`<span class="muted">Σύνολο 100%. Η προβολή χρησιμοποιεί αυτή την κατανομή.</span>`:`<span class="neg">Σύνολο ${nf(0).format(s)}%. Χρειάζεται 100% για να χρησιμοποιηθεί. Μέχρι τότε η προβολή χρησιμοποιεί τη σημερινή κατανομή.</span>`;
+}
+function renderNext(){
+  const t=$('nextTable');if(!D||!D.hold.length){t.innerHTML='';return}
+  const amt=Math.max(0,+plan.next||0),rows=nextRows(amt);
+  const ab={eq:'Μετ.',crypto:'Crypto',cash:'Κατ.',other:'Άλλα'};
+  t.innerHTML=`<thead><tr><th>Πού πάει η καταβολή</th><th>Νέα κατανομή</th><th>Απόσταση από στόχο</th><th>«Όλα μαζί» σενάριο</th></tr></thead><tbody>`+
+    rows.map(r=>`<tr><td>${r.label}</td><td class="num small">${PK.filter(k=>r.w[k]>.005).map(k=>ab[k]+' '+nf(0).format(r.w[k]*100)+'%').join(' · ')}</td><td class="num">${r.dev==null?'—':nf(0).format(r.dev)+' μον.'}</td><td class="num neg">${eur.format(r.st)} <span class="small">(${pct(r.stp,0)})</span></td></tr>`).join('')+'</tbody>';
+}
+function renderReserve(){
+  const out=$('reserveOut'),n=k=>plan[k]===''||plan[k]==null?null:+plan[k];
+  const inc=n('inc'),vr=n('vr')||0,exp=n('exp'),debt=n('debt')||0,res=n('res'),mo=+plan.monthly||0;
+  if(!(exp>0)||res==null){out.innerHTML='<p class="muted small" style="margin:12px 0 0">Συμπλήρωσε τουλάχιστον βασικά έξοδα και αποθεματικό. Με το εισόδημα βλέπεις και πόσα περισσεύουν για επένδυση.</p>';return null}
+  const need=exp+debt,months=res/need,R={μήνες_κάλυψης:Math.round(months*10)/10};
+  let k=`<div class="resk"><div><span class="v num">${nf(1).format(months)}</span><span class="l">μήνες βασικών υποχρεώσεων καλύπτει το αποθεματικό</span></div>`;
+  const ck=[];
+  ck.push(months>=3?['good',`Αποθεματικό ${nf(1).format(months)} μηνών`,'Συνήθως αναφέρεται αποθεματικό 3–6 μηνών βασικών υποχρεώσεων πριν από επενδύσεις με κίνδυνο. Το δικό σου είναι '+(months<=6?'μέσα σε αυτό το εύρος.':'πάνω από αυτό το εύρος.')]
+    :[months<1?'bad':'warn',`Αποθεματικό κάτω από 3 μήνες`,`Συνήθως αναφέρεται αποθεματικό 3–6 μηνών βασικών υποχρεώσεων πριν από επενδύσεις με κίνδυνο. Το δικό σου καλύπτει ${nf(1).format(months)}.`]);
+  if(inc!=null){
+    const sur=inc-need;R.περίσσευμα_σταθερό=Math.round(sur);R.περίσσευμα_με_ασταθές=Math.round(sur+vr);
+    k+=`<div><span class="v num ${sgn(sur)}">${eur.format(sur)}</span><span class="l">περισσεύουν τον μήνα από το σταθερό εισόδημα</span></div><div><span class="v num">${sur>0?nf(0).format(mo/sur*100)+'%':'—'}</span><span class="l">του περισσεύματος είναι η καταβολή των ${eur.format(mo)}</span></div>`;
+    const plus=sur-(mo+50);
+    if(mo<=sur)ck.push(['good','Η καταβολή χωράει στο σταθερό εισόδημα',`Μετά την καταβολή μένουν ${eur.format(sur-mo)} τον μήνα. Με +50 € καταβολή θα έμεναν ${eur.format(plus)}.`]);
+    else if(mo<=sur+vr)ck.push(['warn','Η καταβολή στηρίζεται εν μέρει στο ασταθές εισόδημα',`Σε μήνα χωρίς ασταθές εισόδημα λείπουν ${eur.format(mo-sur)}, που θα έβγαιναν από το αποθεματικό ή θα σήμαιναν μικρότερη καταβολή.`]);
+    else{const gap=mo-(sur+vr);ck.push(['bad','Η καταβολή ξεπερνά όσα περισσεύουν',`Λείπουν περίπου ${eur.format(gap)} τον μήνα. Αν έβγαιναν από το αποθεματικό, θα κρατούσε περίπου ${nf(0).format(res/gap)} μήνες.`])}
+    const short=Math.max(0,need-.7*inc);
+    if(!short)ck.push(['good','Πτώση εισοδήματος 30% για 6 μήνες','Ακόμα και τότε το σταθερό εισόδημα καλύπτει τις βασικές υποχρεώσεις, αν σταματήσουν οι καταβολές.']);
+    else{const after=res-6*short;ck.push([after>=0?'warn':'bad','Πτώση εισοδήματος 30% για 6 μήνες',after>=0?`Με σταματημένες καταβολές, θα έλειπαν ${eur.format(short)} τον μήνα και το αποθεματικό θα έπεφτε στα ${eur.format(after)}.`:`Με σταματημένες καταβολές, θα έλειπαν ${eur.format(short)} τον μήνα. Το αποθεματικό θα τελείωνε σε περίπου ${nf(1).format(res/short)} μήνες.`]);R.πτώση_εισοδήματος_30_6μήνες_αποθεματικό_μετά=Math.round(after)}
+  }
+  const ex=2000,after2=res-ex;
+  ck.push([after2/need>=3?'good':after2>=0?'warn':'bad','Έκτακτο έξοδο 2.000 €',after2>=0?`Το αποθεματικό θα έπεφτε στα ${eur.format(after2)}, δηλαδή ${nf(1).format(after2/need)} μήνες κάλυψης.`:`Το αποθεματικό δεν φτάνει. Θα έλειπαν ${eur.format(-after2)}, που θα έπρεπε να βγουν από τις επενδύσεις.`]);
+  if(D&&D.hold.length){const loss=stressCalc(D,'all').tot;ck.push(['warn','Αν χρειαστείς χρήματα μέσα σε κρίση',`Στο σενάριο «Όλα μαζί» το χαρτοφυλάκιο θα είχε χάσει περίπου ${eur.format(Math.abs(loss))}. Ό,τι ξεπερνά το αποθεματικό θα έβγαινε πουλώντας σε χαμηλές τιμές.`])}
+  k+='</div>';
+  out.innerHTML=`<div class="res">${k}<div class="ckl">${ck.map(([l,t,d])=>`<div class="ck" data-l="${l}"><b>${t}</b><span>${d}</span></div>`).join('')}</div>
+    <p class="assume">Η εφαρμογή δεν σου λέει πόσα να επενδύεις. Δείχνει πόσο αντέχει το πλάνο σου σε δυσκολίες, με τα ποσά που έβαλες. Τα ασταθή εισοδήματα δεν μετρούν ως βέβαια.</p></div>`;
+  return R;
+}
+function onPlanInput(e){
+  const el=e.target,map={pGoal:'goal',pMonthly:'monthly',pYears:'years',pFee:'fee',pAss:'ass',pReal:'real',pTol:'tol',nAmt:'next',rExp:'exp',rRes:'res',rInc:'inc',rVar:'vr',rDebt:'debt'};
+  const bmap={bMonthly:'monthly',bYears:'years',bFee:'fee',bAss:'ass'},str=['ass','real','tol','exp','res','inc','vr','debt'];
+  if(map[el.id]){const k=map[el.id];plan[k]=str.includes(k)?el.value:(el.value===''?0:+el.value)}
+  else if(bmap[el.id]){const k=bmap[el.id];plan.b={...bArgs(),[k]:k==='ass'?el.value:(el.value===''?0:+el.value)}}
+  else if(el.id==='bShow')plan.bShow=el.checked;
+  else if(el.dataset.t)plan.target={...plan.target,[el.dataset.t]:el.value===''?0:+el.value};
+  else return;
+  savePlan();clearTimeout(planT);planT=setTimeout(()=>renderPlan(D),140);
+}
+document.querySelector('.plan').addEventListener('input',onPlanInput);
+document.querySelector('.plan').addEventListener('change',onPlanInput);
+let planT;
+
+/* ---------- wallet and Pro (real: Mobile Wallet Adapter, read-only checks through Helius) ---------- */
+const WKEY='vestora-wallet-v1', THRESH_EUR=20;
+const HELIUS='https://mainnet.helius-rpc.com/?api-key=b9b945b9-2831-4343-aab8-9d8a62c5719f';
+const validAddr=a=>typeof a==='string'&&/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(a);
+let wallet=readJSON(WKEY);if(!wallet||!validAddr(wallet.addr))wallet=null;
+const saveWallet=()=>wallet?LS.set(WKEY,JSON.stringify(wallet)):LS.del(WKEY);
+const isPro=()=>!!wallet&&(!!wallet.genesis||(wallet.skrEur!=null&&wallet.skrEur>=THRESH_EUR));
+const needSkr=()=>skrEur?Math.ceil(THRESH_EUR/skrEur):null;
+const LOCK='<svg class="lk" width="11" height="12" viewBox="0 0 11 12" aria-hidden="true"><rect x="1" y="5" width="9" height="6.5" rx="1.5" fill="currentColor"/><path d="M3 5V3.6a2.5 2.5 0 0 1 5 0V5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
+const short=a=>a.slice(0,4)+'…'+a.slice(-4);
+function rpc(method,params,ms){
+  const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||12000);
+  return fetch(HELIUS,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:'vestora',method,params}),signal:ctl.signal})
+    .then(r=>r.json()).then(j=>{if(j.error)throw new Error(j.error.message||'rpc error');return j.result}).finally(()=>clearTimeout(to));
+}
+/* Seeker Genesis Token check, the same as in the other StratoshiVibes apps (ported from @solana-mobile/skr-genesis-token, Apache-2.0). */
+const SGT_GROUP='GT22s89nU4iWFkNXj1Bw6uYhJJWDRPpShHt4Bk8f99Te', TOKEN_2022='TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
+const B58A='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+function b58enc(bytes){let n=0n;for(const x of bytes)n=n*256n+BigInt(x);let s='';while(n>0n){s=B58A[Number(n%58n)]+s;n/=58n}for(const x of bytes){if(x===0)s='1'+s;else break}return s}
+function b64bytes(str){const bin=atob(str);const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return u}
+function isSgtMint(d){
+  if(d.length<166||d[165]!==1)return false;
+  let off=166,group=null,meta=null,member=false;
+  while(off+4<=d.length){
+    const type=d[off]|(d[off+1]<<8),len=d[off+2]|(d[off+3]<<8),s=off+4,e=s+len;
+    if(type===0||e>d.length)break;
+    if(type===18&&len===64)meta=b58enc(d.subarray(s+32,s+64));
+    else if(type===23&&len===72){group=b58enc(d.subarray(s+32,s+64));member=true}
+    off=e;
+  }
+  return member&&group===SGT_GROUP&&meta===SGT_GROUP;
+}
+async function hasSgt(owner){
+  const ta=await rpc('getTokenAccountsByOwner',[owner,{programId:TOKEN_2022},{encoding:'jsonParsed',commitment:'confirmed'}]);
+  const mints=[...new Set((ta.value||[]).filter(a=>a.account.data.parsed.info.tokenAmount.amount!=='0').map(a=>a.account.data.parsed.info.mint))];
+  for(let i=0;i<mints.length;i+=100){
+    const batch=mints.slice(i,i+100),r=await rpc('getMultipleAccounts',[batch,{encoding:'base64',commitment:'confirmed'}]);
+    if((r.value||[]).some(acc=>acc&&acc.owner===TOKEN_2022&&isSgtMint(b64bytes(acc.data[0]))))return true;
+  }
+  return false;
+}
+async function skrPrice(){
+  if(skrEur)return skrEur;
+  try{const r=await fetch(JUP+MINT.SKR),j=await r.json();const p=j[MINT.SKR]?.usdPrice;if(p>0)skrEur=p/FXL}catch(e){}
+  return skrEur;
+}
+let wBusy=false;
+async function checkWallet(force){
+  if(!wallet||wBusy)return;
+  if(!force&&wallet.status==='ok'&&Date.now()-(wallet.t||0)<5*60e3)return;
+  wBusy=true;renderWallet();if(!$('overlay').hidden&&flow.step==='done')drawSheet();
+  try{
+    const ta=await rpc('getTokenAccountsByOwner',[wallet.addr,{mint:MINT.SKR},{encoding:'jsonParsed',commitment:'confirmed'}]);
+    wallet.skr=(ta.value||[]).reduce((s,a)=>s+(+a.account.data.parsed.info.tokenAmount.uiAmountString||0),0);
+    const p=await skrPrice();wallet.skrEur=p?wallet.skr*p:null;
+    try{wallet.genesis=await hasSgt(wallet.addr)}catch(e){console.warn('sgt',e)}
+    wallet.status='ok';wallet.t=Date.now();
+  }catch(e){console.warn('wallet check',e);wallet.status='error'}
+  finally{wBusy=false;saveWallet();render();if(!$('overlay').hidden&&(flow.step==='done'||flow.step==='info'))drawSheet()}
+}
+let bundleState=0;
+function loadBundle(){
+  if(bundleState)return;bundleState=1;
+  addEventListener('svwallet-ready',()=>{bundleState=2;const re=()=>{if(!$('overlay').hidden&&flow.step==='pick')drawSheet()};try{SVWallet.onList(re)}catch(e){}re()},{once:true});
+  const sc=document.createElement('script');sc.src='wallet.bundle.js';sc.onerror=()=>{bundleState=0};document.head.appendChild(sc);
+}
+
+/* ---------- sheet (dialogs) ---------- */
+let flow={step:'info',arg:null,imp:null};let lastFocus=null;
+function openSheet(step,arg){lastFocus=document.activeElement;flow.step=step||(wallet?'done':'info');flow.arg=arg;$('overlay').hidden=false;if(flow.step==='pick')loadBundle();drawSheet()}
+function closeSheet(){$('overlay').hidden=true;lastFocus?.focus?.()}
+function cmpTable(){
+  const rows=[['Καταχώρηση συναλλαγών, μερισμάτων και staking',1,1],['Ζωντανές τιμές και σύγκριση με S&P 500',1,1],['Συγκέντρωση, κόστος προμηθειών, εισόδημα',1,1],
+    ['Το πλάνο σου: στόχος, τι χρειάζεται, πλάνο Β',1,1],['Οικονομική αντοχή και ανεκτή πτώση',1,1],['Stress test με έτοιμα σενάρια',1,1],['Ημερολόγιο αποφάσεων',1,1],['Αντίγραφο ασφαλείας',1,1],
+    ['Σύγκριση με Nasdaq, Bitcoin, κατάθεση, 80/20, μηνιαία αγορά',0,1],['Απόδοση των χρημάτων σου (MWR) και χρονισμός',0,1],['Επικάλυψη ETF και συσχετίσεις',0,1],
+    ['Μέγιστη πτώση και μεταβλητότητα',0,1],['Stress test με δικό σου σενάριο',0,1],['Εισαγωγή assets από Solana wallet',0,1],
+    ['Ερωτήσεις «τι θα γίνει αν» με AI (σύντομα)',0,2],['Ειδοποιήσεις με δικά σου όρια (σύντομα)',0,2]];
+  return `<div class="cmp"><div class="h">Λειτουργία</div><div class="h c">Δωρεάν</div><div class="h c">Pro</div>${rows.map(([n,f,p])=>`<div>${n}</div><div class="c ${f?'yes':'no'}">${f?'✓':'—'}</div><div class="c ${p===1?'yes':'no'}">${p===1?'✓':p===2?'σύντομα':'—'}</div>`).join('')}</div>`;
+}
+function drawSheet(){
+  const s=$('sheet');const head=t=>`<div class="shead"><h3 id="sheetTitle">${t}</h3><button class="x" type="button" data-act="close" aria-label="Κλείσιμο">×</button></div>`;
+  const st=flow.step;
+  if(st==='info'){
+    const n=needSkr();
+    s.innerHTML=head('Vestora Pro')+`<p>Οι προηγμένες αναλύσεις ξεκλειδώνουν όταν το Solana wallet σου κρατάει SKR. Δεν πληρώνεις, δεν ξοδεύεις και δεν δεσμεύεις τίποτα. Το SKR μένει στο wallet σου.</p>`+cmpTable()+
+    `<div class="rule"><b>Πώς ξεκλειδώνει</b><span>Κράτα SKR αξίας <b class="num">${eur.format(THRESH_EUR)}</b>${n?`, σήμερα περίπου <b class="num">${nf(0).format(n)} SKR</b>`:''}. Το όριο ορίζεται σε ευρώ και αναπροσαρμόζεται, ώστε να μένει δίκαιο όταν η τιμή αλλάζει.</span><span>Κάτοχοι Seeker Genesis Token (κάθε κινητό Seeker έχει ένα): Pro χωρίς όριο SKR.</span></div>`+
+    `<div class="row">${wallet?`<button class="btn" type="button" data-act="done">Κατάσταση wallet</button>`:''}<button class="btn primary" type="button" data-act="pick">${wallet?'Σύνδεση άλλου wallet':'Σύνδεση wallet'}</button></div>`;
+  }else if(st==='pick'){
+    const ws=window.SVWallet?SVWallet.list():[];
+    s.innerHTML=head('Σύνδεση wallet')+`<p class="muted">Η Vestora βλέπει μόνο τη δημόσια διεύθυνσή σου, για να ελέγξει το SKR και, αν το ζητήσεις, να διαβάσει τα υπόλοιπα. Δεν ζητάει ποτέ seed phrase και δεν μπορεί να μετακινήσει τίποτα.</p>`+
+    (ws.length?`<div class="opts">${ws.map((w,i)=>`<button class="opt" type="button" data-act="wallet" data-i="${i}"><img class="ic" src="${esc(w.icon)}" alt=""><span><b>${w.mwa?'Wallet του κινητού':esc(w.name)}</b><small>${w.mwa?'Seeker Wallet ή άλλο, μέσω Mobile Wallet Adapter':'Επέκταση του browser'}</small></span></button>`).join('')}</div>`
+      :`<p>${bundleState===2?'Δεν βρέθηκε wallet. Στο κινητό Seeker άνοιξε τη Vestora από την εφαρμογή. Σε υπολογιστή χρειάζεται επέκταση wallet, π.χ. Phantom ή Solflare.':'Φορτώνει…'}</p>`)+
+    `<p class="muted" id="pickMsg" role="status"></p><div class="row"><button class="btn" type="button" data-act="info">Πίσω</button></div>`;
+  }else if(st==='done'){
+    const w=wallet;if(!w){flow.step='info';return drawSheet()}
+    const ok=isPro(),n=needSkr();
+    s.innerHTML=head('Το wallet σου')+`<dl class="status"><dt>Διεύθυνση</dt><dd class="num">${short(w.addr)}</dd>
+      <dt>SKR</dt><dd class="num">${w.skr==null?'—':nf(2).format(w.skr)}${w.skrEur!=null?` <span class="muted">(${eur2.format(w.skrEur)})</span>`:''}</dd><dt>Seeker Genesis Token</dt><dd>${w.genesis?'Ναι':w.status==='ok'?'Όχι':'—'}</dd></dl>`+
+      (wBusy?`<p class="muted">Ελέγχεται…</p>`:w.status==='error'?`<div class="verdict short">Δεν ήταν δυνατός ο έλεγχος. Έλεγξε τη σύνδεση στο internet και δοκίμασε ξανά.</div>`:
+       ok?`<div class="verdict ok">Το Pro είναι ενεργό${w.genesis?' μέσω Seeker Genesis Token':''}.</div>`
+         :`<div class="verdict short">${n?`Χρειάζονται περίπου ${nf(0).format(Math.max(0,n-(w.skr||0)))} SKR ακόμα για το Pro.`:'Για το Pro χρειάζεται SKR αξίας 20 € ή Seeker Genesis Token.'} Οι δωρεάν λειτουργίες μένουν διαθέσιμες κανονικά.</div>`)+
+      `<p class="muted">Ο έλεγχος ξαναγίνεται κάθε φορά που ανοίγεις την εφαρμογή. Αν το υπόλοιπο πέσει κάτω από το όριο, το Pro κλειδώνει ξανά χωρίς να χαθεί κανένα δεδομένο.</p>`+
+      `<div class="row"><button class="btn" type="button" data-act="disconnect">Αποσύνδεση</button><button class="btn" type="button" data-act="refresh">Έλεγχος ξανά</button>${ok?`<button class="btn" type="button" data-act="import">Εισαγωγή assets</button>`:`<button class="btn" type="button" data-act="info">Τι ξεκλειδώνει</button>`}<button class="btn primary" type="button" data-act="close">Συνέχεια</button></div>`;
+  }else if(st==='import'){
+    const I=flow.imp;
+    if(!I||I.loading){s.innerHTML=head('Εισαγωγή από wallet')+`<p class="muted">Διαβάζονται τα υπόλοιπα του ${wallet?short(wallet.addr):''}…</p>`;if(!I)loadImport();}
+    else if(I.error){s.innerHTML=head('Εισαγωγή από wallet')+`<div class="verdict short">Δεν ήταν δυνατή η ανάγνωση. ${esc(I.error)}</div><div class="row"><button class="btn" type="button" data-act="retryimp">Δοκίμασε ξανά</button><button class="btn" type="button" data-act="done">Πίσω</button></div>`}
+    else{
+      const dup=state.tx.some(t=>t.src==='wallet');
+      s.innerHTML=head('Εισαγωγή από wallet')+`<p class="muted">Βρέθηκαν αυτά τα assets αξίας πάνω από 1 €. Διάλεξε ποια θα προστεθούν. Μπαίνουν σαν αγορά σήμερα, με τη σημερινή τιμή. Αν τα αγόρασες παλιότερα, άλλαξε μετά ημερομηνία και τιμή στις συναλλαγές για σωστή απόδοση.</p>`+
+      (dup?`<div class="verdict short">Έχεις ήδη κάνει εισαγωγή από wallet. Ό,τι επιλέξεις θα προστεθεί ξανά.</div>`:'')+
+      (I.list.length?`<div class="imp">${I.list.map((t,i)=>`<label><input type="checkbox" id="imp${i}" data-i="${i}" checked> <span>${esc(t.id?ASSETS[t.id].name:t.name)} <small class="muted">${esc(t.sym)}${t.xstock?' · xStock':''}${t.id?'':' · χωρίς ιστορικό τιμών'}</small></span><span class="num">${nf(t.qty<1?6:2).format(t.qty)} · ${eur.format(t.qty*t.eur)}</span></label>`).join('')}</div>`:'<p>Δεν βρέθηκαν assets με αξία πάνω από 1 €.</p>')+
+      `<p class="muted">Η ανάγνωση είναι μόνο για προβολή. Το SOL που έχεις σε native stake δεν φαίνεται εδώ: πρόσθεσέ το χειροκίνητα. Liquid staking tokens (π.χ. JitoSOL) εμφανίζονται κανονικά.</p>`+
+      `<div class="row"><button class="btn" type="button" data-act="done">Πίσω</button>${I.list.length?`<button class="btn primary" type="button" data-act="doimport">Προσθήκη επιλεγμένων</button>`:''}</div>`;
+    }
+  }else if(st==='price'){
+    const c=state.custom[flow.arg];if(!c){closeSheet();return}
+    s.innerHTML=head('Τρέχουσα τιμή')+`<p>${esc(c.name)}</p><p class="muted">Η τιμή που βάζεις μένει μέχρι να την αλλάξεις. Για ακίνητο, βάλε την αξία που θα έπαιρνες αν το πουλούσες σήμερα.</p>
+      <div class="f"><label for="pxNew">Νέα τιμή ανά μονάδα €</label><input id="pxNew" type="number" min="0" step="any" inputmode="decimal" value="${+(+c.current||0).toPrecision(8)}"></div>
+      <div class="f"><label for="pxCls">Κατηγορία</label><select id="pxCls">${Object.entries(CUSTOM_CLS).map(([k,v])=>`<option value="${k}"${k===c.cls?' selected':''}>${v}</option>`).join('')}</select></div>
+      <p class="muted" id="pxMsg" role="status"></p><div class="row"><button class="btn" type="button" data-act="close">Άκυρο</button><button class="btn primary" type="button" data-act="setprice">Αποθήκευση</button></div>`;
+  }
+  (s.querySelector('[data-act="pick"],.btn.primary,input')||s.querySelector('.x')).focus();
+}
+async function loadImport(){
+  flow.imp={loading:true};
+  try{
+    const params=o=>({ownerAddress:wallet.addr,page:1,limit:1000,...o});
+    let res;try{res=await rpc('getAssetsByOwner',params({options:{showFungible:true,showNativeBalance:true}}),20000)}
+    catch(e){res=await rpc('getAssetsByOwner',params({displayOptions:{showFungible:true,showNativeBalance:true}}),20000)}
+    const list=[];
+    if(res.nativeBalance?.lamports)list.push({mint:MINT.SOL,id:'SOL',name:'Solana',sym:'SOL',qty:res.nativeBalance.lamports/1e9});
+    for(const it of res.items||[]){
+      if(!/Fungible/.test(it.interface||''))continue;const ti=it.token_info;if(!ti||!ti.balance)continue;
+      const qty=ti.balance/10**(ti.decimals||0),sym=String(ti.symbol||it.content?.metadata?.symbol||'').trim(),mint=it.id;
+      const name=String(it.content?.metadata?.name||sym||'Token').trim().slice(0,40);
+      let id=null,xstock=false;
+      if(mint===MINT.SOL)id='SOL';else if(mint===MINT.BTC)id='BTC';else if(mint===MINT.ETH)id='ETH';
+      else if(/^Xs/.test(mint)&&/^[A-Z.]{1,6}x$/.test(sym)&&ASSETS[sym.slice(0,-1)]){id=sym.slice(0,-1);xstock=true}
+      list.push({mint,id,name,sym,qty,xstock});
+    }
+    const mints=[...new Set(list.map(t=>t.mint))],pr={};
+    for(let i=0;i<mints.length;i+=50){const r=await fetch(JUP+mints.slice(i,i+50).join(','));if(r.ok)Object.assign(pr,await r.json())}
+    const out=list.map(t=>({...t,eur:(pr[t.mint]?.usdPrice||0)/FXL})).filter(t=>t.eur>0&&t.qty*t.eur>=1).sort((a,b)=>b.qty*b.eur-a.qty*a.eur);
+    flow.imp={list:out};
+  }catch(e){console.warn(e);flow.imp={error:'Έλεγξε τη σύνδεση στο internet.'}}
+  if(!$('overlay').hidden&&flow.step==='import')drawSheet();
+}
+$('sheet').addEventListener('click',async e=>{
+  const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act;
+  if(a==='close')return closeSheet();
+  if(a==='info'||a==='pick'||a==='done'){flow.step=a;if(a==='pick')loadBundle();return drawSheet()}
+  if(a==='import'||a==='retryimp'){if(!isPro()){flow.step='info';return drawSheet()}flow.step='import';flow.imp=null;return drawSheet()}
+  if(a==='wallet'){
+    const ws=window.SVWallet?SVWallet.list():[],w=ws[+b.dataset.i];if(!w)return;b.disabled=true;$('pickMsg').textContent='Περιμένει έγκριση στο wallet…';
+    try{const addr=await SVWallet.connect(w.name);if(!validAddr(addr))throw new Error('bad address');
+      if(!wallet||wallet.addr!==addr)wallet={addr};saveWallet();flow.step='done';drawSheet();await checkWallet(true)}
+    catch(err){console.warn(err);b.disabled=false;$('pickMsg').textContent='Η σύνδεση δεν ολοκληρώθηκε. Δοκίμασε ξανά.'}
+    return;
+  }
+  if(a==='refresh'){checkWallet(true);return}
+  if(a==='disconnect'){try{window.SVWallet&&await SVWallet.disconnect()}catch(err){}wallet=null;saveWallet();if(ui.bench!=='SPY')ui.bench='SPY';render();closeSheet();toast('Το wallet αποσυνδέθηκε.');return}
+  if(a==='doimport'){
+    const date=todayIso();let n=0;
+    if(state.sample)state={sample:false,onboarded:true,custom:{},mints:{},tx:[]};
+    $('sheet').querySelectorAll('.imp input:checked').forEach(c=>{const t=flow.imp.list[+c.dataset.i];let id=t.id;
+      if(id){if(t.xstock)state.mints[id]=t.mint;if(PRICES[id])PRICES[id][W-1]=t.eur}
+      else{id='m_'+t.mint;state.custom[id]={name:t.name,sym:t.sym,cls:'crypto',current:t.eur,mint:t.mint}}
+      state.tx.push({id:uid(),a:id,type:'buy',date,qty:t.qty,price:+t.eur.toPrecision(8),fee:0,reason:'',src:'wallet'});n++});
+    state.onboarded=true;save();assetOptions('fAsset');render();closeSheet();if(n)toast(n===1?'Προστέθηκε 1 asset.':`Προστέθηκαν ${n} assets.`);
+    if(!$('onb').hidden)renderOnb();
+    return;
+  }
+  if(a==='setprice'){const v=parseFloat($('pxNew').value);if(!(v>=0)){$('pxMsg').textContent='Βάλε μια τιμή 0 ή μεγαλύτερη.';return}
+    const c=state.custom[flow.arg];c.current=v;c.cls=$('pxCls').value;save();render();closeSheet();toast('Η τιμή ενημερώθηκε.')}
+});
+$('overlay').addEventListener('click',e=>{if(e.target.id==='overlay')closeSheet()});
+document.addEventListener('keydown',e=>{
+  if($('overlay').hidden){if((e.key==='Enter'||e.key===' ')&&e.target.dataset?.pro){e.preventDefault();openSheet('info')}return}
+  if(e.key==='Escape')closeSheet();
+  if(e.key==='Tab'){const f=[...$('sheet').querySelectorAll('button,select,input')].filter(x=>!x.disabled);if(!f.length)return;const i=f.indexOf(document.activeElement);
+    if(e.shiftKey&&i<=0){e.preventDefault();f[f.length-1].focus()}else if(!e.shiftKey&&i===f.length-1){e.preventDefault();f[0].focus()}}
+});
+document.addEventListener('click',e=>{if(e.target.closest('[data-pro]'))openSheet('info')});
+$('btnWallet').addEventListener('click',()=>{if(wallet){openSheet('done');checkWallet(false)}else openSheet('pick')});
+$('btnImport').addEventListener('click',()=>{if(!wallet)return openSheet('pick');if(!isPro())return openSheet('info');flow.imp=null;openSheet('import')});
+function renderWallet(){
+  const b=$('btnWallet'),pro=isPro();
+  b.classList.toggle('on',!!wallet);
+  b.innerHTML=wallet?(pro?'<span class="probadge">PRO</span>':'')+`<span class="num">${short(wallet.addr)}</span>`:'Σύνδεση wallet';
+  $('btnImport').innerHTML='Εισαγωγή από wallet'+(pro?'':LOCK);
+  [...$('segBench').children].forEach(x=>{const lock=x.dataset.v!=='SPY'&&!pro;x.innerHTML=esc(x.dataset.n)+(lock?LOCK:'')});
+  if(!pro&&ui.bench!=='SPY'){ui.bench='SPY';[...$('segBench').children].forEach(x=>x.setAttribute('aria-pressed',x.dataset.v==='SPY'))}
+}
+
+/* ---------- backup: an encrypted file the user keeps (AES-GCM, key from the password with PBKDF2) ---------- */
+const BKEY='vestora-backup-at';
+const b64=u=>btoa(String.fromCharCode(...new Uint8Array(u)));
+const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function deriveKey(pw,salt,iter){
+  const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:iter,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+}
+async function makeBackup(pw){
+  const payload={app:'vestora',v:1,created:new Date().toISOString(),portfolio:state,plan};
+  const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12)),iter=250000;
+  const key=await deriveKey(pw,salt,iter);
+  const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(payload)));
+  return JSON.stringify({format:'vestora-backup',v:1,kdf:'PBKDF2-SHA256',iter,salt:b64(salt),iv:b64(iv),data:b64(ct)});
+}
+async function openBackup(text,pw){
+  let j;try{j=JSON.parse(text.trim())}catch(e){throw new Error('Αυτό δεν είναι αντίγραφο ασφαλείας της Vestora.')}
+  if(j.format!=='vestora-backup')throw new Error('Αυτό δεν είναι αντίγραφο ασφαλείας της Vestora.');
+  const key=await deriveKey(pw,unb64(j.salt),j.iter);
+  let pt;try{pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(j.iv)},key,unb64(j.data))}catch(e){throw new Error('Λάθος κωδικός, ή το αρχείο έχει αλλοιωθεί.')}
+  const p=JSON.parse(new TextDecoder().decode(pt));if(p.app!=='vestora'||!p.portfolio||!Array.isArray(p.portfolio.tx))throw new Error('Το αντίγραφο δεν έχει τα αναμενόμενα στοιχεία.');
+  return p;
+}
+const bkMsg=(t,bad)=>{const m=$('bkMsg');m.textContent=t;m.classList.toggle('neg',!!bad)};
+function bkPw(){const pw=$('bkPw').value;if(pw.length<8){bkMsg('Ο κωδικός πρέπει να έχει τουλάχιστον 8 χαρακτήρες.',true);return null}return pw}
+$('bkFile').addEventListener('click',async()=>{const pw=bkPw();if(!pw)return;
+  try{const txt=await makeBackup(pw);const blob=new Blob([txt],{type:'application/json'});const name='vestora-backup-'+todayIso()+'.json';
+    let done=false;
+    try{const f=new File([blob],name,{type:'application/json'});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:'Vestora backup'});done=true}}catch(e){if(e.name==='AbortError')return}
+    if(!done){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000)}
+    LS.set(BKEY,String(Date.now()));renderBackupNote();bkMsg('Έτοιμο. Κράτα το αρχείο σε ασφαλές μέρος, εκτός κινητού. Χωρίς τον κωδικό δεν ανοίγει.');
+  }catch(e){console.warn(e);bkMsg('Δεν ήταν δυνατή η δημιουργία του αρχείου. Δοκίμασε την «Αντιγραφή ως κείμενο».',true)}});
+$('bkCopy').addEventListener('click',async()=>{const pw=bkPw();if(!pw)return;
+  try{const txt=await makeBackup(pw);let ok=false;try{await navigator.clipboard.writeText(txt);ok=true}catch(e){}
+    if(!ok){$('rsText').value=txt;$('rsDetails').open=true;$('rsText').select()}
+    LS.set(BKEY,String(Date.now()));renderBackupNote();bkMsg(ok?'Αντιγράφηκε. Επικόλλησέ το κάπου ασφαλές, π.χ. σε σημείωση με κωδικό.':'Το κείμενο εμφανίζεται στο πεδίο επαναφοράς: αντέγραψέ το από εκεί.');
+  }catch(e){console.warn(e);bkMsg('Δεν ήταν δυνατή η δημιουργία του αντιγράφου.',true)}});
+$('rsFile').addEventListener('change',async e=>{const f=e.target.files[0];if(f)$('rsText').value=await f.text()});
+let rsArmed=false;
+$('rsGo').addEventListener('click',async()=>{const m=$('rsMsg');m.classList.remove('neg');
+  const txt=$('rsText').value,pw=$('rsPw').value;if(!txt.trim()){m.textContent='Διάλεξε αρχείο ή επικόλλησε το κείμενο.';return}
+  try{const p=await openBackup(txt,pw);
+    if(state.tx.length&&!state.sample&&!rsArmed){rsArmed=true;m.textContent=`Το αντίγραφο έχει ${p.portfolio.tx.length} συναλλαγές και θα αντικαταστήσει τις ${state.tx.length} που υπάρχουν τώρα. Πάτα ξανά για επιβεβαίωση.`;$('rsGo').textContent='Επιβεβαίωση επαναφοράς';return}
+    state=p.portfolio;state.custom=state.custom||{};state.mints=state.mints||{};state.onboarded=true;state.sample=false;save();
+    if(p.plan){plan=Object.assign(plan,p.plan);savePlan()}
+    rsArmed=false;$('rsGo').textContent='Επαναφορά';$('rsText').value='';$('rsPw').value='';targetBuilt=false;
+    assetOptions('fAsset');$('onb').hidden=true;render();m.textContent=`Επαναφέρθηκαν ${state.tx.length} συναλλαγές.`;livePrices();
+  }catch(e){m.textContent=e.message;m.classList.add('neg')}});
+function renderBackupNote(){
+  const t=+LS.get(BKEY)||0,el=$('bkLast'),days=t?Math.floor((Date.now()-t)/DAY):null;
+  el.textContent=t?`Τελευταίο αντίγραφο: ${longDate(iso(new Date(t)))}`:'Δεν έχεις κάνει ακόμα αντίγραφο ασφαλείας.';
+  const need=state.tx.length>0&&!state.sample&&(days==null||days>30);
+  $('bkNudge').hidden=!need;
+}
+$('bkNudgeGo').addEventListener('click',()=>{go('tx');setTimeout(()=>$('backupPanel').scrollIntoView({block:'start'}),50)});
+
+/* ---------- settings ---------- */
+$('btnSample').addEventListener('click',()=>{state=sample();save();targetBuilt=false;plan.target=null;assetOptions('fAsset');render();go('home');toast('Φορτώθηκε το παράδειγμα.')});
+$('btnClear').addEventListener('click',e=>{const b=e.currentTarget;
+  if(!b.classList.contains('danger')){b.classList.add('danger');b.textContent='Σίγουρα; Διαγράφονται όλα';setTimeout(()=>{if(b.isConnected){b.classList.remove('danger');b.textContent='Διαγραφή όλων των στοιχείων'}},4000);return}
+  b.classList.remove('danger');b.textContent='Διαγραφή όλων των στοιχείων';
+  state={sample:false,onboarded:false,custom:{},mints:{},tx:[]};save();LS.del(PKEY);plan={goal:null,monthly:null,years:15,fee:.3,ass:'0',real:'1',target:null,next:null,exp:'',res:'',inc:'',vr:'',debt:'',tol:'30',b:null,bShow:true};targetBuilt=false;
+  assetOptions('fAsset');render();openOnb()});
+$('bannerGo').addEventListener('click',()=>{state={sample:false,onboarded:false,custom:{},mints:{},tx:[]};save();plan.target=null;targetBuilt=false;render();openOnb()});
+function renderBanner(){$('banner').hidden=!state.sample}
+
+/* ---------- first-run guide ---------- */
+let onb={step:0,rows:[{a:'',v:'',name:''}],monthly:'',years:15,goal:'',tol:'30'};
+const TOLS=[['10','Έως −10%','Μια μικρή πτώση θα με αγχώσει.'],['20','Έως −20%','Αντέχω μια μέτρια διόρθωση.'],['30','Έως −30%','Αντέχω μια σοβαρή πτώση.'],['50','Έως −50%','Έχω περάσει μεγάλες πτώσεις χωρίς να πουλήσω.'],['70','Έως −70%','Αντέχω πτώσεις τύπου crypto.']];
+function openOnb(){onb={step:0,rows:[{a:'',v:'',name:''}],monthly:'',years:15,goal:'',tol:'30'};$('onb').hidden=false;renderOnb()}
+function onbAssetSelect(i,r){
+  const groups={crypto:[],etf:[],stock:[],cash:[]};
+  for(const [k,a] of Object.entries(ASSETS).sort((a,b)=>a[1].name.localeCompare(b[1].name,'el')))groups[a.cls]?.push(`<option value="${k}"${r.a===k?' selected':''}>${esc(a.name)}</option>`);
+  return `<select id="ob_a${i}" data-i="${i}" data-k="a" aria-label="Επένδυση ${i+1}"><option value="">Διάλεξε…</option>${['crypto','etf','stock','cash'].map(c=>`<optgroup label="${CLS[c]}">${groups[c].join('')}</optgroup>`).join('')}<option value="__new"${r.a==='__new'?' selected':''}>Ακίνητο ή κάτι άλλο</option></select>`;
+}
+function renderOnb(){
+  const box=$('onbBody'),s=onb.step,dots=[1,2,3,4].map(n=>`<i class="${n<=s?'on':''}"></i>`).join('');
+  $('onbDots').innerHTML=s?dots:'';
+  if(s===0){box.innerHTML=`<div class="onbhero"><div class="mark big" aria-hidden="true">${MARK}</div><h1>Vestora</h1><p class="lead">Δες πώς πάνε οι επενδύσεις σου σε σύγκριση με απλές εναλλακτικές, και σχεδίασε τη συνέχεια με ρεαλιστικά νούμερα.</p>
+    <ul class="onbl"><li>Crypto, μετοχές, ETF, χρυσός, ακίνητα και ό,τι άλλο, σε ένα μέρος.</li><li>Τα στοιχεία σου μένουν μόνο σε αυτή τη συσκευή.</li><li>Δεν σου λέει τι να αγοράσεις. Σου δείχνει τι σημαίνει κάθε επιλογή.</li></ul></div>
+    <div class="onbbtns"><button class="btn primary" type="button" data-o="next">Ξεκίνα</button><button class="btn" type="button" data-o="sample">Δες ένα παράδειγμα</button><button class="btn ghost" type="button" data-o="restore">Έχω αντίγραφο ασφαλείας</button></div>`;return}
+  if(s===1){
+    const imp=state.tx.filter(t=>t.src==='wallet').length;
+    box.innerHTML=`<h2>Τι έχεις σήμερα;</h2><p class="muted">Βάλε την αξία που έχει σήμερα κάθε επένδυση, όσο περίπου. Αργότερα, στις συναλλαγές, μπορείς να βάλεις πότε και σε ποια τιμή αγόρασες, για ακριβή απόδοση.</p>
+    <div class="obrows">${onb.rows.map((r,i)=>`<div class="obrow">${onbAssetSelect(i,r)}${r.a==='__new'?`<input id="ob_n${i}" data-i="${i}" data-k="name" placeholder="π.χ. Διαμέρισμα" value="${esc(r.name)}" aria-label="Όνομα">`:''}<input id="ob_v${i}" data-i="${i}" data-k="v" type="number" min="0" step="10" inputmode="decimal" placeholder="Αξία σήμερα €" value="${esc(r.v)}" aria-label="Αξία σήμερα σε ευρώ">${onb.rows.length>1?`<button class="x" type="button" data-o="rm" data-i="${i}" aria-label="Αφαίρεση">×</button>`:''}</div>`).join('')}</div>
+    <button class="btn" type="button" data-o="add">+ Άλλη μία</button>
+    <div class="rule"><b>Έχεις Solana wallet;</b><span>Σύνδεσέ το για να μπουν αυτόματα τα tokens και τα xStocks. Μόνο ανάγνωση, χωρίς υπογραφές.${imp?` <b>Έχουν προστεθεί ${imp} assets από το wallet.</b>`:''}</span><div><button class="btn" type="button" data-o="wallet">${wallet?(isPro()?'Εισαγωγή από wallet':'Κατάσταση wallet'):'Σύνδεση wallet'}</button></div></div>
+    <p class="neg small" id="obMsg" role="status"></p>
+    <div class="onbbtns"><button class="btn primary" type="button" data-o="next">Συνέχεια</button><button class="btn ghost" type="button" data-o="skip">Δεν έχω ακόμα επενδύσεις</button></div>`;return}
+  if(s===2){box.innerHTML=`<h2>Πόσα μπορείς να βάζεις τον μήνα;</h2><p class="muted">Το ποσό που μπορείς να επενδύεις σταθερά, χωρίς να πιεστείς. Μπορεί να είναι και 0.</p>
+    <div class="f"><label for="ob_m">Μηνιαία καταβολή €</label><input id="ob_m" data-k="monthly" type="number" min="0" step="10" inputmode="numeric" value="${esc(onb.monthly)}" placeholder="π.χ. 150"></div>
+    <div class="chips">${[50,100,200,300,500].map(v=>`<button type="button" data-o="setm" data-v="${v}">${v} €</button>`).join('')}</div>
+    <div class="onbbtns"><button class="btn primary" type="button" data-o="next">Συνέχεια</button><button class="btn ghost" type="button" data-o="back">Πίσω</button></div>`;return}
+  if(s===3){box.innerHTML=`<h2>Για πόσο καιρό και για ποιο στόχο;</h2><p class="muted">Ο στόχος μπορεί να είναι ένα ποσό, ένα σπίτι, οικονομική ανεξαρτησία. Βάλε το ποσό που αντιστοιχεί, σε σημερινά ευρώ.</p>
+    <div class="f"><label for="ob_y">Χρόνια <output class="num" id="ob_yo">${onb.years}</output></label><input id="ob_y" data-k="years" type="range" min="1" max="40" value="${onb.years}"></div>
+    <div class="f"><label for="ob_g">Στόχος €</label><input id="ob_g" data-k="goal" type="number" min="0" step="1000" inputmode="numeric" value="${esc(onb.goal)}" placeholder="π.χ. 50000"></div>
+    <div class="onbbtns"><button class="btn primary" type="button" data-o="next">Συνέχεια</button><button class="btn ghost" type="button" data-o="back">Πίσω</button></div>`;return}
+  if(s===4){box.innerHTML=`<h2>Πόση πτώση θα άντεχες χωρίς να πουλήσεις;</h2><p class="muted">Σκέψου την αξία των επενδύσεών σου να πέφτει για μήνες. Μέχρι πού θα έμενες ήρεμος;</p>
+    <div class="opts">${TOLS.map(([v,t,d])=>`<button class="opt${onb.tol===v?' sel':''}" type="button" data-o="tol" data-v="${v}" aria-pressed="${onb.tol===v}"><span><b>${t}</b><small>${d}</small></span></button>`).join('')}</div>
+    <p class="neg small" id="obMsg" role="status"></p>
+    <div class="onbbtns"><button class="btn primary" type="button" data-o="finish">Δες το πλάνο σου</button><button class="btn ghost" type="button" data-o="back">Πίσω</button></div>`;return}
+}
+$('onbBody').addEventListener('input',e=>{const el=e.target,k=el.dataset.k;if(!k)return;
+  if(el.dataset.i!=null){onb.rows[+el.dataset.i][k]=el.value;if(k==='a')renderOnb()}
+  else{onb[k]=el.value;if(k==='years')$('ob_yo').textContent=el.value}});
+$('onbBody').addEventListener('click',e=>{const b=e.target.closest('[data-o]');if(!b)return;const o=b.dataset.o;
+  if(o==='sample'){state=sample();save();plan.target=null;targetBuilt=false;assetOptions('fAsset');$('onb').hidden=true;render();go('home');return}
+  if(o==='restore'){$('onb').hidden=true;go('tx');$('rsDetails').open=true;setTimeout(()=>$('backupPanel').scrollIntoView({block:'start'}),50);return}
+  if(o==='add'){onb.rows.push({a:'',v:'',name:''});renderOnb();$('ob_a'+(onb.rows.length-1))?.focus();return}
+  if(o==='rm'){onb.rows.splice(+b.dataset.i,1);renderOnb();return}
+  if(o==='wallet'){if(!wallet)openSheet('pick');else if(isPro()){flow.imp=null;openSheet('import')}else openSheet('done');return}
+  if(o==='setm'){onb.monthly=b.dataset.v;renderOnb();return}
+  if(o==='tol'){onb.tol=b.dataset.v;renderOnb();return}
+  if(o==='back'){onb.step=Math.max(0,onb.step-1);renderOnb();return}
+  if(o==='skip'){onb.rows=[];onb.step=2;renderOnb();return}
+  if(o==='next'){
+    if(onb.step===1){const bad=onb.rows.find(r=>(r.a||r.v)&&(!r.a||!(+r.v>0)||r.a==='__new'&&!r.name.trim()));
+      if(bad){$('obMsg').textContent='Συμπλήρωσε επένδυση και αξία σε κάθε γραμμή, ή αφαίρεσε τη γραμμή.';return}}
+    onb.step++;renderOnb();$('onbBody').querySelector('input,button')?.focus();return}
+  if(o==='finish')finishOnb();
+});
+function finishOnb(){
+  if(state.sample)state={sample:false,onboarded:false,custom:{},mints:{},tx:[]};
+  const date=todayIso();
+  for(const r of onb.rows){const v=+r.v;if(!r.a||!(v>0))continue;
+    if(r.a==='__new'){const id='c_'+uid();state.custom[id]={name:r.name.trim(),cls:'other',current:v};state.tx.push({id:uid(),a:id,type:'buy',date,qty:1,price:v,fee:0,reason:''})}
+    else{const p=nowPrice(r.a);if(!(p>0))continue;state.tx.push({id:uid(),a:r.a,type:'buy',date,qty:+(v/p).toPrecision(8),price:+p.toPrecision(8),fee:0,reason:''})}}
+  state.onboarded=true;save();
+  plan.monthly=+onb.monthly||0;plan.years=+onb.years||15;plan.goal=+onb.goal||plan.goal||50000;plan.tol=onb.tol;plan.target=null;plan.next=null;plan.b=null;targetBuilt=false;savePlan();
+  $('onb').hidden=true;assetOptions('fAsset');render();go('plan');toast('Το πλάνο σου είναι έτοιμο. Μπορείς να αλλάξεις ό,τι θέλεις.');
+}
+
+/* ---------- views (bottom tabs) ---------- */
+const VIEWS=['home','plan','risk','tx'];
+function go(v){if(!VIEWS.includes(v))v='home';if(location.hash!=='#'+v)history.replaceState(null,'','#'+v);show(v)}
+function show(v){
+  VIEWS.forEach(k=>{$('v-'+k).hidden=k!==v;const t=document.querySelector(`.tabs [data-v="${k}"]`);t.setAttribute('aria-current',k===v?'page':'false')});
+  window.scrollTo(0,0);requestAnimationFrame(redraw);
+}
+document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('[data-v]');if(b)go(b.dataset.v)});
+addEventListener('hashchange',()=>show(VIEWS.includes(location.hash.slice(1))?location.hash.slice(1):'home'));
+$('btnAdd').addEventListener('click',()=>{go('tx');setTimeout(()=>$('fAsset').focus(),60)});
+
+let toastT;function toast(t){const el=$('toast');el.textContent=t;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,3200)}
+function renderPriceNote(){
+  if(!DATA)return;const u=new Date(DATA.updated),age=(Date.now()-u)/DAY;
+  $('priceNote').innerHTML=`Τιμές: κλείσιμο ${longDate(iso(u))}${liveAt?', ζωντανές για crypto και xStocks':''}.${age>4?' <b class="neg">Οι τιμές δεν έχουν ενημερωθεί για μερικές μέρες.</b>':''}`;
+}
+
+function render(){renderWallet();D=compute();renderSummary(D);renderChart(D);renderStory(D);renderHoldings(D);renderInsights(D);renderPlan(D);renderStress(D);renderJournal();renderTx();renderBanner();renderPriceNote();renderBackupNote()}
+const redraw=()=>{if(!W)return;renderChart(D);if(lastProj)drawProj(lastProj,plan.bShow!==false?lastB:null)};
+let rt;const ro=new ResizeObserver(()=>{clearTimeout(rt);rt=setTimeout(redraw,80)});ro.observe($('chartbox'));ro.observe($('projBox'));
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',redraw);
+const MARK='<svg viewBox="0 0 32 32" width="100%" height="100%"><path d="M5 9 L16 25 L27 9" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="27" cy="9" r="3.2" fill="var(--accent)"/></svg>';
+
+async function boot(){
+  $('loadMsg').textContent='Φορτώνουν οι τιμές…';$('loadRetry').hidden=true;
+  try{const r=await fetch('data/history.json',{cache:'no-cache'});if(!r.ok)throw new Error('HTTP '+r.status);applyData(await r.json())}
+  catch(e){console.warn(e);$('loadMsg').textContent='Δεν ήταν δυνατή η φόρτωση των τιμών. Έλεγξε τη σύνδεση στο internet.';$('loadRetry').hidden=false;return}
+  $('loading').hidden=true;$('app').hidden=false;
+  $('fDate').max=todayIso();$('fDate').min=iso(wDate(0));$('fDate').value=todayIso();
+  assetOptions('fAsset');autoPrice();render();
+  show(VIEWS.includes(location.hash.slice(1))?location.hash.slice(1):'home');
+  if(!state.onboarded&&!state.tx.length)openOnb();
+  livePrices();if(wallet)checkWallet(false);
+  setInterval(()=>{if(document.visibilityState==='visible')livePrices()},5*60e3);
+}
+$('loadRetry').addEventListener('click',boot);
+document.querySelectorAll('.markslot').forEach(el=>el.innerHTML=MARK);
+if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+boot();
+})();
+</script>
+</body>
+</html>

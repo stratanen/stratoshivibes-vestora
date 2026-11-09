@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Απόρρητο · Vestora</title>
+<style>
+@font-face{font-family:"Commissioner";src:url(fonts/commissioner-greek-400-normal.woff2) format("woff2");font-weight:400;unicode-range:U+0370-03FF,U+1F00-1FFF}
+@font-face{font-family:"Commissioner";src:url(fonts/commissioner-latin-400-normal.woff2) format("woff2");font-weight:400}
+@font-face{font-family:"Commissioner";src:url(fonts/commissioner-greek-800-normal.woff2) format("woff2");font-weight:700 800;unicode-range:U+0370-03FF,U+1F00-1FFF}
+@font-face{font-family:"Commissioner";src:url(fonts/commissioner-latin-800-normal.woff2) format("woff2");font-weight:700 800}
+:root{--bg:#EDF1EF;--fg:#12201B;--muted:#5A6A64;--accent:#0E7A5E;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#0C1412;--fg:#E3ECE8;--muted:#8E9F99;--accent:#3CC79A;color-scheme:dark}}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 "Commissioner",system-ui,sans-serif}
+main{max-width:660px;margin:0 auto;padding:40px max(20px,env(safe-area-inset-right,0px)) 64px max(20px,env(safe-area-inset-left,0px))}
+h1{font-size:28px;line-height:1.2;margin:0 0 4px}
+h2{font-size:18px;margin:30px 0 8px}
+.muted{color:var(--muted)} a{color:var(--accent)} hr{border:0;border-top:1px solid var(--muted);opacity:.3;margin:40px 0}
+</style>
+</head>
+<body>
+<main>
+<h1>Πολιτική απορρήτου</h1>
+<p class="muted">Vestora by StratoshiVibes · Τελευταία ενημέρωση: 9 Νοεμβρίου 2026</p>
+
+<h2>Σύνοψη</h2>
+<p>Η Vestora δεν έχει λογαριασμούς και δεν συλλέγει ούτε πουλάει προσωπικά δεδομένα. Ό,τι καταχωρείς μένει στη συσκευή σου. Η σύνδεση wallet είναι προαιρετική.</p>
+
+<h2>Τι αποθηκεύεται και πού</h2>
+<p>Στον τοπικό αποθηκευτικό χώρο της συσκευής σου (local storage) αποθηκεύονται: οι συναλλαγές και τα στοιχεία που καταχωρείς, το πλάνο σου (στόχος, καταβολή, χρόνια, ανεκτή πτώση), τα προαιρετικά οικονομικά στοιχεία (εισόδημα, έξοδα, οφειλές, αποθεματικό), και, αν συνδέσεις wallet, η δημόσια διεύθυνσή του, το υπόλοιπο SKR και αν έχει Seeker Genesis Token.</p>
+<p>Αυτά τα στοιχεία δεν στέλνονται σε εμάς. Η διαγραφή των δεδομένων της εφαρμογής ή η απεγκατάσταση τα σβήνει.</p>
+
+<h2>Αντίγραφο ασφαλείας</h2>
+<p>Αν φτιάξεις αντίγραφο ασφαλείας, κρυπτογραφείται στη συσκευή σου με κωδικό που διαλέγεις (AES-GCM) και το κρατάς εσύ. Δεν ανεβαίνει σε δικό μας server. Χωρίς τον κωδικό δεν μπορεί να ανοίξει, ούτε από εμάς.</p>
+
+<h2>Τιμές</h2>
+<p>Οι ιστορικές τιμές έρχονται από ένα αρχείο που φτιάχνεται καθημερινά και φιλοξενείται στο GitHub Pages. Οι ζωντανές τιμές για Solana tokens και xStocks ζητούνται από το Jupiter με βάση τη διεύθυνση του token. Αυτά τα αιτήματα δεν περιέχουν τη διεύθυνση του wallet σου ούτε τα στοιχεία σου.</p>
+
+<h2>Προαιρετική σύνδεση wallet</h2>
+<p>Όταν συνδέεις wallet, το wallet μοιράζεται μόνο τη δημόσια διεύθυνσή σου. Η Vestora δεν ζητάει υπογραφές, συναλλαγές, seed phrase ή private key, και δεν μπορεί να μετακινήσει τίποτα.</p>
+<p>Για τον έλεγχο SKR και Seeker Genesis Token, και για την εισαγωγή υπολοίπων όταν το ζητήσεις, η εφαρμογή στέλνει τη δημόσια διεύθυνσή σου στη Helius, πάροχο δεδομένων Solana, που διαβάζει δημόσια δεδομένα του blockchain. Η διεύθυνση είναι ήδη ορατή σε όλους στο Solana. Δες την <a href="https://www.helius.dev/privacy-policy" rel="noopener">πολιτική απορρήτου της Helius</a>. Πάτα «Αποσύνδεση» για να σβηστεί η διεύθυνση από τη συσκευή σου.</p>
+
+<h2>Τι δεν κάνουμε</h2>
+<ul>
+<li>Καμία εγγραφή, κανένα email.</li>
+<li>Κανένα analytics, διαφημίσεις, tracking ή cookies τρίτων.</li>
+<li>Καμία υπογραφή ή συναλλαγή από το wallet σου.</li>
+<li>Καμία επενδυτική συμβουλή. Η Vestora περιγράφει, δεν προτείνει.</li>
+</ul>
+
+<h2>Φιλοξενία</h2>
+<p>Τα αρχεία της εφαρμογής σερβίρονται από το GitHub Pages. Όπως κάθε υπηρεσία φιλοξενίας, το GitHub μπορεί να επεξεργάζεται τεχνικά στοιχεία, όπως τη διεύθυνση IP, για να παραδώσει τα αρχεία. Δες τη <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" rel="noopener">δήλωση απορρήτου του GitHub</a>.</p>
+
+<h2>Παιδιά</h2>
+<p>Η εφαρμογή δεν απευθύνεται σε άτομα κάτω των 18 ετών.</p>
+
+<h2>Αλλαγές και επικοινωνία</h2>
+<p>Αν μια μελλοντική έκδοση χειρίζεται δεδομένα με νέο τρόπο, αυτή η σελίδα θα ενημερωθεί πριν κυκλοφορήσει. Για ερωτήσεις, άνοιξε ένα issue στο <a href="https://github.com/stratanen/stratoshivibes-vestora" rel="noopener">github.com/stratanen/stratoshivibes-vestora</a>.</p>
+
+<hr>
+<h1>Privacy Policy (English)</h1>
+<p>Vestora by StratoshiVibes has no accounts and does not collect or sell personal data. Everything you enter (transactions, your plan, optional income and expense figures) is stored only on your device in local storage and is never sent to us. Optional encrypted backups are created on your device with a password you choose and kept by you.</p>
+<p>Historical prices come from a daily file hosted on GitHub Pages; live prices for Solana tokens are requested from Jupiter by token address, without your wallet address. Connecting a wallet is optional: the wallet shares only your public address. To check SKR, the Seeker Genesis Token and, if you ask, your token balances, the app sends that public address to Helius, a Solana data provider. Vestora never requests signatures, transactions, seed phrases or private keys and cannot move funds. No analytics, ads, tracking or third-party cookies. Not directed at anyone under 18. Contact: open an issue at github.com/stratanen/stratoshivibes-vestora.</p>
+</main>
+</body>
+</html>

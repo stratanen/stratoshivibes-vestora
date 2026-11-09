@@ -582,7 +582,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 
   <section class="panel" aria-label="Ρυθμίσεις">
     <div class="phead"><h2>Ρυθμίσεις</h2></div>
-    <div class="settings"><button class="btn" id="btnSample" type="button">Φόρτωση παραδείγματος</button><button class="btn" id="btnClear" type="button">Διαγραφή όλων των στοιχείων</button></div>
+    <div class="settings"><button class="btn" id="btnGuide" type="button">Οδηγός ξεκινήματος</button><button class="btn" id="btnSample" type="button">Φόρτωση παραδείγματος</button><button class="btn" id="btnClear" type="button">Διαγραφή όλων των στοιχείων</button></div>
     <p class="foot" style="margin-top:14px">Το wallet χρησιμοποιείται μόνο για τον έλεγχο SKR και, αν το ζητήσεις, για ανάγνωση των υπολοίπων. Η Vestora βλέπει μόνο τη δημόσια διεύθυνση, δεν ζητάει υπογραφές και δεν μπορεί να μετακινήσει τίποτα. Το SKR λειτουργεί ως κλειδί πρόσβασης για το Pro: δεν ξοδεύεται και δεν δεσμεύεται.</p>
     <p class="foot">Η Vestora περιγράφει και εξηγεί την πορεία των επενδύσεών σου. Δεν αποτελεί επενδυτική συμβουλή και δεν προτείνει αγορές, πωλήσεις ή κατανομή. Οι προβολές βασίζονται σε παραδοχές και δεν είναι προβλέψεις. Τιμές: Yahoo Finance (κλείσιμο ημέρας) και Jupiter (ζωντανές τιμές Solana), μετατροπή σε ευρώ με την ισοτιμία EUR/USD.</p>
     <div class="legal"><a href="privacy.html">Απόρρητο</a><a href="terms.html">Όροι χρήσης</a><a href="https://github.com/stratanen/stratoshivibes-vestora" rel="noopener">Κώδικας</a></div>
@@ -1561,13 +1561,14 @@ $('btnClear').addEventListener('click',e=>{const b=e.currentTarget;
   b.classList.remove('danger');b.textContent='Διαγραφή όλων των στοιχείων';
   state={sample:false,onboarded:false,custom:{},mints:{},tx:[]};save();LS.del(PKEY);plan={goal:null,monthly:null,years:15,fee:.3,ass:'0',real:'1',target:null,next:null,exp:'',res:'',inc:'',vr:'',debt:'',tol:'30',b:null,bShow:true};targetBuilt=false;
   assetOptions('fAsset');render();openOnb()});
+$('btnGuide').addEventListener('click',openOnb);
 $('bannerGo').addEventListener('click',()=>{state={sample:false,onboarded:false,custom:{},mints:{},tx:[]};save();plan.target=null;targetBuilt=false;render();openOnb()});
 function renderBanner(){$('banner').hidden=!state.sample}
 
 /* ---------- first-run guide ---------- */
 let onb={step:0,rows:[{a:'',v:'',name:''}],monthly:'',years:15,goal:'',tol:'30'};
 const TOLS=[['10','Έως −10%','Μια μικρή πτώση θα με αγχώσει.'],['20','Έως −20%','Αντέχω μια μέτρια διόρθωση.'],['30','Έως −30%','Αντέχω μια σοβαρή πτώση.'],['50','Έως −50%','Έχω περάσει μεγάλες πτώσεις χωρίς να πουλήσω.'],['70','Έως −70%','Αντέχω πτώσεις τύπου crypto.']];
-function openOnb(){onb={step:0,rows:[{a:'',v:'',name:''}],monthly:'',years:15,goal:'',tol:'30'};$('onb').hidden=false;renderOnb()}
+function openOnb(){onb={step:0,rows:[{a:'',v:'',name:''}],monthly:plan.monthly!=null&&state.tx.length?String(plan.monthly):'',years:+plan.years||15,goal:plan.goal&&state.tx.length?String(plan.goal):'',tol:plan.tol||'30'};$('onb').hidden=false;renderOnb()}
 function onbAssetSelect(i,r){
   const groups={crypto:[],etf:[],stock:[],cash:[]};
   for(const [k,a] of Object.entries(ASSETS).sort((a,b)=>a[1].name.localeCompare(b[1].name,'el')))groups[a.cls]?.push(`<option value="${k}"${r.a===k?' selected':''}>${esc(a.name)}</option>`);
@@ -1576,9 +1577,11 @@ function onbAssetSelect(i,r){
 function renderOnb(){
   const box=$('onbBody'),s=onb.step,dots=[1,2,3,4].map(n=>`<i class="${n<=s?'on':''}"></i>`).join('');
   $('onbDots').innerHTML=s?dots:'';
+  const mine=state.tx.length>0&&!state.sample;
   if(s===0){box.innerHTML=`<div class="onbhero"><div class="mark big" aria-hidden="true">${MARK}</div><h1>Vestora</h1><p class="lead">Δες πώς πάνε οι επενδύσεις σου σε σύγκριση με απλές εναλλακτικές, και σχεδίασε τη συνέχεια με ρεαλιστικά νούμερα.</p>
     <ul class="onbl"><li>Crypto, μετοχές, ETF, χρυσός, ακίνητα και ό,τι άλλο, σε ένα μέρος.</li><li>Τα στοιχεία σου μένουν μόνο σε αυτή τη συσκευή.</li><li>Δεν σου λέει τι να αγοράσεις. Σου δείχνει τι σημαίνει κάθε επιλογή.</li></ul></div>
-    <div class="onbbtns"><button class="btn primary" type="button" data-o="next">Ξεκίνα</button><button class="btn" type="button" data-o="sample">Δες ένα παράδειγμα</button><button class="btn ghost" type="button" data-o="restore">Έχω αντίγραφο ασφαλείας</button></div>`;return}
+    ${mine?'<p class="muted small">Ό,τι προσθέσεις στον οδηγό μπαίνει μαζί με όσα έχεις ήδη. Δεν σβήνεται τίποτα.</p>':''}
+    <div class="onbbtns"><button class="btn primary" type="button" data-o="next">Ξεκίνα</button>${mine?'':'<button class="btn" type="button" data-o="sample">Δες ένα παράδειγμα</button><button class="btn ghost" type="button" data-o="restore">Έχω αντίγραφο ασφαλείας</button>'}${mine?'<button class="btn ghost" type="button" data-o="close">Κλείσιμο</button>':''}</div>`;return}
   if(s===1){
     const imp=state.tx.filter(t=>t.src==='wallet').length;
     box.innerHTML=`<h2>Τι έχεις σήμερα;</h2><p class="muted">Βάλε την αξία που έχει σήμερα κάθε επένδυση, όσο περίπου. Αργότερα, στις συναλλαγές, μπορείς να βάλεις πότε και σε ποια τιμή αγόρασες, για ακριβή απόδοση.</p>
@@ -1618,6 +1621,7 @@ $('onbBody').addEventListener('click',e=>{const b=e.target.closest('[data-o]');i
       if(bad){$('obMsg').textContent='Συμπλήρωσε επένδυση και αξία σε κάθε γραμμή, ή αφαίρεσε τη γραμμή.';return}}
     onb.step++;renderOnb();$('onbBody').querySelector('input,button')?.focus();return}
   if(o==='finish')finishOnb();
+  if(o==='close'){$('onb').hidden=true;render()}
 });
 function finishOnb(){
   if(state.sample)state={sample:false,onboarded:false,custom:{},mints:{},tx:[]};

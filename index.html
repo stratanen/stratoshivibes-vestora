@@ -323,6 +323,8 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--tabh) + env(safe-area-inset-bottom,0px) + 14px);z-index:30;background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:10px;font-size:14px;max-width:calc(100% - 32px);text-align:center}
 .loading{min-height:70vh;display:grid;place-items:center;align-content:center;gap:14px;text-align:center;color:var(--muted);padding-inline:24px}
 .loading .mark{width:52px;height:52px;border-radius:14px;color:var(--surface)}
+.btn.home{display:inline-flex;align-items:center;gap:6px}
+.brand[role=button]{cursor:pointer}
 .btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
 .del.edit{color:var(--accent);padding:2px 0;font-size:12px}
 .typechip.div,.typechip.reward{color:var(--c-cash)}
@@ -377,11 +379,12 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 
 <div class="wrap" id="app" hidden>
   <header class="top">
-    <div class="brand">
+    <div class="brand" id="brandHome" role="button" tabindex="0" aria-label="Αρχική">
       <div class="mark markslot" aria-hidden="true"></div>
       <span><b>Vestora</b> <small>by StratoshiVibes</small></span>
     </div>
     <div class="btns">
+      <button class="btn home" id="btnHome" type="button" aria-label="Αρχική"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg><span>Αρχική</span></button>
       <button class="btn wallet" id="btnWallet" type="button">Σύνδεση wallet</button>
       <button class="btn primary" id="btnAdd" type="button">+ Συναλλαγή</button>
     </div>
@@ -1639,10 +1642,14 @@ const VIEWS=['home','plan','risk','tx'];
 function go(v){if(!VIEWS.includes(v))v='home';if(location.hash!=='#'+v)history.replaceState(null,'','#'+v);show(v)}
 function show(v){
   VIEWS.forEach(k=>{$('v-'+k).hidden=k!==v;const t=document.querySelector(`.tabs [data-v="${k}"]`);t.setAttribute('aria-current',k===v?'page':'false')});
+  $('btnHome').hidden=v==='home';
   window.scrollTo(0,0);requestAnimationFrame(redraw);if(typeof arm==='function')arm();
 }
 document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('[data-v]');if(b)go(b.dataset.v)});
 addEventListener('hashchange',()=>show(VIEWS.includes(location.hash.slice(1))?location.hash.slice(1):'home'));
+function goHome(){if(!$('overlay').hidden)closeSheet();if(!$('onb').hidden&&(state.tx.length||state.sample))$('onb').hidden=true;go('home')}
+$('btnHome').addEventListener('click',goHome);
+$('brandHome').addEventListener('click',goHome);$('brandHome').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();goHome()}});
 $('btnAdd').addEventListener('click',()=>{go('tx');setTimeout(()=>$('fAsset').focus(),60)});
 /* Android back button: close what is open, step back in the guide, return to Summary, and only then leave the app.
    One extra history entry acts as a guard; each handled back press re-arms it. */

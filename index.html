@@ -1372,7 +1372,7 @@ function loadBundle(){
 
 /* ---------- sheet (dialogs) ---------- */
 let flow={step:'info',arg:null,imp:null};let lastFocus=null;
-function openSheet(step,arg){lastFocus=document.activeElement;flow.step=step||(wallet?'done':'info');flow.arg=arg;$('overlay').hidden=false;if(flow.step==='pick')loadBundle();drawSheet()}
+function openSheet(step,arg){arm();lastFocus=document.activeElement;flow.step=step||(wallet?'done':'info');flow.arg=arg;$('overlay').hidden=false;if(flow.step==='pick')loadBundle();drawSheet()}
 function closeSheet(){$('overlay').hidden=true;lastFocus?.focus?.()}
 function cmpTable(){
   const rows=[['Καταχώρηση συναλλαγών, μερισμάτων και staking',1,1],['Ζωντανές τιμές και σύγκριση με S&P 500',1,1],['Συγκέντρωση, κόστος προμηθειών, εισόδημα',1,1],
@@ -1568,7 +1568,7 @@ function renderBanner(){$('banner').hidden=!state.sample}
 /* ---------- first-run guide ---------- */
 let onb={step:0,rows:[{a:'',v:'',name:''}],monthly:'',years:15,goal:'',tol:'30'};
 const TOLS=[['10','Έως −10%','Μια μικρή πτώση θα με αγχώσει.'],['20','Έως −20%','Αντέχω μια μέτρια διόρθωση.'],['30','Έως −30%','Αντέχω μια σοβαρή πτώση.'],['50','Έως −50%','Έχω περάσει μεγάλες πτώσεις χωρίς να πουλήσω.'],['70','Έως −70%','Αντέχω πτώσεις τύπου crypto.']];
-function openOnb(){onb={step:0,rows:[{a:'',v:'',name:''}],monthly:plan.monthly!=null&&state.tx.length?String(plan.monthly):'',years:+plan.years||15,goal:plan.goal&&state.tx.length?String(plan.goal):'',tol:plan.tol||'30'};$('onb').hidden=false;renderOnb()}
+function openOnb(){arm();onb={step:0,rows:[{a:'',v:'',name:''}],monthly:plan.monthly!=null&&state.tx.length?String(plan.monthly):'',years:+plan.years||15,goal:plan.goal&&state.tx.length?String(plan.goal):'',tol:plan.tol||'30'};$('onb').hidden=false;renderOnb()}
 function onbAssetSelect(i,r){
   const groups={crypto:[],etf:[],stock:[],cash:[]};
   for(const [k,a] of Object.entries(ASSETS).sort((a,b)=>a[1].name.localeCompare(b[1].name,'el')))groups[a.cls]?.push(`<option value="${k}"${r.a===k?' selected':''}>${esc(a.name)}</option>`);
@@ -1639,11 +1639,24 @@ const VIEWS=['home','plan','risk','tx'];
 function go(v){if(!VIEWS.includes(v))v='home';if(location.hash!=='#'+v)history.replaceState(null,'','#'+v);show(v)}
 function show(v){
   VIEWS.forEach(k=>{$('v-'+k).hidden=k!==v;const t=document.querySelector(`.tabs [data-v="${k}"]`);t.setAttribute('aria-current',k===v?'page':'false')});
-  window.scrollTo(0,0);requestAnimationFrame(redraw);
+  window.scrollTo(0,0);requestAnimationFrame(redraw);if(typeof arm==='function')arm();
 }
 document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('[data-v]');if(b)go(b.dataset.v)});
 addEventListener('hashchange',()=>show(VIEWS.includes(location.hash.slice(1))?location.hash.slice(1):'home'));
 $('btnAdd').addEventListener('click',()=>{go('tx');setTimeout(()=>$('fAsset').focus(),60)});
+/* Android back button: close what is open, step back in the guide, return to Summary, and only then leave the app.
+   One extra history entry acts as a guard; each handled back press re-arms it. */
+let armed=false,booted=false;
+function arm(){if(booted&&!armed){history.pushState({vestora:1},'',location.hash||'#home');armed=true}}
+addEventListener('popstate',()=>{
+  armed=false;let handled=true;
+  if(!$('overlay').hidden)closeSheet();
+  else if(!$('onb').hidden){if(onb.step>0){onb.step--;renderOnb()}else if(state.tx.length&&!state.sample){$('onb').hidden=true;render()}else handled=false}
+  else if(VIEWS.some(k=>!$('v-'+k).hidden&&k!=='home')){history.replaceState(null,'','#home');show('home')}
+  else handled=false;
+  if(handled)arm();
+  else toast('Πάτα ξανά «πίσω» για έξοδο.');
+});
 
 let toastT;function toast(t){const el=$('toast');el.textContent=t;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,3200)}
 function renderPriceNote(){
@@ -1666,6 +1679,7 @@ async function boot(){
   assetOptions('fAsset');autoPrice();render();
   show(VIEWS.includes(location.hash.slice(1))?location.hash.slice(1):'home');
   if(!state.onboarded&&!state.tx.length)openOnb();
+  booted=true;arm();
   livePrices();if(wallet)checkWallet(false);
   setInterval(()=>{if(document.visibilityState==='visible')livePrices()},5*60e3);
 }

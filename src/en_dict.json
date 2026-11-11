@@ -546,7 +546,10 @@
 "από τα 100</b> σενάρια.</p>": "out of 100</b> scenarios.</p>",
 "<div class=\"gbtns\"><button class=\"btn primary\" type=\"button\" data-g=\"plan\">Άνοιξε το πλάνο</button></div>": "<div class=\"gbtns\"><button class=\"btn primary\" type=\"button\" data-g=\"plan\">Open the plan</button></div>",
 "<div class=\"phead\"><div><h2>Τα 3 βήματα</h2><div class=\"muted small\">Τι έχεις, τι δείχνει, πώς συνεχίζεις</div></div><button class=\"x\" type=\"button\" data-g=\"hide\" aria-label=\"Απόκρυψη\">×</button></div><ol class=\"gsteps\">": "<div class=\"phead\"><div><h2>The 3 steps</h2><div class=\"muted small\">What you have, what it shows, how you continue</div></div><button class=\"x\" type=\"button\" data-g=\"hide\" aria-label=\"Hide\">×</button></div><ol class=\"gsteps\">",
-"Ο οδηγός κρύφτηκε. Τον ξαναβρίσκεις στις Συναλλαγές, «Οδηγός ξεκινήματος».": "The guide is hidden. You can find it again in Transactions, «Getting started guide»."
+"Ο οδηγός κρύφτηκε. Τον ξαναβρίσκεις στις Συναλλαγές, «Οδηγός ξεκινήματος».": "The guide is hidden. You can find it again in Transactions, «Getting started guide».",
+"<h3 class=\"sub\">Αυτόματα, από το blockchain</h3><div class=\"opts\">\n      <button class=\"opt wallet-only\" type=\"button\" data-o=\"wallet\"><span class=\"ic\" style=\"background:var(--c-crypto)\" aria-hidden=\"true\">S</span><span><b>Solana wallet": "<h3 class=\"sub\">Automatically, from the blockchain</h3><div class=\"opts\">\n      <button class=\"opt wallet-only\" type=\"button\" data-o=\"wallet\"><span class=\"ic\" style=\"background:var(--c-crypto)\" aria-hidden=\"true\">S</span><span><b>Solana wallet",
+"<h3 class=\"sub\">Με το χέρι</h3><p class=\"muted small\">Μετοχές, ETF, crypto σε ανταλλακτήριο, καταθέσεις, ακίνητα. Βάλε την αξία που έχει σήμερα το καθένα, όσο περίπου. Αργότερα, στις συναλλαγές, μπορείς να βάλεις πότε και σε ποια τιμή αγόρασες, για ακριβή απόδοση.</p>\n    <div class=\"obrows\">": "<h3 class=\"sub\">By hand</h3><p class=\"muted small\">Stocks, ETFs, crypto on an exchange, deposits, real estate. Enter roughly what each one is worth today. Later, in transactions, you can enter when and at what price you bought, for an exact return.</p>\n    <div class=\"obrows\">",
+"Από διεύθυνση Ethereum ή με το χέρι.": "From an Ethereum address, or by hand."
 },
 "html": {
 "Φορτώνουν οι τιμές…": "Loading prices…",

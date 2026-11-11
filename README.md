@@ -40,7 +40,7 @@
 | `data/history.json` | Εβδομαδιαίες τιμές σε ευρώ, 10 χρόνια (το φτιάχνει το workflow) |
 | `scripts/build_prices.py` | Κατεβάζει τις τιμές (Yahoo Finance, με Stooq και ΕΚΤ ως εφεδρεία) |
 | `wallet.bundle.js` | Σύνδεση wallet (Mobile Wallet Adapter), ίδια με τα άλλα apps |
-| (εξωτερικά) | Εισαγωγή από διεύθυνση Ethereum: υπόλοιπα από Blockscout (εφεδρεία Ethplorer), τιμές από DefiLlama. Χωρίς κλειδί API. Όχι στην έκδοση Google Play |
+| (εξωτερικά) | Εισαγωγή από διεύθυνση Ethereum: υπόλοιπα από Blockscout (εφεδρεία Ethplorer), τιμές από DefiLlama. Χωρίς κλειδί API. Υπάρχει και στην έκδοση Google Play |
 | `sw.js` | Offline λειτουργία |
 | `fonts/` | Γραμματοσειρά Commissioner (OFL) |
 | `privacy.html`, `terms.html` | Σελίδες για το store |

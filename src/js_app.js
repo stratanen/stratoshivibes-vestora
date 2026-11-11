@@ -246,13 +246,13 @@ document.addEventListener('keydown',e=>{
 document.addEventListener('click',e=>{if(e.target.closest('[data-pro]'))openSheet('info')});
 $('btnWallet').addEventListener('click',()=>{if(wallet){openSheet('done');checkWallet(false)}else openSheet('pick')});
 $('btnImport').addEventListener('click',()=>{if(!wallet)return openSheet('pick');if(!isPro())return openSheet('info');flow.imp=null;openSheet('import')});
-function openEth(){if(PLAY)return;if(!isPro())return openSheet('info');flow.eth=null;openSheet('eth')}
+function openEth(){if(!isPro())return openSheet('info');flow.eth=null;openSheet('eth')}
 $('btnImportEth').addEventListener('click',openEth);
 function renderWallet(){
   const b=$('btnWallet'),pro=isPro();
   b.classList.toggle('on',!!wallet);
   b.innerHTML=wallet?(pro?'<span class="probadge">PRO</span>':'')+`<span class="num">${short(wallet.addr)}</span>`:'Σύνδεση wallet';
-  $('btnImport').innerHTML='Εισαγωγή από Solana wallet'+(pro?'':LOCK);$('btnImportEth').innerHTML='Εισαγωγή από Ethereum'+(pro?'':LOCK);$('btnImportEth').hidden=PLAY;
+  $('btnImport').innerHTML='Εισαγωγή από Solana wallet'+(pro?'':LOCK);$('btnImportEth').innerHTML='Εισαγωγή από Ethereum'+(pro?'':LOCK);
   [...$('segBench').children].forEach(x=>{const lock=x.dataset.v!=='SPY'&&!pro;x.innerHTML=esc(x.dataset.n)+(lock?LOCK:'')});
   if(!pro&&ui.bench!=='SPY'){ui.bench='SPY';[...$('segBench').children].forEach(x=>x.setAttribute('aria-pressed',x.dataset.v==='SPY'))}
 }
@@ -346,10 +346,10 @@ function renderOnb(){
     const have=mine&&D?D.hold.length:0,lk=isPro()?'':LOCK;
     box.innerHTML=`<h2>Τι έχεις σήμερα;</h2><p class="muted">Πρόσθεσε ό,τι έχεις με όποιον τρόπο σε βολεύει. Μπορείς να τους συνδυάσεις.</p>
     ${have?`<div class="verdict ok">${have===1?'Έχει προστεθεί 1 θέση':`Έχουν προστεθεί ${have} θέσεις`}, συνολικής αξίας <span class="num">${eur.format(D.end)}</span>.</div>`:''}
-    ${PLAY?'':`<h3 class="sub">Αυτόματα, από το blockchain</h3><div class="opts">
-      <button class="opt" type="button" data-o="wallet"><span class="ic" style="background:var(--c-crypto)" aria-hidden="true">S</span><span><b>Solana wallet${lk}</b><small>Σύνδεση wallet. Μπαίνουν tokens και xStocks. Μόνο ανάγνωση, χωρίς υπογραφές.</small></span></button>
+    ${`<h3 class="sub">Αυτόματα, από το blockchain</h3><div class="opts">
+      <button class="opt wallet-only" type="button" data-o="wallet"><span class="ic" style="background:var(--c-crypto)" aria-hidden="true">S</span><span><b>Solana wallet${lk}</b><small>Σύνδεση wallet. Μπαίνουν tokens και xStocks. Μόνο ανάγνωση, χωρίς υπογραφές.</small></span></button>
       <button class="opt" type="button" data-o="eth"><span class="ic" style="background:var(--c-stock)" aria-hidden="true">E</span><span><b>Διεύθυνση Ethereum${lk}</b><small>Επικολλάς τη δημόσια διεύθυνση. Χωρίς σύνδεση wallet, μόνο ανάγνωση.</small></span></button></div>`}
-    <h3 class="sub">${PLAY?'Οι επενδύσεις σου':'Με το χέρι'}</h3><p class="muted small">Μετοχές, ETF, crypto σε ανταλλακτήριο, καταθέσεις, ακίνητα. Βάλε την αξία που έχει σήμερα το καθένα, όσο περίπου. Αργότερα, στις συναλλαγές, μπορείς να βάλεις πότε και σε ποια τιμή αγόρασες, για ακριβή απόδοση.</p>
+    <h3 class="sub">Με το χέρι</h3><p class="muted small">Μετοχές, ETF, crypto σε ανταλλακτήριο, καταθέσεις, ακίνητα. Βάλε την αξία που έχει σήμερα το καθένα, όσο περίπου. Αργότερα, στις συναλλαγές, μπορείς να βάλεις πότε και σε ποια τιμή αγόρασες, για ακριβή απόδοση.</p>
     <div class="obrows">${onb.rows.map((r,i)=>`<div class="obrow">${onbAssetSelect(i,r)}${r.a==='__new'?`<input id="ob_n${i}" data-i="${i}" data-k="name" placeholder="π.χ. Διαμέρισμα" value="${esc(r.name)}" aria-label="Όνομα">`:''}<input id="ob_v${i}" data-i="${i}" data-k="v" type="number" min="0" step="10" inputmode="decimal" placeholder="Αξία σήμερα €" value="${esc(r.v)}" aria-label="Αξία σήμερα σε ευρώ">${onb.rows.length>1?`<button class="x" type="button" data-o="rm" data-i="${i}" aria-label="Αφαίρεση">×</button>`:''}</div>`).join('')}</div>
     <button class="btn" type="button" data-o="add">+ Άλλη μία</button>
     <p class="neg small" id="obMsg" role="status"></p>
@@ -408,7 +408,7 @@ function renderGuide(D){
   const step=(n,done,title,body)=>`<li class="${done?'done':''}"><span class="n" aria-hidden="true">${done?'✓':n}</span><div><b>${title}</b>${body}</div></li>`;
   let h;
   if(!D||!D.hold.length){
-    h=step(1,false,'Πρόσθεσε ό,τι έχεις',`<p>${PLAY?'Μετοχές, ETF, crypto, καταθέσεις, ακίνητα: βάζεις την αξία που έχουν σήμερα.':'Από Solana wallet, από διεύθυνση Ethereum ή με το χέρι.'}</p><div class="gbtns"><button class="btn primary" type="button" data-g="add">Πρόσθεσε τώρα</button></div>`)
+    h=step(1,false,'Πρόσθεσε ό,τι έχεις',`<p>${PLAY?'Από διεύθυνση Ethereum ή με το χέρι.':'Από Solana wallet, από διεύθυνση Ethereum ή με το χέρι.'}</p><div class="gbtns"><button class="btn primary" type="button" data-g="add">Πρόσθεσε τώρα</button></div>`)
      +step(2,false,'Δες τι δείχνουν τα στοιχεία σου','<p class="muted">Εμφανίζεται μόλις προσθέσεις θέσεις.</p>')
      +step(3,false,'Δούλεψε το πλάνο σου','<p class="muted">Στόχος, μηνιαία καταβολή και τι χρειάζεται.</p>');
   }else{

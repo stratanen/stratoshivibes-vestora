@@ -566,7 +566,8 @@
 "</b><span>Χαρτοφυλάκιο <b class=\"num\">": "</b><span>Portfolio <b class=\"num\">",
 "<span>Σύγκριση <b class=\"num\">": "<span>Comparison <b class=\"num\">",
 "1 κατηγορία": "1 category",
-" κατηγορίες": " categories"
+" κατηγορίες": " categories",
+"<br><small class=\"muted\">από αυτά σε staking:": "<br><small class=\"muted\">of which staked:"
 },
 "html": {
 "Φορτώνουν οι τιμές…": "Loading prices…",

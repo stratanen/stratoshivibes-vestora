@@ -43,6 +43,20 @@ async function hasSgt(owner){
   }
   return false;
 }
+/* Staked SKR (Solana Mobile staking program). Staked SKR leaves the wallet, so it is read from the program's UserStake accounts.
+   Layout from the program IDL: UserStake (169 bytes) user@41, shares u128@105, unstaking_amount u64@153; StakeConfig share_price u128@137 (1e9 = 1.0). */
+const SKR_STAKE_PROG='SKRskrmtL83pcL4YqLWt6iPefDqwXQWHSw9S9vz94BZ',SKR_STAKE_CFG='4HQy82s9CHTv1GsYKnANHMiHfhcqesYkK6sB3RDSYyqw';
+const uLE=(d,o,n)=>{let v=0n;for(let i=n-1;i>=0;i--)v=v*256n+BigInt(d[o+i]);return v},u128=(d,o)=>uLE(d,o,16),u64=(d,o)=>uLE(d,o,8);
+async function skrStaked(owner){
+  const [acc,cfg]=await Promise.all([
+    rpc('getProgramAccounts',[SKR_STAKE_PROG,{encoding:'base64',commitment:'confirmed',filters:[{dataSize:169},{memcmp:{offset:41,bytes:owner}}]}],15000),
+    rpc('getAccountInfo',[SKR_STAKE_CFG,{encoding:'base64',commitment:'confirmed'}])]);
+  const list=Array.isArray(acc)?acc:(acc?.value||[]);if(!list.length)return 0;
+  const price=u128(b64bytes(cfg.value.data[0]),137);let raw=0n;
+  for(const a of list){const d=b64bytes(a.account.data[0]);if(d.length<169)continue;
+    raw+=u128(d,105)*price/1000000000n+u64(d,153)}
+  return Number(raw)/1e6;
+}
 async function skrPrice(){
   if(skrEur)return skrEur;
   try{const r=await fetch(JUP+MINT.SKR),j=await r.json();const p=j[MINT.SKR]?.usdPrice;if(p>0)skrEur=p/FXL}catch(e){}
@@ -56,6 +70,7 @@ async function checkWallet(force){
   try{
     const ta=await rpc('getTokenAccountsByOwner',[wallet.addr,{mint:MINT.SKR},{encoding:'jsonParsed',commitment:'confirmed'}]);
     wallet.skr=(ta.value||[]).reduce((s,a)=>s+(+a.account.data.parsed.info.tokenAmount.uiAmountString||0),0);
+    try{wallet.skrStaked=await skrStaked(wallet.addr);wallet.skr+=wallet.skrStaked}catch(e){console.warn('skr stake',e)}
     const p=await skrPrice();wallet.skrEur=p?wallet.skr*p:null;
     try{wallet.genesis=await hasSgt(wallet.addr)}catch(e){console.warn('sgt',e)}
     wallet.status='ok';wallet.t=Date.now();
@@ -143,7 +158,7 @@ function drawSheet(){
     const w=wallet;if(!w){flow.step='info';return drawSheet()}
     const ok=isPro(),n=needSkr();
     s.innerHTML=head('Το wallet σου')+`<dl class="status"><dt>Διεύθυνση</dt><dd class="num">${short(w.addr)}</dd>
-      <dt>SKR</dt><dd class="num">${w.skr==null?'—':nf(2).format(w.skr)}${w.skrEur!=null?` <span class="muted">(${eur2.format(w.skrEur)})</span>`:''}</dd><dt>Seeker Genesis Token</dt><dd>${w.genesis?'Ναι':w.status==='ok'?'Όχι':'—'}</dd></dl>`+
+      <dt>SKR</dt><dd class="num">${w.skr==null?'—':nf(2).format(w.skr)}${w.skrEur!=null?` <span class="muted">(${eur2.format(w.skrEur)})</span>`:''}${w.skrStaked>0?`<br><small class="muted">από αυτά σε staking: ${nf(2).format(w.skrStaked)}</small>`:''}</dd><dt>Seeker Genesis Token</dt><dd>${w.genesis?'Ναι':w.status==='ok'?'Όχι':'—'}</dd></dl>`+
       (wBusy?`<p class="muted">Ελέγχεται…</p>`:w.status==='error'?`<div class="verdict short">Δεν ήταν δυνατός ο έλεγχος. Έλεγξε τη σύνδεση στο internet και δοκίμασε ξανά.</div>`:
        ok?`<div class="verdict ok">Το Pro είναι ενεργό${w.genesis?' μέσω Seeker Genesis Token':''}.</div>`
          :`<div class="verdict short">${n?`Χρειάζονται περίπου ${nf(0).format(Math.max(0,n-(w.skr||0)))} SKR ακόμα για το Pro.`:'Για το Pro χρειάζεται SKR αξίας 20 € ή Seeker Genesis Token.'} Οι δωρεάν λειτουργίες μένουν διαθέσιμες κανονικά.</div>`)+
@@ -157,7 +172,7 @@ function drawSheet(){
       const dup=state.tx.some(t=>t.src===(E?'eth':'wallet'));
       s.innerHTML=head(E?'Εισαγωγή από Ethereum':'Εισαγωγή από wallet')+(E?`<p class="muted small num">${shortE(I.addr)}</p>`:'')+`<p class="muted">Βρέθηκαν αυτά τα assets αξίας πάνω από 1 €. Διάλεξε ποια θα προστεθούν. Μπαίνουν σαν αγορά σήμερα, με τη σημερινή τιμή. Αν τα αγόρασες παλιότερα, άλλαξε μετά ημερομηνία και τιμή στις συναλλαγές για σωστή απόδοση.</p>`+
       (dup?`<div class="verdict short">${E?'Έχεις ήδη κάνει εισαγωγή από Ethereum.':'Έχεις ήδη κάνει εισαγωγή από wallet.'} Ό,τι επιλέξεις θα προστεθεί ξανά.</div>`:'')+
-      (I.list.length?`<div class="imp">${I.list.map((t,i)=>`<label><input type="checkbox" id="imp${i}" data-i="${i}" checked> <span>${esc(t.id?ASSETS[t.id].name:t.name)} <small class="muted">${esc(t.sym)}${t.xstock?' · xStock':''}${t.id?'':' · χωρίς ιστορικό τιμών'}</small></span><span class="num">${nf(t.qty<1?6:2).format(t.qty)} · ${eur.format(t.qty*t.eur)}</span></label>`).join('')}</div>`:'<p>Δεν βρέθηκαν assets με αξία πάνω από 1 €.</p>')+
+      (I.list.length?`<div class="imp">${I.list.map((t,i)=>`<label><input type="checkbox" id="imp${i}" data-i="${i}" checked> <span>${esc(t.id?ASSETS[t.id].name:t.name)} <small class="muted">${esc(t.sym)}${t.xstock?' · xStock':''}${t.staked?' · staking':''}${t.id?'':' · χωρίς ιστορικό τιμών'}</small></span><span class="num">${nf(t.qty<1?6:2).format(t.qty)} · ${eur.format(t.qty*t.eur)}</span></label>`).join('')}</div>`:'<p>Δεν βρέθηκαν assets με αξία πάνω από 1 €.</p>')+
       (E?`<p class="muted">Η ανάγνωση είναι μόνο για προβολή. Φαίνονται το ETH και τα tokens του Ethereum mainnet που έχουν τιμή αγοράς. Ό,τι έχεις σε άλλα δίκτυα (Arbitrum, Base κ.ά.), σε staking ή μέσα σε πρωτόκολλα δεν φαίνεται εδώ: πρόσθεσέ το χειροκίνητα.</p>`
         :`<p class="muted">Η ανάγνωση είναι μόνο για προβολή. Το SOL που έχεις σε native stake δεν φαίνεται εδώ: πρόσθεσέ το χειροκίνητα. Liquid staking tokens (π.χ. JitoSOL) εμφανίζονται κανονικά.</p>`)+
       `<div class="row"><button class="btn" type="button" data-act="${E?'eth':'done'}">Πίσω</button>${I.list.length?`<button class="btn primary" type="button" data-act="doimport">Προσθήκη επιλεγμένων</button>`:''}</div>`;
@@ -195,6 +210,7 @@ async function loadImport(){
       else if(/^Xs/.test(mint)&&/^[A-Z.]{1,6}x$/.test(sym)&&ASSETS[sym.slice(0,-1)]){id=sym.slice(0,-1);xstock=true}
       list.push({mint,id,name,sym,qty,xstock});
     }
+    try{const st=await skrStaked(wallet.addr);if(st>0)list.push({mint:MINT.SKR,id:null,name:'Seeker (staked)',sym:'SKR',qty:st,staked:true})}catch(e){console.warn('skr stake',e)}
     const mints=[...new Set(list.map(t=>t.mint))],pr={};
     for(let i=0;i<mints.length;i+=50){const r=await fetch(JUP+mints.slice(i,i+50).join(','));if(r.ok)Object.assign(pr,await r.json())}
     const out=list.map(t=>({...t,eur:(pr[t.mint]?.usdPrice||0)/FXL})).filter(t=>t.eur>0&&t.qty*t.eur>=1).sort((a,b)=>b.qty*b.eur-a.qty*a.eur);
@@ -227,7 +243,7 @@ $('sheet').addEventListener('click',async e=>{
     $('sheet').querySelectorAll('.imp input:checked').forEach(c=>{const t=flow.imp.list[+c.dataset.i];let id=t.id,px=t.eur;
       if(E){if(id)px=nowPrice(id)||t.eur;else{id='e_'+t.contract;state.custom[id]={name:t.name,sym:t.sym,cls:t.cls,current:t.eur,evm:t.contract}}}
       else if(id){if(t.xstock)state.mints[id]=t.mint;if(PRICES[id])PRICES[id][W-1]=t.eur}
-      else{id='m_'+t.mint;state.custom[id]={name:t.name,sym:t.sym,cls:STABLE.has(t.mint)?'cash':'crypto',current:t.eur,mint:t.mint}}
+      else{id='m_'+t.mint+(t.staked?'_st':'');state.custom[id]={name:t.name,sym:t.sym,cls:STABLE.has(t.mint)?'cash':'crypto',current:t.eur,mint:t.mint}}
       state.tx.push({id:uid(),a:id,type:'buy',date,qty:t.qty,price:+px.toPrecision(8),fee:0,reason:'',src:E?'eth':'wallet'});n++});
     state.onboarded=true;save();assetOptions('fAsset');render();closeSheet();if(n)toast(n===1?'Προστέθηκε 1 asset.':`Προστέθηκαν ${n} assets.`,1);
     if(!$('onb').hidden)renderOnb();

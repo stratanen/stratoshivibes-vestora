@@ -12,6 +12,8 @@ const NAME_EN={GLD:'Gold (GLD)',ETE:'National Bank of Greece',TPEIR:'Piraeus Ban
 const MINT={SOL:'So11111111111111111111111111111111111111112',SKR:'SKRbvo6Gf7GondiT3BbTfuRDPqLWei4j2Qy2NPGZhW3',
   BTC:'cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij',ETH:'7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs'};
 const JUP='https://lite-api.jup.ag/price/v3?ids=';
+/* Ethereum tokens added from a pasted address: prices by contract address from DefiLlama (no wallet address is sent) */
+const LLAMA='https://coins.llama.fi/prices/current/';
 let liveAt=0;
 
 function applyData(d){
@@ -42,6 +44,16 @@ async function livePrices(){
     }
     liveAt=Date.now();if(changed){save();render()}else renderPriceNote();
   }catch(e){console.warn('live prices',e);renderPriceNote()}
+  const ev=Object.entries(state.custom).filter(([,c])=>c.evm);
+  if(ev.length)try{
+    let changed=false;
+    for(let i=0;i<ev.length;i+=40){
+      const part=ev.slice(i,i+40),r=await fetch(LLAMA+part.map(([,c])=>'ethereum:'+c.evm).join(','));if(!r.ok)throw new Error('llama '+r.status);
+      const j=(await r.json()).coins||{};
+      for(const [k,c] of part){const p=j['ethereum:'+c.evm]?.price;if(p>0&&state.custom[k]){state.custom[k].current=p/FXL;changed=true}}
+    }
+    if(changed){save();render()}
+  }catch(e){console.warn('eth prices',e)}
 }
 
 /* ---------- helpers ---------- */
@@ -88,7 +100,7 @@ function sample(){
   return {sample:true,onboarded:true,custom:{},mints:{},tx};
 }
 
-function meta(a){return ASSETS[a]||{name:state.custom[a]?.name||'Άλλο',sym:state.custom[a]?.sym||'',cls:state.custom[a]?.cls||'other',usd:state.custom[a]?.mint?1:0,custom:true}}
+function meta(a){return ASSETS[a]||{name:state.custom[a]?.name||'Άλλο',sym:state.custom[a]?.sym||'',cls:state.custom[a]?.cls||'other',usd:state.custom[a]?.mint||state.custom[a]?.evm?1:0,custom:true}}
 function series(a){
   if(PRICES[a])return PRICES[a];
   const c=state.custom[a];const txs=state.tx.filter(t=>t.a===a&&t.type!=='div').sort((x,y)=>x.date.localeCompare(y.date));

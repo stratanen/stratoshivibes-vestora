@@ -62,6 +62,50 @@ async function checkWallet(force){
   }catch(e){console.warn('wallet check',e);wallet.status='error'}
   finally{wBusy=false;saveWallet();render();if(!$('overlay').hidden&&(flow.step==='done'||flow.step==='info'))drawSheet()}
 }
+/* ---------- Ethereum, read-only: the user pastes a public address; balances come from a public block explorer ---------- */
+const EKEY='vestora-eth-v1', ETH_API='https://eth.blockscout.com/api/v2/addresses/', ETH_ALT='https://api.ethplorer.io/getAddressInfo/';
+const validEth=a=>typeof a==='string'&&/^0x[0-9a-fA-F]{40}$/.test(a);
+const shortE=a=>a.slice(0,6)+'…'+a.slice(-4);
+const WBTC='0x2260fac5e5542a773aa44fbcfedf7c193bc2c599';
+/* dollar stablecoins count as cash, not as crypto risk */
+const STABLE=new Set(['0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48','0xdac17f958d2ee523a2206206994597c13d831ec7','0x6b175474e89094c44da98b954eedeac495271d0f',
+  'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v','Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB']);
+function getJSON(url,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
+  return fetch(url,{signal:ctl.signal}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}).finally(()=>clearTimeout(to))}
+function ethToken(contract,name,sym,qty,usd){
+  contract=String(contract||'').toLowerCase();if(!/^0x[0-9a-f]{40}$/.test(contract)||!(qty>0)||!(usd>0))return null;
+  sym=String(sym||'').trim().slice(0,12);name=String(name||sym||'Token').trim().slice(0,40);
+  return{contract,id:contract===WBTC&&ASSETS.BTC?'BTC':null,name,sym,qty,eur:usd/FXL,cls:STABLE.has(contract)?'cash':'crypto'};
+}
+async function ethRead(addr){
+  const list=[];
+  try{
+    const [a,tb]=await Promise.all([getJSON(ETH_API+addr),getJSON(ETH_API+addr+'/token-balances')]);
+    const q=Number(a.coin_balance||0)/1e18,usd=+a.exchange_rate||nowPrice('ETH')*FXL;
+    if(q>0)list.push({id:'ETH',name:'Ethereum',sym:'ETH',qty:q,eur:usd/FXL,cls:'crypto'});
+    for(const it of (Array.isArray(tb)?tb:tb.items||[])){
+      const k=it.token||{};if(k.type&&k.type!=='ERC-20')continue;if(k.reputation&&k.reputation!=='ok')continue;
+      const qty=Number(it.value||0)/10**(+k.decimals||0),usd=+k.exchange_rate||0,cap=+k.circulating_market_cap||0;
+      if(cap>0&&qty*usd>cap)continue;                       // a "balance" worth more than the whole token is a fake
+      const t=ethToken(k.address_hash||k.address,k.name,k.symbol,qty,usd);if(t)list.push(t);
+    }
+  }catch(e1){
+    console.warn('blockscout',e1);list.length=0;
+    const j=await getJSON(ETH_ALT+addr+'?apiKey=freekey');
+    const q=+j.ETH?.balance||0,usd=+j.ETH?.price?.rate||nowPrice('ETH')*FXL;
+    if(q>0)list.push({id:'ETH',name:'Ethereum',sym:'ETH',qty:q,eur:usd/FXL,cls:'crypto'});
+    for(const it of j.tokens||[]){const k=it.tokenInfo||{};
+      const t=ethToken(k.address,k.name,k.symbol,Number(it.rawBalance??it.balance??0)/10**(+k.decimals||0),+(k.price&&k.price.rate)||0);if(t)list.push(t)}
+  }
+  for(const t of list)if(t.id&&nowPrice(t.id)>0)t.eur=nowPrice(t.id);   // ETH and wrapped BTC use the app's own price, so the list shows exactly what gets added
+  return list.filter(t=>t.qty*t.eur>=1).sort((a,b)=>b.qty*b.eur-a.qty*a.eur);
+}
+async function loadEth(addr){
+  flow.eth={addr,loading:true};drawSheet();
+  try{const list=await ethRead(addr);LS.set(EKEY,addr);flow.imp={list,src:'eth',addr};flow.eth={addr};flow.step='import'}
+  catch(e){console.warn(e);flow.eth={addr,error:true}}
+  if(!$('overlay').hidden&&(flow.step==='eth'||flow.step==='import'))drawSheet();
+}
 let bundleState=0;
 function loadBundle(){
   if(bundleState)return;bundleState=1;
@@ -77,7 +121,7 @@ function cmpTable(){
   const rows=[['Καταχώρηση συναλλαγών, μερισμάτων και staking',1,1],['Ζωντανές τιμές και σύγκριση με S&P 500',1,1],['Συγκέντρωση, κόστος προμηθειών, εισόδημα',1,1],
     ['Το πλάνο σου: στόχος, τι χρειάζεται, πλάνο Β',1,1],['Οικονομική αντοχή και ανεκτή πτώση',1,1],['Stress test με έτοιμα σενάρια',1,1],['Ημερολόγιο αποφάσεων',1,1],['Αντίγραφο ασφαλείας',1,1],
     ['Σύγκριση με Nasdaq, Bitcoin, κατάθεση, 80/20, μηνιαία αγορά',0,1],['Απόδοση των χρημάτων σου (MWR) και χρονισμός',0,1],['Επικάλυψη ETF και συσχετίσεις',0,1],
-    ['Μέγιστη πτώση και μεταβλητότητα',0,1],['Stress test με δικό σου σενάριο',0,1],['Εισαγωγή assets από Solana wallet',0,1],
+    ['Μέγιστη πτώση και μεταβλητότητα',0,1],['Stress test με δικό σου σενάριο',0,1],['Εισαγωγή assets από Solana wallet ή διεύθυνση Ethereum',0,1],
     ['Ερωτήσεις «τι θα γίνει αν» με AI (σύντομα)',0,2],['Ειδοποιήσεις με δικά σου όρια (σύντομα)',0,2]];
   return `<div class="cmp"><div class="h">Λειτουργία</div><div class="h c">Δωρεάν</div><div class="h c">Pro</div>${rows.map(([n,f,p])=>`<div>${n}</div><div class="c ${f?'yes':'no'}">${f?'✓':'—'}</div><div class="c ${p===1?'yes':'no'}">${p===1?'✓':p===2?'σύντομα':'—'}</div>`).join('')}</div>`;
 }
@@ -106,17 +150,25 @@ function drawSheet(){
       `<p class="muted">Ο έλεγχος ξαναγίνεται κάθε φορά που ανοίγεις την εφαρμογή. Αν το υπόλοιπο πέσει κάτω από το όριο, το Pro κλειδώνει ξανά χωρίς να χαθεί κανένα δεδομένο.</p>`+
       `<div class="row"><button class="btn" type="button" data-act="disconnect">Αποσύνδεση</button><button class="btn" type="button" data-act="refresh">Έλεγχος ξανά</button>${ok?`<button class="btn" type="button" data-act="import">Εισαγωγή assets</button>`:`<button class="btn" type="button" data-act="info">Τι ξεκλειδώνει</button>`}<button class="btn primary" type="button" data-act="close">Συνέχεια</button></div>`;
   }else if(st==='import'){
-    const I=flow.imp;
+    const I=flow.imp,E=I&&I.src==='eth';
     if(!I||I.loading){s.innerHTML=head('Εισαγωγή από wallet')+`<p class="muted">Διαβάζονται τα υπόλοιπα του ${wallet?short(wallet.addr):''}…</p>`;if(!I)loadImport();}
     else if(I.error){s.innerHTML=head('Εισαγωγή από wallet')+`<div class="verdict short">Δεν ήταν δυνατή η ανάγνωση. ${esc(I.error)}</div><div class="row"><button class="btn" type="button" data-act="retryimp">Δοκίμασε ξανά</button><button class="btn" type="button" data-act="done">Πίσω</button></div>`}
     else{
-      const dup=state.tx.some(t=>t.src==='wallet');
-      s.innerHTML=head('Εισαγωγή από wallet')+`<p class="muted">Βρέθηκαν αυτά τα assets αξίας πάνω από 1 €. Διάλεξε ποια θα προστεθούν. Μπαίνουν σαν αγορά σήμερα, με τη σημερινή τιμή. Αν τα αγόρασες παλιότερα, άλλαξε μετά ημερομηνία και τιμή στις συναλλαγές για σωστή απόδοση.</p>`+
-      (dup?`<div class="verdict short">Έχεις ήδη κάνει εισαγωγή από wallet. Ό,τι επιλέξεις θα προστεθεί ξανά.</div>`:'')+
+      const dup=state.tx.some(t=>t.src===(E?'eth':'wallet'));
+      s.innerHTML=head(E?'Εισαγωγή από Ethereum':'Εισαγωγή από wallet')+(E?`<p class="muted small num">${shortE(I.addr)}</p>`:'')+`<p class="muted">Βρέθηκαν αυτά τα assets αξίας πάνω από 1 €. Διάλεξε ποια θα προστεθούν. Μπαίνουν σαν αγορά σήμερα, με τη σημερινή τιμή. Αν τα αγόρασες παλιότερα, άλλαξε μετά ημερομηνία και τιμή στις συναλλαγές για σωστή απόδοση.</p>`+
+      (dup?`<div class="verdict short">${E?'Έχεις ήδη κάνει εισαγωγή από Ethereum.':'Έχεις ήδη κάνει εισαγωγή από wallet.'} Ό,τι επιλέξεις θα προστεθεί ξανά.</div>`:'')+
       (I.list.length?`<div class="imp">${I.list.map((t,i)=>`<label><input type="checkbox" id="imp${i}" data-i="${i}" checked> <span>${esc(t.id?ASSETS[t.id].name:t.name)} <small class="muted">${esc(t.sym)}${t.xstock?' · xStock':''}${t.id?'':' · χωρίς ιστορικό τιμών'}</small></span><span class="num">${nf(t.qty<1?6:2).format(t.qty)} · ${eur.format(t.qty*t.eur)}</span></label>`).join('')}</div>`:'<p>Δεν βρέθηκαν assets με αξία πάνω από 1 €.</p>')+
-      `<p class="muted">Η ανάγνωση είναι μόνο για προβολή. Το SOL που έχεις σε native stake δεν φαίνεται εδώ: πρόσθεσέ το χειροκίνητα. Liquid staking tokens (π.χ. JitoSOL) εμφανίζονται κανονικά.</p>`+
-      `<div class="row"><button class="btn" type="button" data-act="done">Πίσω</button>${I.list.length?`<button class="btn primary" type="button" data-act="doimport">Προσθήκη επιλεγμένων</button>`:''}</div>`;
+      (E?`<p class="muted">Η ανάγνωση είναι μόνο για προβολή. Φαίνονται το ETH και τα tokens του Ethereum mainnet που έχουν τιμή αγοράς. Ό,τι έχεις σε άλλα δίκτυα (Arbitrum, Base κ.ά.), σε staking ή μέσα σε πρωτόκολλα δεν φαίνεται εδώ: πρόσθεσέ το χειροκίνητα.</p>`
+        :`<p class="muted">Η ανάγνωση είναι μόνο για προβολή. Το SOL που έχεις σε native stake δεν φαίνεται εδώ: πρόσθεσέ το χειροκίνητα. Liquid staking tokens (π.χ. JitoSOL) εμφανίζονται κανονικά.</p>`)+
+      `<div class="row"><button class="btn" type="button" data-act="${E?'eth':'done'}">Πίσω</button>${I.list.length?`<button class="btn primary" type="button" data-act="doimport">Προσθήκη επιλεγμένων</button>`:''}</div>`;
     }
+  }else if(st==='eth'){
+    const E=flow.eth||{},last=E.addr||LS.get(EKEY)||'';
+    s.innerHTML=head('Εισαγωγή από Ethereum')+`<p>Επικόλλησε τη δημόσια διεύθυνση του Ethereum wallet σου. Η Vestora διαβάζει τα υπόλοιπα και σου δείχνει τι βρήκε, για να διαλέξεις τι θα προστεθεί.</p>
+      <p class="muted">Μόνο ανάγνωση: δεν συνδέεται wallet, δεν ζητείται υπογραφή, seed phrase ή private key, και τίποτα δεν μπορεί να μετακινηθεί. Η διεύθυνση στέλνεται σε δημόσιο block explorer για να διαβαστούν τα υπόλοιπα.</p>
+      <div class="f"><label for="ethAddr">Διεύθυνση Ethereum (0x…)</label><input id="ethAddr" type="text" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="0x…" value="${esc(last)}"></div>
+      ${E.loading?`<p class="muted" role="status">Διαβάζονται τα υπόλοιπα…</p>`:E.error?`<div class="verdict short" role="status">Δεν ήταν δυνατή η ανάγνωση. Έλεγξε τη σύνδεση στο internet και δοκίμασε ξανά.</div>`:`<p class="neg small" id="ethMsg" role="status"></p>`}
+      <div class="row"><button class="btn" type="button" data-act="close">Άκυρο</button><button class="btn primary" type="button" data-act="ethgo"${E.loading?' disabled':''}>Διάβασε τα υπόλοιπα</button></div>`;
   }else if(st==='price'){
     const c=state.custom[flow.arg];if(!c){closeSheet();return}
     s.innerHTML=head('Τρέχουσα τιμή')+`<p>${esc(c.name)}</p><p class="muted">Η τιμή που βάζεις μένει μέχρι να την αλλάξεις. Για ακίνητο, βάλε την αξία που θα έπαιρνες αν το πουλούσες σήμερα.</p>
@@ -154,6 +206,10 @@ $('sheet').addEventListener('click',async e=>{
   const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act;
   if(a==='close')return closeSheet();
   if(a==='info'||a==='pick'||a==='done'){flow.step=a;if(a==='pick')loadBundle();return drawSheet()}
+  if(a==='eth'){flow.step='eth';flow.eth=null;return drawSheet()}
+  if(a==='ethgo'){const v=$('ethAddr').value.trim();
+    if(!validEth(v)){const m=$('ethMsg');if(m)m.textContent=/\.eth$/i.test(v)?'Τα ονόματα .eth δεν υποστηρίζονται ακόμα. Επικόλλησε τη διεύθυνση που ξεκινά με 0x.':'Αυτή δεν μοιάζει με διεύθυνση Ethereum. Ξεκινά με 0x και έχει 42 χαρακτήρες.';return}
+    return loadEth(v)}
   if(a==='import'||a==='retryimp'){if(!isPro()){flow.step='info';return drawSheet()}flow.step='import';flow.imp=null;return drawSheet()}
   if(a==='wallet'){
     const ws=window.SVWallet?SVWallet.list():[],w=ws[+b.dataset.i];if(!w)return;b.disabled=true;$('pickMsg').textContent='Περιμένει έγκριση στο wallet…';
@@ -167,10 +223,12 @@ $('sheet').addEventListener('click',async e=>{
   if(a==='doimport'){
     const date=todayIso();let n=0;
     if(state.sample)state={sample:false,onboarded:true,custom:{},mints:{},tx:[]};
-    $('sheet').querySelectorAll('.imp input:checked').forEach(c=>{const t=flow.imp.list[+c.dataset.i];let id=t.id;
-      if(id){if(t.xstock)state.mints[id]=t.mint;if(PRICES[id])PRICES[id][W-1]=t.eur}
-      else{id='m_'+t.mint;state.custom[id]={name:t.name,sym:t.sym,cls:'crypto',current:t.eur,mint:t.mint}}
-      state.tx.push({id:uid(),a:id,type:'buy',date,qty:t.qty,price:+t.eur.toPrecision(8),fee:0,reason:'',src:'wallet'});n++});
+    const E=flow.imp.src==='eth';
+    $('sheet').querySelectorAll('.imp input:checked').forEach(c=>{const t=flow.imp.list[+c.dataset.i];let id=t.id,px=t.eur;
+      if(E){if(id)px=nowPrice(id)||t.eur;else{id='e_'+t.contract;state.custom[id]={name:t.name,sym:t.sym,cls:t.cls,current:t.eur,evm:t.contract}}}
+      else if(id){if(t.xstock)state.mints[id]=t.mint;if(PRICES[id])PRICES[id][W-1]=t.eur}
+      else{id='m_'+t.mint;state.custom[id]={name:t.name,sym:t.sym,cls:STABLE.has(t.mint)?'cash':'crypto',current:t.eur,mint:t.mint}}
+      state.tx.push({id:uid(),a:id,type:'buy',date,qty:t.qty,price:+px.toPrecision(8),fee:0,reason:'',src:E?'eth':'wallet'});n++});
     state.onboarded=true;save();assetOptions('fAsset');render();closeSheet();if(n)toast(n===1?'Προστέθηκε 1 asset.':`Προστέθηκαν ${n} assets.`);
     if(!$('onb').hidden)renderOnb();
     return;
@@ -188,11 +246,13 @@ document.addEventListener('keydown',e=>{
 document.addEventListener('click',e=>{if(e.target.closest('[data-pro]'))openSheet('info')});
 $('btnWallet').addEventListener('click',()=>{if(wallet){openSheet('done');checkWallet(false)}else openSheet('pick')});
 $('btnImport').addEventListener('click',()=>{if(!wallet)return openSheet('pick');if(!isPro())return openSheet('info');flow.imp=null;openSheet('import')});
+function openEth(){if(PLAY)return;if(!isPro())return openSheet('info');flow.eth=null;openSheet('eth')}
+$('btnImportEth').addEventListener('click',openEth);
 function renderWallet(){
   const b=$('btnWallet'),pro=isPro();
   b.classList.toggle('on',!!wallet);
   b.innerHTML=wallet?(pro?'<span class="probadge">PRO</span>':'')+`<span class="num">${short(wallet.addr)}</span>`:'Σύνδεση wallet';
-  $('btnImport').innerHTML='Εισαγωγή από wallet'+(pro?'':LOCK);
+  $('btnImport').innerHTML='Εισαγωγή από Solana wallet'+(pro?'':LOCK);$('btnImportEth').innerHTML='Εισαγωγή από Ethereum'+(pro?'':LOCK);$('btnImportEth').hidden=PLAY;
   [...$('segBench').children].forEach(x=>{const lock=x.dataset.v!=='SPY'&&!pro;x.innerHTML=esc(x.dataset.n)+(lock?LOCK:'')});
   if(!pro&&ui.bench!=='SPY'){ui.bench='SPY';[...$('segBench').children].forEach(x=>x.setAttribute('aria-pressed',x.dataset.v==='SPY'))}
 }
@@ -258,9 +318,9 @@ $('btnSample').addEventListener('click',()=>{state=sample();save();targetBuilt=f
 $('btnClear').addEventListener('click',e=>{const b=e.currentTarget;
   if(!b.classList.contains('danger')){b.classList.add('danger');b.textContent='Σίγουρα; Διαγράφονται όλα';setTimeout(()=>{if(b.isConnected){b.classList.remove('danger');b.textContent='Διαγραφή όλων των στοιχείων'}},4000);return}
   b.classList.remove('danger');b.textContent='Διαγραφή όλων των στοιχείων';
-  state={sample:false,onboarded:false,custom:{},mints:{},tx:[]};save();LS.del(PKEY);plan={goal:null,monthly:null,years:15,fee:.3,ass:'0',real:'1',target:null,next:null,exp:'',res:'',inc:'',vr:'',debt:'',tol:'30',b:null,bShow:true};targetBuilt=false;
+  state={sample:false,onboarded:false,custom:{},mints:{},tx:[]};save();LS.del(PKEY);LS.del(EKEY);LS.del(GKEY);plan={goal:null,monthly:null,years:15,fee:.3,ass:'0',real:'1',target:null,next:null,exp:'',res:'',inc:'',vr:'',debt:'',tol:'30',b:null,bShow:true};targetBuilt=false;
   assetOptions('fAsset');render();openOnb()});
-$('btnGuide').addEventListener('click',openOnb);
+$('btnGuide').addEventListener('click',()=>{LS.del(GKEY);openOnb()});
 document.querySelectorAll('[data-lang]').forEach(b=>{b.setAttribute('aria-pressed',b.dataset.lang===LANG);b.addEventListener('click',()=>{if(b.dataset.lang===LANG)return;LS.set('vestora-lang',b.dataset.lang);location.reload()})});
 $('bannerGo').addEventListener('click',()=>{state={sample:false,onboarded:false,custom:{},mints:{},tx:[]};save();plan.target=null;targetBuilt=false;render();openOnb()});
 function renderBanner(){$('banner').hidden=!state.sample}
@@ -283,13 +343,17 @@ function renderOnb(){
     ${mine?'<p class="muted small">Ό,τι προσθέσεις στον οδηγό μπαίνει μαζί με όσα έχεις ήδη. Δεν σβήνεται τίποτα.</p>':''}
     <div class="onbbtns"><button class="btn primary" type="button" data-o="next">Ξεκίνα</button>${mine?'':'<button class="btn" type="button" data-o="sample">Δες ένα παράδειγμα</button><button class="btn ghost" type="button" data-o="restore">Έχω αντίγραφο ασφαλείας</button>'}${mine?'<button class="btn ghost" type="button" data-o="close">Κλείσιμο</button>':''}</div>`;return}
   if(s===1){
-    const imp=state.tx.filter(t=>t.src==='wallet').length;
-    box.innerHTML=`<h2>Τι έχεις σήμερα;</h2><p class="muted">Βάλε την αξία που έχει σήμερα κάθε επένδυση, όσο περίπου. Αργότερα, στις συναλλαγές, μπορείς να βάλεις πότε και σε ποια τιμή αγόρασες, για ακριβή απόδοση.</p>
+    const have=mine&&D?D.hold.length:0,lk=isPro()?'':LOCK;
+    box.innerHTML=`<h2>Τι έχεις σήμερα;</h2><p class="muted">Πρόσθεσε ό,τι έχεις με όποιον τρόπο σε βολεύει. Μπορείς να τους συνδυάσεις.</p>
+    ${have?`<div class="verdict ok">${have===1?'Έχει προστεθεί 1 θέση':`Έχουν προστεθεί ${have} θέσεις`}, συνολικής αξίας <span class="num">${eur.format(D.end)}</span>.</div>`:''}
+    ${PLAY?'':`<h3 class="sub">Αυτόματα, από το blockchain</h3><div class="opts">
+      <button class="opt" type="button" data-o="wallet"><span class="ic" style="background:var(--c-crypto)" aria-hidden="true">S</span><span><b>Solana wallet${lk}</b><small>Σύνδεση wallet. Μπαίνουν tokens και xStocks. Μόνο ανάγνωση, χωρίς υπογραφές.</small></span></button>
+      <button class="opt" type="button" data-o="eth"><span class="ic" style="background:var(--c-stock)" aria-hidden="true">E</span><span><b>Διεύθυνση Ethereum${lk}</b><small>Επικολλάς τη δημόσια διεύθυνση. Χωρίς σύνδεση wallet, μόνο ανάγνωση.</small></span></button></div>`}
+    <h3 class="sub">${PLAY?'Οι επενδύσεις σου':'Με το χέρι'}</h3><p class="muted small">Μετοχές, ETF, crypto σε ανταλλακτήριο, καταθέσεις, ακίνητα. Βάλε την αξία που έχει σήμερα το καθένα, όσο περίπου. Αργότερα, στις συναλλαγές, μπορείς να βάλεις πότε και σε ποια τιμή αγόρασες, για ακριβή απόδοση.</p>
     <div class="obrows">${onb.rows.map((r,i)=>`<div class="obrow">${onbAssetSelect(i,r)}${r.a==='__new'?`<input id="ob_n${i}" data-i="${i}" data-k="name" placeholder="π.χ. Διαμέρισμα" value="${esc(r.name)}" aria-label="Όνομα">`:''}<input id="ob_v${i}" data-i="${i}" data-k="v" type="number" min="0" step="10" inputmode="decimal" placeholder="Αξία σήμερα €" value="${esc(r.v)}" aria-label="Αξία σήμερα σε ευρώ">${onb.rows.length>1?`<button class="x" type="button" data-o="rm" data-i="${i}" aria-label="Αφαίρεση">×</button>`:''}</div>`).join('')}</div>
     <button class="btn" type="button" data-o="add">+ Άλλη μία</button>
-    ${PLAY?'':`<div class="rule"><b>Έχεις Solana wallet;</b><span>Σύνδεσέ το για να μπουν αυτόματα τα tokens και τα xStocks. Μόνο ανάγνωση, χωρίς υπογραφές.${imp?` <b>Έχουν προστεθεί ${imp} assets από το wallet.</b>`:''}</span><div><button class="btn" type="button" data-o="wallet">${wallet?(isPro()?'Εισαγωγή από wallet':'Κατάσταση wallet'):'Σύνδεση wallet'}</button></div></div>`}
     <p class="neg small" id="obMsg" role="status"></p>
-    <div class="onbbtns"><button class="btn primary" type="button" data-o="next">Συνέχεια</button><button class="btn ghost" type="button" data-o="skip">Δεν έχω ακόμα επενδύσεις</button></div>`;return}
+    <div class="onbbtns"><button class="btn primary" type="button" data-o="next">Συνέχεια</button>${have?'':'<button class="btn ghost" type="button" data-o="skip">Δεν έχω ακόμα επενδύσεις</button>'}</div>`;return}
   if(s===2){box.innerHTML=`<h2>Πόσα μπορείς να βάζεις τον μήνα;</h2><p class="muted">Το ποσό που μπορείς να επενδύεις σταθερά, χωρίς να πιεστείς. Μπορεί να είναι και 0.</p>
     <div class="f"><label for="ob_m">Μηνιαία καταβολή €</label><input id="ob_m" data-k="monthly" type="number" min="0" step="10" inputmode="numeric" value="${esc(onb.monthly)}" placeholder="π.χ. 150"></div>
     <div class="chips">${[50,100,200,300,500].map(v=>`<button type="button" data-o="setm" data-v="${v}">${v} €</button>`).join('')}</div>
@@ -312,6 +376,7 @@ $('onbBody').addEventListener('click',e=>{const b=e.target.closest('[data-o]');i
   if(o==='add'){onb.rows.push({a:'',v:'',name:''});renderOnb();$('ob_a'+(onb.rows.length-1))?.focus();return}
   if(o==='rm'){onb.rows.splice(+b.dataset.i,1);renderOnb();return}
   if(o==='wallet'){if(!wallet)openSheet('pick');else if(isPro()){flow.imp=null;openSheet('import')}else openSheet('done');return}
+  if(o==='eth'){openEth();return}
   if(o==='setm'){onb.monthly=b.dataset.v;renderOnb();return}
   if(o==='tol'){onb.tol=b.dataset.v;renderOnb();return}
   if(o==='back'){onb.step=Math.max(0,onb.step-1);renderOnb();return}
@@ -331,8 +396,45 @@ function finishOnb(){
     else{const p=nowPrice(r.a);if(!(p>0))continue;state.tx.push({id:uid(),a:r.a,type:'buy',date,qty:+(v/p).toPrecision(8),price:+p.toPrecision(8),fee:0,reason:''})}}
   state.onboarded=true;save();
   plan.monthly=+onb.monthly||0;plan.years=+onb.years||15;plan.goal=+onb.goal||plan.goal||50000;plan.tol=onb.tol;plan.target=null;plan.next=null;plan.b=null;targetBuilt=false;savePlan();
-  $('onb').hidden=true;assetOptions('fAsset');render();go('plan');toast('Το πλάνο σου είναι έτοιμο. Μπορείς να αλλάξεις ό,τι θέλεις.');
+  LS.del(GKEY);$('onb').hidden=true;assetOptions('fAsset');render();go('home');toast('Έτοιμο. Δες παρακάτω τι δείχνουν τα στοιχεία σου και το πλάνο σου.');
 }
+
+/* ---------- "three steps" card on the summary: what you have, what it shows, your plan ---------- */
+const GKEY='vestora-guide-off';
+function renderGuide(D){
+  const box=$('guide');if(!box)return;
+  if(state.sample||LS.get(GKEY)==='1'){box.hidden=true;return}
+  box.hidden=false;
+  const step=(n,done,title,body)=>`<li class="${done?'done':''}"><span class="n" aria-hidden="true">${done?'✓':n}</span><div><b>${title}</b>${body}</div></li>`;
+  let h;
+  if(!D||!D.hold.length){
+    h=step(1,false,'Πρόσθεσε ό,τι έχεις',`<p>${PLAY?'Μετοχές, ETF, crypto, καταθέσεις, ακίνητα: βάζεις την αξία που έχουν σήμερα.':'Από Solana wallet, από διεύθυνση Ethereum ή με το χέρι.'}</p><div class="gbtns"><button class="btn primary" type="button" data-g="add">Πρόσθεσε τώρα</button></div>`)
+     +step(2,false,'Δες τι δείχνουν τα στοιχεία σου','<p class="muted">Εμφανίζεται μόλις προσθέσεις θέσεις.</p>')
+     +step(3,false,'Δούλεψε το πλάνο σου','<p class="muted">Στόχος, μηνιαία καταβολή και τι χρειάζεται.</p>');
+  }else{
+    const top=D.hold[0],w=toW(curAlloc(D)),st=stressCalc(D,'all'),dd=Math.max(0,-st.pct),tol=(+plan.tol||30)/100;
+    const mix=PK.filter(k=>w[k]>=.005).sort((a,b)=>w[b]-w[a]).map(k=>`${PC[k].n} <span class="num">${nf(0).format(w[k]*100)}%</span>`).join(', ');
+    const R=lastProj;
+    h=step(1,true,D.hold.length===1?'Έχεις 1 θέση':`Έχεις ${D.hold.length} θέσεις`,`<p>Συνολική αξία <span class="num">${eur.format(D.end)}</span>. Αν λείπει κάτι, πρόσθεσέ το για να είναι σωστή η εικόνα.</p><div class="gbtns"><button class="btn" type="button" data-g="add">Πρόσθεσε κι άλλα</button></div>`)
+     +step(2,true,'Τι δείχνουν τα στοιχεία σου',`<ul>
+        <li>Μεγαλύτερη θέση: ${esc(meta(top.a).name)}, <span class="num">${nf(0).format(top.wt*100)}%</span> του συνόλου${top.wt>=.4&&D.hold.length>1?'. Το αποτέλεσμά σου εξαρτάται κυρίως από αυτήν':''}.</li>
+        <li>Κατανομή: ${mix}.</li>
+        <li>Στο σενάριο πτώσης «Όλα μαζί» η αξία πέφτει περίπου <span class="num">${nf(0).format(dd*100)}%</span> (<span class="num">${eur.format(st.tot)}</span>). Δήλωσες ότι αντέχεις έως <span class="num">−${nf(0).format(tol*100)}%</span>: ${dd<=tol?'<b class="pos">μέσα στο όριό σου</b>':'<b class="neg">πάνω από το όριό σου</b>'}.</li></ul>
+        <div class="gbtns"><button class="btn" type="button" data-g="ins">Όλες οι παρατηρήσεις</button><button class="btn" type="button" data-g="risk">Σενάρια πτώσης</button></div>`)
+     +step(3,false,'Δούλεψε το πλάνο σου',(R?`<p><span class="num">${eur.format(R.args.monthly)}</span> τον μήνα για ${R.args.years} χρόνια. Στόχος <span class="num">${eur.format(R.args.goal)}</span>: πιάνεται σε <b class="num">${Math.round(R.hit*100)} από τα 100</b> σενάρια.</p>`:'')+`<div class="gbtns"><button class="btn primary" type="button" data-g="plan">Άνοιξε το πλάνο</button></div>`);
+  }
+  box.innerHTML=`<div class="phead"><div><h2>Τα 3 βήματα</h2><div class="muted small">Τι έχεις, τι δείχνει, πώς συνεχίζεις</div></div><button class="x" type="button" data-g="hide" aria-label="Απόκρυψη">×</button></div><ol class="gsteps">${h}</ol>`;
+}
+$('guide').addEventListener('click',e=>{const b=e.target.closest('[data-g]');if(!b)return;const g=b.dataset.g;
+  if(g==='hide'){LS.set(GKEY,'1');renderGuide(D);toast('Ο οδηγός κρύφτηκε. Τον ξαναβρίσκεις στις Συναλλαγές, «Οδηγός ξεκινήματος».');return}
+  if(g==='add'){openOnb();onb.step=1;renderOnb();return}
+  if(g==='ins'){document.querySelector('#insights').closest('.panel').scrollIntoView({block:'start',behavior:'smooth'});return}
+  if(g==='risk')return go('risk');
+  if(g==='plan')return go('plan')});
+$('planHow').addEventListener('click',e=>{const b=e.target.closest('[data-h]');if(!b)return;
+  if(b.dataset.h==='tx'){go('tx');setTimeout(()=>$('fAsset').focus(),60)}
+  else if(b.dataset.h==='next'){const m=$('planMore');m.open=true;$('nAmt').scrollIntoView({block:'center',behavior:'smooth'})}
+  else if(b.dataset.h==='risk')go('risk')});
 
 /* ---------- views (bottom tabs) ---------- */
 const VIEWS=['home','plan','risk','tx'];
@@ -370,7 +472,7 @@ function renderPriceNote(){
   $('priceNote').innerHTML=`Τιμές: κλείσιμο ${longDate(iso(u))}${liveAt?', ζωντανές για crypto και xStocks':''}.${age>4?' <b class="neg">Οι τιμές δεν έχουν ενημερωθεί για μερικές μέρες.</b>':''}`;
 }
 
-function render(){renderWallet();D=compute();renderSummary(D);renderChart(D);renderStory(D);renderHoldings(D);renderInsights(D);renderPlan(D);renderStress(D);renderJournal();renderTx();renderBanner();renderPriceNote();renderBackupNote()}
+function render(){renderWallet();D=compute();renderSummary(D);renderChart(D);renderStory(D);renderHoldings(D);renderInsights(D);renderPlan(D);renderGuide(D);renderStress(D);renderJournal();renderTx();renderBanner();renderPriceNote();renderBackupNote()}
 const redraw=()=>{if(!W)return;renderChart(D);if(lastProj)drawProj(lastProj,plan.bShow!==false?lastB:null)};
 let rt;const ro=new ResizeObserver(()=>{clearTimeout(rt);rt=setTimeout(redraw,80)});ro.observe($('chartbox'));ro.observe($('projBox'));
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',redraw);

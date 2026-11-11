@@ -71,3 +71,23 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .play #btnWallet,.play #btnImport,.play .wallet-only{display:none!important}
 .langs .btn[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
 .overlay{z-index:40}
+
+/* three-step card and plain plan steps */
+.guide .phead{align-items:flex-start}
+.gsteps{list-style:none;margin:0;padding:0;display:grid;gap:14px}
+.gsteps>li{display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;align-items:start}
+.gsteps .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;border:1.5px solid var(--accent);color:var(--accent)}
+.gsteps li.done>.n{background:var(--accent);color:var(--surface)}
+.gsteps b{font-size:15px}
+.gsteps p{margin:4px 0 0;font-size:14px}
+.gsteps ul{margin:6px 0 0;padding-left:18px;display:grid;gap:4px;font-size:14px}
+.gbtns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.howbox{border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;padding:14px 16px;margin-bottom:18px}
+.howlead{margin:0 0 10px;font-size:15px}
+ol.how{margin:0;padding-left:20px;display:grid;gap:8px;font-size:14px}
+.lnk{border:0;background:none;padding:0;color:var(--accent);font:inherit;font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+details.more{margin-top:18px;border-top:1px solid var(--line);padding-top:14px}
+details.more>summary{cursor:pointer;color:var(--accent);font-weight:600;font-size:14px}
+details.more[open]>summary{margin-bottom:16px}
+.opt .ic[style]{color:#fff}
+.opt .lk{margin-left:6px;vertical-align:-1px}

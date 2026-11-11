@@ -72,7 +72,23 @@ function renderPlan(D){
   lastProj=R0;
   lastNeed=renderNeed(R0);renderTol(R0);lastB=renderPlanB(R0);drawProj(R0,plan.bShow!==false?lastB:null);
   $('projAssume').textContent=`Παραδοχές (${ASSN[plan.ass]}): ετήσια απόδοση μετοχών ${nf(0).format((PC.eq.mu+ +plan.ass)*100)}%, crypto ${nf(0).format((PC.crypto.mu+ +plan.ass)*100)}%, καταθέσεων 2%, με διακυμάνσεις αντίστοιχες κάθε κατηγορίας. Εφαρμόζονται ${targetValid()?'στην κατανομή-στόχο σου':'στη σημερινή σου κατανομή'}: αναμενόμενη απόδοση ${nf(1).format(R0.mu*100)}% και διακύμανση ${nf(0).format(R0.s*100)}% τον χρόνο. 400 προσομοιωμένες πορείες, καταβολή στο τέλος κάθε μήνα, χωρίς φόρους.${real?' Τα ποσά είναι σε σημερινά ευρώ, με πληθωρισμό 2,5%.':''} Δεν είναι πρόβλεψη: οι πραγματικές αποδόσεις μπορεί να βγουν έξω από το εύρος.`;
-  renderTarget();renderNext();lastRes=renderReserve();
+  renderTarget();renderNext();lastRes=renderReserve();renderHow(R0);
+}
+/* The plan in plain steps: what to do every month, before and after each contribution, and when the market falls. It describes; it does not recommend assets. */
+function renderHow(R0){
+  const a=R0.args,m50=lastNeed?lastNeed.μηνιαία_για_50_στα_100:null,tol=+plan.tol||30;
+  const st=D&&D.hold.length?stressCalc(D,'all'):null,dd=st?Math.max(0,-st.pct)*100:null;
+  const goalLine=!(a.goal>0)?'':m50==null?' Με αυτά τα χρόνια ο στόχος δεν πιάνεται στα μισά σενάρια όσο κι αν ανέβει η καταβολή: δες τα χρόνια ή τον στόχο.'
+    :m50<=a.monthly?' Με αυτή την καταβολή ο στόχος πιάνεται ήδη τουλάχιστον στα μισά σενάρια.':` Για να πιάνεται ο στόχος στα μισά σενάρια χρειάζονται περίπου <b class="num">${eur.format(m50)}</b> τον μήνα.`;
+  $('planHow').innerHTML=`<h3 class="sub">Πώς το δουλεύεις</h3>
+   <p class="howlead">Με <b class="num">${eur.format(a.monthly)}</b> τον μήνα για <b>${a.years} χρόνια</b>, το μεσαίο σενάριο δίνει <b class="num">${eur.format(R0.last.p50)}</b>${a.goal>0?` και ο στόχος των <span class="num">${eur.format(a.goal)}</span> πιάνεται σε <b class="num">${Math.round(R0.hit*100)} από τα 100</b> σενάρια`:''}.</p>
+   <ol class="how">
+    <li><b>Κάθε μήνα</b> βάζεις <span class="num">${eur.format(a.monthly)}</span>.${goalLine}</li>
+    <li><b>Πριν από κάθε καταβολή</b> βλέπεις πώς αλλάζει η κατανομή και η έκθεσή σου με κάθε επιλογή. <button class="lnk" type="button" data-h="next">Έλεγχος νέας καταβολής</button></li>
+    <li><b>Μετά από κάθε αγορά</b> την καταγράφεις, για να μένουν σωστά η αξία και η απόδοση. <button class="lnk" type="button" data-h="tx">+ Συναλλαγή</button></li>
+    <li><b>Όταν η αγορά πέφτει</b> θυμάσαι το όριο που δήλωσες: έως <span class="num">−${tol}%</span>.${dd!=null?` Στο σενάριο «Όλα μαζί» το σημερινό χαρτοφυλάκιο πέφτει περίπου <span class="num">${nf(0).format(dd)}%</span>, ${dd<=tol?'μέσα στο όριό σου':'πάνω από το όριό σου'}.`:''} <button class="lnk" type="button" data-h="risk">Σενάρια πτώσης</button></li>
+    <li><b>Μία φορά τον χρόνο</b> ξαναβλέπεις στόχο, καταβολή και χρόνια, και κρατάς αντίγραφο ασφαλείας.</li>
+   </ol>`;
 }
 function drawProj(R0,RB){
   const svg=$('projChart'),box=$('projBox');const cw=Math.max(280,box.clientWidth),ch=cw<560?220:260;

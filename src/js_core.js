@@ -46,10 +46,21 @@ function applyData(d){
    Known assets: the live price must stay within a day's plausible move of the daily closing file.
    Other tokens: a refresh may not jump more than 5x from the stored price, and thin markets are marked "uncertain". */
 const MIN_LIQ=10000,MIN_VOL=1000;
+/* where a price came from and how fresh it is, shown under each holding */
+function when(t){if(!t)return'';const d=Date.now()-t,m=Math.round(d/6e4),x=new Date(t),hm=String(x.getHours()).padStart(2,'0')+':'+String(x.getMinutes()).padStart(2,'0');
+  if(m<2)return 'τώρα';if(m<60)return 'πριν '+m+' λεπ.';if(new Date().toDateString()===x.toDateString())return 'σήμερα '+hm;
+  return x.getDate()+' '+MONTHS[x.getMonth()]+' '+hm}
+function priceSrc(a){
+  const A=ASSETS[a],c=state.custom[a];
+  if(A){if(A.fixed)return '';if(A.live&&A.at)return 'Jupiter · '+when(A.at);const t=DATA?.assets?.[a]?.lastTime;return 'κλείσιμο '+(t?when(t*1000):'')}
+  if(!c)return '';
+  const src=c.man?'δική σου τιμή':c.usdv?'αξία εισαγωγής':c.hl?'Hyperliquid':c.evm?'DefiLlama':c.mint?'Jupiter':'δική σου τιμή';
+  return src+(c.at?' · '+when(c.at):'');
+}
 function okLive(k,e){const b=DATA?.assets?.[k]?.last;if(!(b>0))return true;const lim=ASSETS[k]?.cls==='crypto'?1.35:1.25;return Math.max(e/b,b/e)<=lim}
 function setCustom(k,e,unc){const c=state.custom[k];if(!c)return false;const old=+c.current||0;
   if(old>0&&Math.max(e/old,old/e)>5){c.unc=true;console.warn('price jump ignored',k,old,e);return true}
-  c.current=e;c.unc=!!unc;return true}
+  c.current=e;c.unc=!!unc;c.at=Date.now();delete c.man;return true}
 async function livePrices(){
   if(!DATA)return;
   const ids={...MINT,...(state.mints||{})};
@@ -62,7 +73,7 @@ async function livePrices(){
     for(const [k,m] of Object.entries(ids)){
       const q=out[m],p=q?.usdPrice;if(!(p>0))continue;const e=p/FXL,thin=q.liquidity!=null&&+q.liquidity<MIN_LIQ;
       if(k==='SKR'){skrEur=e;continue}
-      if(PRICES[k]){if(!okLive(k,e)){console.warn('live price out of range',k,e);ASSETS[k].live=false;continue}PRICES[k][W-1]=e;ASSETS[k].live=true;changed=true}
+      if(PRICES[k]){if(!okLive(k,e)){console.warn('live price out of range',k,e);ASSETS[k].live=false;continue}PRICES[k][W-1]=e;ASSETS[k].live=true;ASSETS[k].at=Date.now();changed=true}
       else if(setCustom(k,e,thin))changed=true
     }
     liveAt=Date.now();if(changed){save();render()}else renderPriceNote();
@@ -443,7 +454,7 @@ function renderHoldings(D){
     `<text x="80" y="76" text-anchor="middle" class="dv num">${eurShort(D.end)}</text><text x="80" y="96" text-anchor="middle" class="dl">${cls.length===1?'1 κατηγορία':cls.length+' κατηγορίες'}</text>`;
   $('alegend').innerHTML=cls.map(([c,w])=>`<button type="button" class="arow" data-c="${c}"><i class="dot" style="background:var(--c-${c})"></i><span class="an">${CLS[c]}</span><b class="num">${nf(0).format(w*100)}%</b><small class="num">${eur.format(val[c])}</small></button>`).join('');
   $('holdings').innerHTML=`<thead><tr><th>Στοιχείο</th><th>Ποσότητα</th><th>Μέση τιμή</th><th>Τρέχουσα</th><th>Αξία</th><th>Κέρδος</th><th>Βάρος</th></tr></thead><tbody>`+
-  D.hold.map(h=>{const m=meta(h.a),manual=m.custom&&!state.custom[h.a]?.mint;return `<tr><td><div class="an">${esc(m.name)}</div><div class="ac">${m.sym&&!m.custom?esc(m.sym)+' · ':''}${CLS[m.cls]}${ASSETS[h.a]?.live?' · ζωντανή τιμή':''}${state.custom[h.a]?.unc?' · <span class="neg">αβέβαιη τιμή</span>':''}</div></td>
+  D.hold.map(h=>{const m=meta(h.a),manual=m.custom&&!state.custom[h.a]?.mint;return `<tr><td><div class="an">${esc(m.name)}</div><div class="ac">${m.sym&&!m.custom?esc(m.sym)+' · ':''}${CLS[m.cls]}${(x=>x?' · '+x:'')(priceSrc(h.a))}${state.custom[h.a]?.unc?' · <span class="neg">αβέβαιη τιμή</span>':''}</div></td>
   <td class="num">${nf(h.qty<1?4:2).format(h.qty)}</td><td class="num">${price(h.avg)}</td><td class="num">${price(h.now)}${manual?`<div><button class="del edit" type="button" data-price="${esc(h.a)}">Αλλαγή τιμής</button></div>`:''}</td><td class="num">${eur.format(h.val)}</td>
   <td class="num ${sgn(h.pl)}">${(h.pl>0?'+':'')+eur.format(h.pl)}<div class="ac ${sgn(h.pl)}">${pct(h.plp)}</div></td>
   <td class="num">${nf(0).format(h.wt*100)}%<span class="wbar"><b style="width:${h.wt*100}%"></b></span></td></tr>`}).join('')+'</tbody>';

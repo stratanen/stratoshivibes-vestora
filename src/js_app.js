@@ -283,9 +283,9 @@ $('sheet').addEventListener('click',async e=>{
     if(state.sample)state={sample:false,onboarded:true,custom:{},mints:{},tx:[]};
     const E=flow.imp.src==='eth';
     $('sheet').querySelectorAll('.imp input:checked').forEach(c=>{const t=flow.imp.list[+c.dataset.i];let id=t.id,px=t.eur;
-      if(E){if(id)px=nowPrice(id)||t.eur;else if(t.hlKey){id='h_'+t.hlKey;state.custom[id]={name:t.name,sym:t.sym,cls:t.cls,current:t.eur,unc:!!t.unc,...(t.hl?{hl:t.hl}:{usdv:1})}}else{id='e_'+t.contract;state.custom[id]={name:t.name,sym:t.sym,cls:t.cls,current:t.eur,unc:!!t.unc,evm:t.contract}}}
+      if(E){if(id)px=nowPrice(id)||t.eur;else if(t.hlKey){id='h_'+t.hlKey;state.custom[id]={name:t.name,sym:t.sym,cls:t.cls,current:t.eur,unc:!!t.unc,at:Date.now(),...(t.hl?{hl:t.hl}:{usdv:1})}}else{id='e_'+t.contract;state.custom[id]={name:t.name,sym:t.sym,cls:t.cls,current:t.eur,unc:!!t.unc,at:Date.now(),evm:t.contract}}}
       else if(id){if(t.xstock)state.mints[id]=t.mint;if(PRICES[id])PRICES[id][W-1]=t.eur}
-      else{id='m_'+t.mint+(t.staked?'_st':'');state.custom[id]={name:t.name,sym:t.sym,cls:STABLE.has(t.mint)?'cash':'crypto',current:t.eur,unc:!!t.unc,mint:t.mint}}
+      else{id='m_'+t.mint+(t.staked?'_st':'');state.custom[id]={name:t.name,sym:t.sym,cls:STABLE.has(t.mint)?'cash':'crypto',current:t.eur,unc:!!t.unc,at:Date.now(),mint:t.mint}}
       /* a repeat import only brings the quantity in line with the wallet: it adds (or sells) the difference from what earlier imports from this source added */
       const src=E?'eth':'wallet',had=state.tx.filter(x=>x.a===id&&x.src===src&&x.type!=='div').reduce((q,x)=>q+(x.type==='sell'?-x.qty:x.qty),0),d=t.qty-had;
       if(Math.abs(d)<=Math.max(1e-9,t.qty*1e-6))return;
@@ -295,7 +295,7 @@ $('sheet').addEventListener('click',async e=>{
     return;
   }
   if(a==='setprice'){const v=parseFloat($('pxNew').value);if(!(v>=0)){$('pxMsg').textContent='Βάλε μια τιμή 0 ή μεγαλύτερη.';return}
-    const c=state.custom[flow.arg];c.current=v;c.cls=$('pxCls').value;save();render();closeSheet();toast('Η τιμή ενημερώθηκε.',1)}
+    const c=state.custom[flow.arg];c.current=v;c.cls=$('pxCls').value;c.at=Date.now();c.man=1;c.unc=false;save();render();closeSheet();toast('Η τιμή ενημερώθηκε.',1)}
 });
 $('overlay').addEventListener('click',e=>{if(e.target.id==='overlay')closeSheet()});
 document.addEventListener('keydown',e=>{

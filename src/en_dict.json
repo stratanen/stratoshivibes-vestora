@@ -577,7 +577,14 @@
 "Δεν θα διπλασιαστεί τίποτα: οι ποσότητες θα ενημερωθούν ώστε να ταιριάζουν με το wallet.</div>": "Nothing will be doubled: quantities will be updated to match the wallet.</div>",
 "Ενημερώθηκαν": "Updated",
 " · <span class=\"neg\">αβέβαιη τιμή</span>": " · <span class=\"neg\">uncertain price</span>",
-"<p class=\"muted small\">Όσα γράφουν «αβέβαιη τιμή» έχουν πολύ μικρή αγορά, οπότε η τιμή τους μπορεί να μην ισχύει στην πράξη. Γι' αυτό δεν είναι επιλεγμένα. Πολλά τέτοια tokens είναι spam που στάλθηκε χωρίς να το ζητήσεις.</p>": "<p class=\"muted small\">Items marked “uncertain price” trade in a very thin market, so their price may not hold in practice. That is why they are not selected. Many such tokens are spam sent without being asked for.</p>"
+"<p class=\"muted small\">Όσα γράφουν «αβέβαιη τιμή» έχουν πολύ μικρή αγορά, οπότε η τιμή τους μπορεί να μην ισχύει στην πράξη. Γι' αυτό δεν είναι επιλεγμένα. Πολλά τέτοια tokens είναι spam που στάλθηκε χωρίς να το ζητήσεις.</p>": "<p class=\"muted small\">Items marked “uncertain price” trade in a very thin market, so their price may not hold in practice. That is why they are not selected. Many such tokens are spam sent without being asked for.</p>",
+"τώρα": "just now",
+"πριν ": "",
+" λεπ.": " min ago",
+"σήμερα ": "today ",
+"κλείσιμο ": "close ",
+"δική σου τιμή": "your price",
+"αξία εισαγωγής": "value at import"
 },
 "html": {
 "Φορτώνουν οι τιμές…": "Loading prices…",

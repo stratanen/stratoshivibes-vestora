@@ -571,7 +571,11 @@
 "<br><small class=\"muted\">Το SKR σε staking δεν διαβάστηκε. Πάτα ανανέωση.</small>": "<br><small class=\"muted\">Staked SKR could not be read. Tap refresh.</small>",
 "<p class=\"muted\">Η ανάγνωση είναι μόνο για προβολή. Φαίνονται το ETH και τα tokens του Ethereum mainnet που έχουν τιμή αγοράς, και στο Hyperliquid τα spot υπόλοιπα, το HYPE σε staking, η αξία του λογαριασμού perps και τα vaults. Τα perps και τα vaults μπαίνουν με την αξία τους σε δολάρια σήμερα και δεν ενημερώνονται μόνα τους. Ό,τι έχεις σε άλλα δίκτυα (Arbitrum, Base κ.ά.) ή μέσα σε άλλα πρωτόκολλα δεν φαίνεται εδώ: πρόσθεσέ το χειροκίνητα.</p>": "<p class=\"muted\">Reading is view-only. It shows ETH and the Ethereum mainnet tokens that have a market price, plus on Hyperliquid your spot balances, staked HYPE, the perps account value and vaults. Perps and vaults are added at today's dollar value and do not update on their own. Anything on other networks (Arbitrum, Base and so on) or inside other protocols does not show here: add it by hand.</p>",
 "<p class=\"neg small\">Το Hyperliquid δεν απάντησε αυτή τη φορά.</p>": "<p class=\"neg small\">Hyperliquid did not respond this time.</p>",
-"<p class=\"muted small\">Στο Hyperliquid δεν βρέθηκαν υπόλοιπα για αυτή τη διεύθυνση.</p>": "<p class=\"muted small\">No balances were found on Hyperliquid for this address.</p>"
+"<p class=\"muted small\">Στο Hyperliquid δεν βρέθηκαν υπόλοιπα για αυτή τη διεύθυνση.</p>": "<p class=\"muted small\">No balances were found on Hyperliquid for this address.</p>",
+"Όλα ήταν ήδη ενημερωμένα.": "Everything was already up to date.",
+"Ενημερώθηκε 1 asset.": "1 asset updated.",
+"Δεν θα διπλασιαστεί τίποτα: οι ποσότητες θα ενημερωθούν ώστε να ταιριάζουν με το wallet.</div>": "Nothing will be doubled: quantities will be updated to match the wallet.</div>",
+"Ενημερώθηκαν": "Updated"
 },
 "html": {
 "Φορτώνουν οι τιμές…": "Loading prices…",

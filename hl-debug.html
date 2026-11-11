@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hyperliquid check</title>
+<meta name="robots" content="noindex">
+<style>
+:root{color-scheme:dark}body{background:#0f1214;color:#e8ecef;font:13px/1.4 system-ui,sans-serif;margin:0;padding:12px}
+input{width:100%;box-sizing:border-box;padding:8px;background:#1b2024;color:inherit;border:1px solid #333;border-radius:6px;font:inherit}
+button{margin:8px 0;padding:8px 14px;border-radius:6px;border:0;background:#4fd1a5;color:#000;font-weight:600}
+table{border-collapse:collapse;width:100%;margin-top:8px}td,th{border-bottom:1px solid #2a3035;padding:4px 3px;text-align:left;vertical-align:top}
+th{color:#9aa4ab;font-weight:500}.n{font-variant-numeric:tabular-nums;text-align:right}.bad{color:#ff7b7b}small{color:#9aa4ab}
+</style></head><body>
+<p>Έλεγχος τιμών Hyperliquid (μόνο ανάγνωση). Κάνε screenshot τον πίνακα και στείλ' τον.</p>
+<input id="a" placeholder="0x…"><button id="go">Έλεγχος</button><div id="out"></div>
+<script>
+const H='https://api.hyperliquid.xyz/info',$=id=>document.getElementById(id);
+const post=b=>fetch(H,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(r=>r.json());
+const q=new URLSearchParams(location.search).get('a');if(q)$('a').value=q;
+const f=x=>x==null?'—':(+x).toPrecision(4);
+$('go').onclick=async()=>{
+  const a=$('a').value.trim().toLowerCase();$('out').textContent='…';
+  try{
+    const [sp,[m,ctx]]=await Promise.all([post({type:'spotClearinghouseState',user:a}),post({type:'spotMetaAndAssetCtxs'})]);
+    const byCoin={};ctx.forEach((c,i)=>{byCoin[c.coin]=c});
+    let h='<table><tr><th>coin<br><small>token</small></th><th class="n">ποσότητα</th><th>market<br><small>θέση</small></th><th class="n">mark<br>mid<br>prev</th><th class="n">όγκος 24h</th><th class="n">αξία $<br><small>(min)</small></th></tr>';
+    for(const b of sp.balances||[]){
+      const pairs=m.universe.map((u,i)=>({u,i})).filter(x=>x.u.tokens[0]===b.token);
+      if(!pairs.length)h+=`<tr><td>${b.coin}<br><small>${b.token}</small></td><td class="n">${f(b.total)}</td><td colspan="4"><small>κανένα market</small></td></tr>`;
+      for(const {u,i} of pairs){const c=byCoin[u.name]||{},ci=ctx[i]||{};
+        const ps=[c.markPx,c.midPx,c.prevDayPx].map(Number).filter(x=>x>0),p=ps.length?Math.min(...ps):0,v=p*(+b.total||0);
+        h+=`<tr><td>${b.coin}<br><small>${b.token}</small></td><td class="n">${f(b.total)}</td><td>${u.name} q${u.tokens[1]}<br><small>#${i} · ctx[${i}]=${ci.coin||'?'}</small></td><td class="n">${f(c.markPx)}<br>${f(c.midPx)}<br>${f(c.prevDayPx)}</td><td class="n">${f(c.dayNtlVlm)}</td><td class="n ${v>1?'bad':''}">${f(v)}</td></tr>`}
+    }
+    $('out').innerHTML=h+'</table><p><small>ctx πρώτα: '+ctx.slice(0,3).map(c=>c.coin).join(', ')+' · universe πρώτα: '+m.universe.slice(0,3).map(u=>u.name).join(', ')+'</small></p>';
+  }catch(e){$('out').textContent='Σφάλμα: '+e.message}
+};
+if(q)$('go').click();
+</script></body></html>

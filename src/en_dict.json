@@ -589,7 +589,18 @@
 "Τρέχουσα": "Current",
 " <span class=\"muted small\">από εισαγωγή</span>": " <span class=\"muted small\">imported</span>",
 "Τιμή": "Price",
-"Προμήθεια": "Fee"
+"Προμήθεια": "Fee",
+"Κατάθεση με τόκο ": "Deposit at ",
+"Κατάθεση χωρίς τόκο": "Deposit, no interest",
+"κατάθεσης ": "deposit ",
+"κατάθεσης χωρίς τόκο": "deposit, no interest",
+"Ίδια ποσά σε ": "Same amounts in ",
+"κατάθεσης": "deposit",
+"Ίδια ποσά σε κατάθεση": "Same amounts in a deposit",
+"Κατάθεση": "Deposit",
+"%, καταθέσεων": "%, deposits",
+"%, με διακυμάνσεις αντίστοιχες κάθε κατηγορίας. Εφαρμόζονται": "%, with the swings typical of each class. Applied to",
+"Το επιτόκιο καταθέσεων ενημερώθηκε.": "Deposit interest updated."
 },
 "html": {
 "Φορτώνουν οι τιμές…": "Loading prices…",
@@ -720,6 +731,9 @@
 "Πτώσεις από την κορυφή": "Drops from the high",
 "Πόσο έπεσε από κάθε κορυφή": "How far it fell from each high",
 "Η απόσταση του χαρτοφυλακίου σου από την προηγούμενη υψηλότερη τιμή του, κάθε εβδομάδα": "How far your portfolio was below its previous high, week by week",
-"Γράφημα πτώσεων από την κορυφή": "Chart of drops from the high"
+"Γράφημα πτώσεων από την κορυφή": "Chart of drops from the high",
+"Κατάθεση": "Deposit",
+"Επιτόκιο καταθέσεων (% τον χρόνο)": "Deposit interest (% a year)",
+"Βάλε τον τόκο που σου δίνει η τράπεζά σου. Οι απλές καταθέσεις στις ελληνικές τράπεζες δίνουν 0%. Χρησιμοποιείται στη θέση «Κατάθεση», στη σύγκριση με κατάθεση και στο πλάνο.": "Enter the interest your bank pays you. Ordinary deposits at Greek banks pay 0%. It is used for the “Deposit” holding, the deposit comparison and the plan."
 }
 }

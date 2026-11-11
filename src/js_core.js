@@ -31,6 +31,21 @@ async function hlSpotPx(){
 }
 let liveAt=0;
 
+/* Deposit interest: set by the user in Settings (default 0%, what Greek banks pay on ordinary deposits).
+   It drives the "Deposit" asset, the deposit comparison and the plan's assumption for cash. */
+/* people who already recorded deposits before this setting existed were priced at 2%: they keep 2% until they change it */
+const depRate=()=>{if(!state)return 0;const v=state.depRate??(!state.sample&&state.tx?.some(t=>t.a==='DEP')?2:0);return Math.max(0,Math.min(20,+v||0))};
+function depName(){const r=depRate();return r>0?'Κατάθεση με τόκο '+nf(r<1?2:1).format(r)+'%':'Κατάθεση χωρίς τόκο'}
+function applyDep(){
+  const r=depRate()/100;
+  if(ASSETS.DEP){ASSETS.DEP.name=depName();ASSETS.DEP.fixed=r;if(W){PRICES.DEP=Array.from({length:W},(_,t)=>Math.pow(1+r,t/52));
+    /* a deposit has no market price: each deposit entry is re-based on the index at its own date, keeping the euros put in, so only interest since then counts as gain */
+    if(state&&state.tx)for(const t of state.tx)if(t.a==='DEP'&&t.type!=='div'){const w=toWeek(t.date),np=PRICES.DEP[w];if(!(np>0)||Math.abs(np-t.price)<1e-9)continue;const amt=t.qty*t.price;t.price=np;t.qty=amt/np}}}
+  const lbl=depName();BN.DEP=[r>0?'κατάθεσης '+nf(1).format(r*100)+'%':'κατάθεσης χωρίς τόκο','Ίδια ποσά σε '+lbl.toLowerCase(),lbl];
+  const b=document.querySelector('#segBench [data-v="DEP"]');if(b)b.dataset.n=lbl;
+  if(typeof PC!=='undefined')PC.cash.mu=r;
+  const i=document.getElementById('depRate');if(i&&document.activeElement!==i)i.value=depRate();
+}
 function applyData(d){
   DATA=d; W=d.weeks; START=Date.parse(d.start+'T00:00:00Z'); FXL=d.eurusdLast||d.eurusd[d.eurusd.length-1]||1.1;
   ASSETS={}; PRICES={};
@@ -39,8 +54,7 @@ function applyData(d){
     for(let i=0;i<w.length;i++){if(w[i]==null)w[i]=first;else first=w[i]}
     ASSETS[id]={name:LANG==='en'&&NAME_EN[id]||a.name,sym:id,cls:a.cls,usd:a.usd??1};PRICES[id]=w;
   }
-  ASSETS.DEP={name:'Κατάθεση με τόκο 2%',sym:'',cls:'cash',usd:0,fixed:.02};
-  PRICES.DEP=Array.from({length:W},(_,t)=>Math.pow(1.02,t/52));
+  ASSETS.DEP={name:'',sym:'',cls:'cash',usd:0,fixed:0};applyDep();
 }
 /* ---------- price guards: a live price is used only if it is believable ----------
    Known assets: the live price must stay within a day's plausible move of the daily closing file.
@@ -52,7 +66,7 @@ function when(t){if(!t)return'';const d=Date.now()-t,m=Math.round(d/6e4),x=new D
   return x.getDate()+' '+MONTHS[x.getMonth()]+' '+hm}
 function priceSrc(a){
   const A=ASSETS[a],c=state.custom[a];
-  if(A){if(A.fixed)return '';if(A.live&&A.at)return 'Jupiter · '+when(A.at);const t=DATA?.assets?.[a]?.lastTime;return 'κλείσιμο '+(t?when(t*1000):'')}
+  if(A){if(a==='DEP')return '';if(A.live&&A.at)return 'Jupiter · '+when(A.at);const t=DATA?.assets?.[a]?.lastTime;return 'κλείσιμο '+(t?when(t*1000):'')}
   if(!c)return '';
   const src=c.man?'δική σου τιμή':c.usdv?'αξία εισαγωγής':c.hl?'Hyperliquid':c.evm?'DefiLlama':c.mint?'Jupiter':'δική σου τιμή';
   return src+(c.at?' · '+when(c.at):'');
@@ -218,7 +232,7 @@ function renderSummary(D){
     :`<div class="kpi"><span class="v num ${c}">${v}</span><span class="l">${l}</span></div>`).join('');
 }
 const BN={SPY:['S&P 500','Ίδια ποσά σε S&P 500','S&P 500'],QQQ:['Nasdaq 100','Ίδια ποσά σε Nasdaq 100','Nasdaq 100'],
-  BTC:['Bitcoin','Ίδια ποσά σε Bitcoin','Bitcoin'],DEP:['κατάθεσης 2%','Ίδια ποσά σε κατάθεση 2%','Κατάθεση 2%'],
+  BTC:['Bitcoin','Ίδια ποσά σε Bitcoin','Bitcoin'],DEP:['κατάθεσης','Ίδια ποσά σε κατάθεση','Κατάθεση'],
   MIX:['80/20 S&P–BTC','Ίδια ποσά σε 80% S&P 500 / 20% BTC','80% S&P / 20% BTC'],
   DCA:['μηνιαίας αγοράς','Ίδιο σύνολο, ισόποσα κάθε μήνα σε S&P 500','S&P 500 με μηνιαία αγορά']};
 const benchName=b=>BN[b][0];

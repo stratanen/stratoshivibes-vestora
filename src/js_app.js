@@ -544,7 +544,7 @@ function renderPriceNote(){
   $('priceNote').innerHTML=`Τιμές: κλείσιμο ${longDate(iso(u))}${liveAt?', ζωντανές για crypto και xStocks':''}.${age>4?' <b class="neg">Οι τιμές δεν έχουν ενημερωθεί για μερικές μέρες.</b>':''}`;
 }
 
-function render(){renderWallet();const prev=D?D.end:null;D=compute();renderSummary(D);countUp(prev,D);renderChart(D);renderDD(D);renderStory(D);renderHoldings(D);renderInsights(D);renderPlan(D);renderGuide(D);renderStress(D);renderJournal();renderTx();renderBanner();renderPriceNote();renderBackupNote()}
+function render(){applyDep();renderWallet();const prev=D?D.end:null;D=compute();renderSummary(D);countUp(prev,D);renderChart(D);renderDD(D);renderStory(D);renderHoldings(D);renderInsights(D);renderPlan(D);renderGuide(D);renderStress(D);renderJournal();renderTx();renderBanner();renderPriceNote();renderBackupNote()}
 const redraw=()=>{if(!W)return;renderChart(D);if(!$('v-risk').hidden)renderDD(D);if(lastProj)drawProj(lastProj,plan.bShow!==false?lastB:null)};
 let rt;const ro=new ResizeObserver(()=>{clearTimeout(rt);rt=setTimeout(redraw,80)});ro.observe($('chartbox'));ro.observe($('ddBox'));ro.observe($('projBox'));
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',redraw);
@@ -566,5 +566,10 @@ async function boot(){
 $('loadRetry').addEventListener('click',boot);
 document.querySelectorAll('.markslot').forEach(el=>el.innerHTML=MARK);
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+/* deposit interest setting */
+(()=>{const i=$('depRate');if(!i)return;const sync=()=>{i.value=depRate()};
+  i.addEventListener('change',()=>{let v=parseFloat(String(i.value).replace(',','.'));if(!(v>=0))v=0;v=Math.min(20,v);state.depRate=v;save();applyDep();assetOptions('fAsset');render();toast('Το επιτόκιο καταθέσεων ενημερώθηκε.',1);sync()});
+  })();
 boot();
 })();
+

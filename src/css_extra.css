@@ -126,3 +126,43 @@ details.more[open]>summary{margin-bottom:16px}
   @keyframes segin{from{opacity:0}to{opacity:1}}
 }
 .toast.ok::before{content:'✓';display:inline-block;margin-right:8px;color:var(--good);font-weight:800}
+
+/* ---------- phone layout: holdings become cards (no sideways scrolling), tighter tables, insight titles under their chip ---------- */
+@media (max-width:640px){
+  #holdings,#holdings tbody{display:block;width:100%}
+  #holdings thead{display:none}
+  #holdings tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:8px 10px;padding:13px 0;border-bottom:1px solid var(--line)}
+  #holdings tr:last-child{border-bottom:0}
+  #holdings td{display:block;border:0;padding:0;text-align:left;white-space:normal;min-width:0}
+  #holdings td.empty{grid-column:1/-1}
+  #holdings .c-n{grid-column:1/4;grid-row:1}
+  #holdings .c-n .an{font-size:15px}
+  #holdings .c-v{grid-column:4;grid-row:1;text-align:right;font-weight:700;font-size:15px}
+  #holdings .c-g{grid-column:4;grid-row:2;text-align:right;align-self:end;font-weight:600}
+  #holdings .c-q{grid-column:1;grid-row:2}#holdings .c-a{grid-column:2;grid-row:2}#holdings .c-p{grid-column:3;grid-row:2}
+  #holdings [data-l]{font-size:13px}
+  #holdings [data-l]::before{content:attr(data-l);display:block;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-family:var(--f-ui);margin-bottom:1px}
+  #holdings .c-w{grid-column:1/-1;grid-row:3;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+  #holdings .c-w .wbar{flex:1;width:auto;margin:0;height:5px}
+  #holdings .edit{margin-top:4px}
+  .tablewrap:has(#holdings){overflow:visible}
+  #alts th{white-space:normal;line-height:1.25;vertical-align:bottom}
+  #alts td,#alts th{padding-left:6px;padding-right:6px}
+  #alts td:first-child,#alts th:first-child{padding-left:0}
+  .ins .t{flex-direction:column;align-items:flex-start;gap:5px}
+  #txTable,#txTable tbody{display:block;width:100%}
+  #txTable thead{display:none}
+  #txTable tr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:6px 10px;padding:12px 0;border-bottom:1px solid var(--line);align-items:center}
+  #txTable tr:last-child{border-bottom:0}
+  #txTable td{display:block;border:0;padding:0;text-align:left;min-width:0;white-space:normal}
+  #txTable .t-a{grid-column:1/3;grid-row:1;font-weight:600;font-family:var(--f-ui);font-size:15px}
+  #txTable .t-s{grid-column:3;grid-row:1;text-align:right;font-weight:700}
+  #txTable .t-d{grid-column:1;grid-row:2;font-size:13px;color:var(--muted)}
+  #txTable .t-k{grid-column:2/4;grid-row:2;text-align:right}
+  #txTable .t-q{grid-column:1;grid-row:3}#txTable .t-p{grid-column:2;grid-row:3}#txTable .t-f{grid-column:3;grid-row:3;text-align:right}
+  #txTable [data-l]{font-size:13px}
+  #txTable [data-l]::before{content:attr(data-l);display:block;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-family:var(--f-ui);margin-bottom:1px}
+  #txTable .t-r{grid-column:1/3;grid-row:4}#txTable .t-r.none{display:none}
+  #txTable .t-x{grid-column:3;grid-row:4;text-align:right}
+  .tablewrap:has(#txTable){overflow:visible}
+}

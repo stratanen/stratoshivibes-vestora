@@ -584,7 +584,12 @@
 "σήμερα ": "today ",
 "κλείσιμο ": "close ",
 "δική σου τιμή": "your price",
-"αξία εισαγωγής": "value at import"
+"αξία εισαγωγής": "value at import",
+"Μέση τιμή": "Avg price",
+"Τρέχουσα": "Current",
+" <span class=\"muted small\">από εισαγωγή</span>": " <span class=\"muted small\">imported</span>",
+"Τιμή": "Price",
+"Προμήθεια": "Fee"
 },
 "html": {
 "Φορτώνουν οι τιμές…": "Loading prices…",

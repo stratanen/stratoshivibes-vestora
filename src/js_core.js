@@ -454,10 +454,10 @@ function renderHoldings(D){
     `<text x="80" y="76" text-anchor="middle" class="dv num">${eurShort(D.end)}</text><text x="80" y="96" text-anchor="middle" class="dl">${cls.length===1?'1 κατηγορία':cls.length+' κατηγορίες'}</text>`;
   $('alegend').innerHTML=cls.map(([c,w])=>`<button type="button" class="arow" data-c="${c}"><i class="dot" style="background:var(--c-${c})"></i><span class="an">${CLS[c]}</span><b class="num">${nf(0).format(w*100)}%</b><small class="num">${eur.format(val[c])}</small></button>`).join('');
   $('holdings').innerHTML=`<thead><tr><th>Στοιχείο</th><th>Ποσότητα</th><th>Μέση τιμή</th><th>Τρέχουσα</th><th>Αξία</th><th>Κέρδος</th><th>Βάρος</th></tr></thead><tbody>`+
-  D.hold.map(h=>{const m=meta(h.a),manual=m.custom&&!state.custom[h.a]?.mint;return `<tr><td><div class="an">${esc(m.name)}</div><div class="ac">${m.sym&&!m.custom?esc(m.sym)+' · ':''}${CLS[m.cls]}${(x=>x?' · '+x:'')(priceSrc(h.a))}${state.custom[h.a]?.unc?' · <span class="neg">αβέβαιη τιμή</span>':''}</div></td>
-  <td class="num">${nf(h.qty<1?4:2).format(h.qty)}</td><td class="num">${price(h.avg)}</td><td class="num">${price(h.now)}${manual?`<div><button class="del edit" type="button" data-price="${esc(h.a)}">Αλλαγή τιμής</button></div>`:''}</td><td class="num">${eur.format(h.val)}</td>
-  <td class="num ${sgn(h.pl)}">${(h.pl>0?'+':'')+eur.format(h.pl)}<div class="ac ${sgn(h.pl)}">${pct(h.plp)}</div></td>
-  <td class="num">${nf(0).format(h.wt*100)}%<span class="wbar"><b style="width:${h.wt*100}%"></b></span></td></tr>`}).join('')+'</tbody>';
+  D.hold.map(h=>{const m=meta(h.a),manual=m.custom&&!state.custom[h.a]?.mint;return `<tr><td class="c-n"><div class="an">${esc(m.name)}</div><div class="ac">${m.sym&&!m.custom?esc(m.sym)+' · ':''}${CLS[m.cls]}${(x=>x?' · '+x:'')(priceSrc(h.a))}${state.custom[h.a]?.unc?' · <span class="neg">αβέβαιη τιμή</span>':''}</div></td>
+  <td class="num c-q" data-l="${'Ποσότητα'}">${nf(h.qty<1?4:2).format(h.qty)}</td><td class="num c-a" data-l="${'Μέση τιμή'}">${price(h.avg)}</td><td class="num c-p" data-l="${'Τρέχουσα'}">${price(h.now)}${manual?`<div><button class="del edit" type="button" data-price="${esc(h.a)}">Αλλαγή τιμής</button></div>`:''}</td><td class="num c-v">${eur.format(h.val)}</td>
+  <td class="num c-g ${sgn(h.pl)}">${(h.pl>0?'+':'')+eur.format(h.pl)}<div class="ac ${sgn(h.pl)}">${pct(h.plp)}</div></td>
+  <td class="num c-w">${nf(0).format(h.wt*100)}%<span class="wbar"><b style="width:${h.wt*100}%"></b></span></td></tr>`}).join('')+'</tbody>';
 }
 $('holdings').addEventListener('click',e=>{const b=e.target.closest('[data-price]');if(b)openSheet('price',b.dataset.price)});
 
@@ -570,9 +570,9 @@ function renderTx(){
   if(!state.tx.length){t.innerHTML='';return}
   const rows=[...state.tx].sort((x,y)=>y.date.localeCompare(x.date));
   t.innerHTML=`<thead><tr><th>Ημερομηνία</th><th>Στοιχείο</th><th>Κίνηση</th><th>Λόγος</th><th>Ποσότητα</th><th>Τιμή</th><th>Προμήθεια</th><th>Σύνολο</th><th></th></tr></thead><tbody>`+
-  rows.map(r=>`<tr><td class="num">${longDate(r.date)}</td><td>${esc(meta(r.a).name)}</td><td><span class="typechip ${r.type}">${TYPE_N[r.type]}</span>${r.src==='wallet'?' <span class="muted small">από wallet</span>':''}</td><td>${r.reason?`<span class="rtag">${REASONS[r.reason]}</span>`:'<span class="muted">—</span>'}</td>
-  <td class="num">${r.type==='div'?'—':nf(6).format(r.qty)}</td><td class="num">${r.type==='div'?'—':price(r.price)}</td><td class="num">${eur2.format(r.fee||0)}</td><td class="num">${eur.format(r.type==='div'?r.qty:r.qty*r.price)}</td>
-  <td><button class="del" type="button" data-id="${r.id}">Διαγραφή</button></td></tr>`).join('')+'</tbody>';
+  rows.map(r=>`<tr><td class="num t-d">${longDate(r.date)}</td><td class="t-a">${esc(meta(r.a).name)}</td><td class="t-k"><span class="typechip ${r.type}">${TYPE_N[r.type]}</span>${r.src==='wallet'?' <span class="muted small">από wallet</span>':r.src==='eth'?' <span class="muted small">από εισαγωγή</span>':''}</td><td class="t-r${r.reason?'':' none'}">${r.reason?`<span class="rtag">${REASONS[r.reason]}</span>`:'<span class="muted">—</span>'}</td>
+  <td class="num t-q" data-l="${'Ποσότητα'}">${r.type==='div'?'—':nf(6).format(r.qty)}</td><td class="num t-p" data-l="${'Τιμή'}">${r.type==='div'?'—':price(r.price)}</td><td class="num t-f" data-l="${'Προμήθεια'}">${eur2.format(r.fee||0)}</td><td class="num t-s">${eur.format(r.type==='div'?r.qty:r.qty*r.price)}</td>
+  <td class="t-x"><button class="del" type="button" data-id="${r.id}">Διαγραφή</button></td></tr>`).join('')+'</tbody>';
 }
 $('txTable').addEventListener('click',e=>{
   const b=e.target.closest('.del');if(!b)return;

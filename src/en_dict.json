@@ -567,7 +567,8 @@
 "<span>Σύγκριση <b class=\"num\">": "<span>Comparison <b class=\"num\">",
 "1 κατηγορία": "1 category",
 " κατηγορίες": " categories",
-"<br><small class=\"muted\">από αυτά σε staking:": "<br><small class=\"muted\">of which staked:"
+"<br><small class=\"muted\">από αυτά σε staking:": "<br><small class=\"muted\">of which staked:",
+"<br><small class=\"muted\">Το SKR σε staking δεν διαβάστηκε. Πάτα ανανέωση.</small>": "<br><small class=\"muted\">Staked SKR could not be read. Tap refresh.</small>"
 },
 "html": {
 "Φορτώνουν οι τιμές…": "Loading prices…",

@@ -47,14 +47,35 @@ async function hasSgt(owner){
    Layout from the program IDL: UserStake (169 bytes) user@41, shares u128@105, unstaking_amount u64@153; StakeConfig share_price u128@137 (1e9 = 1.0). */
 const SKR_STAKE_PROG='SKRskrmtL83pcL4YqLWt6iPefDqwXQWHSw9S9vz94BZ',SKR_STAKE_CFG='4HQy82s9CHTv1GsYKnANHMiHfhcqesYkK6sB3RDSYyqw';
 const uLE=(d,o,n)=>{let v=0n;for(let i=n-1;i>=0;i--)v=v*256n+BigInt(d[o+i]);return v},u128=(d,o)=>uLE(d,o,16),u64=(d,o)=>uLE(d,o,8);
+const SKR_GUARDIAN='DPJ58trLsF9yPrBa2pk6UaRkvqW8hWUYjawe788WBuqr',PUBLIC_RPC='https://api.mainnet-beta.solana.com';
+function b58dec(str){let n=0n;for(const c of str){const i=B58A.indexOf(c);if(i<0)throw new Error('b58');n=n*58n+BigInt(i)}
+  const out=[];while(n>0n){out.unshift(Number(n&255n));n>>=8n}for(const c of str){if(c==='1')out.unshift(0);else break}
+  while(out.length<32)out.unshift(0);return new Uint8Array(out)}
+/* PDA = sha256(seeds, bump, program, "ProgramDerivedAddress") that is NOT a valid ed25519 point */
+const EP=2n**255n-19n,ED=(-121665n*((x=>{let r=1n,b=121666n,e=EP-2n;while(e){if(e&1n)r=r*b%EP;b=b*b%EP;e>>=1n}return r})()))%EP+EP;
+const mpow=(b,e)=>{let r=1n;b%=EP;while(e){if(e&1n)r=r*b%EP;b=b*b%EP;e>>=1n}return r};
+function onCurve(k){let y=0n;for(let i=31;i>=0;i--)y=y*256n+BigInt(i===31?k[i]&127:k[i]);y%=EP;
+  const y2=y*y%EP,u=(y2-1n+EP)%EP,v=(ED%EP*y2+1n)%EP;if(u===0n)return true;
+  const x2=u*mpow(v,EP-2n)%EP;return mpow(x2,(EP-1n)/2n)===1n}
+async function findPda(seeds,prog){const P=b58dec(prog),tag=new TextEncoder().encode('ProgramDerivedAddress');
+  for(let bump=255;bump>=0;bump--){const parts=[...seeds,Uint8Array.of(bump),P,tag],len=parts.reduce((s,x)=>s+x.length,0),buf=new Uint8Array(len);let o=0;for(const x of parts){buf.set(x,o);o+=x.length}
+    const h=new Uint8Array(await crypto.subtle.digest('SHA-256',buf));if(!onCurve(h))return b58enc(h)}throw new Error('no pda')}
+function rpcAt(url,method,params,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||12000);
+  return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:'vestora',method,params}),signal:ctl.signal})
+    .then(r=>r.json()).then(j=>{if(j.error)throw new Error(j.error.message||'rpc error');return j.result}).finally(()=>clearTimeout(to))}
 async function skrStaked(owner){
-  const [acc,cfg]=await Promise.all([
-    rpc('getProgramAccounts',[SKR_STAKE_PROG,{encoding:'base64',commitment:'confirmed',filters:[{dataSize:169},{memcmp:{offset:41,bytes:owner}}]}],15000),
-    rpc('getAccountInfo',[SKR_STAKE_CFG,{encoding:'base64',commitment:'confirmed'}])]);
-  const list=Array.isArray(acc)?acc:(acc?.value||[]);if(!list.length)return 0;
-  const price=u128(b64bytes(cfg.value.data[0]),137);let raw=0n;
-  for(const a of list){const d=b64bytes(a.account.data[0]);if(d.length<169)continue;
-    raw+=u128(d,105)*price/1000000000n+u64(d,153)}
+  const cfg=await rpc('getAccountInfo',[SKR_STAKE_CFG,{encoding:'base64',commitment:'confirmed'}]);
+  const price=u128(b64bytes(cfg.value.data[0]),137);
+  const gpa=[SKR_STAKE_PROG,{encoding:'base64',commitment:'confirmed',filters:[{dataSize:169},{memcmp:{offset:41,bytes:owner}}]}];
+  let datas=null;
+  /* 1) every pool at once (Helius, then the public RPC); 2) if both refuse, the Solana Mobile guardian pool by its PDA */
+  for(const f of [()=>rpc('getProgramAccounts',gpa,15000),()=>rpcAt(PUBLIC_RPC,'getProgramAccounts',gpa,15000)]){
+    try{const r=await f(),l=Array.isArray(r)?r:(r?.value||[]);datas=l.map(a=>a.account.data[0]);break}catch(e){console.warn('skr gpa',e)}}
+  if(!datas||!datas.length){
+    const pda=await findPda([new TextEncoder().encode('user_stake'),b58dec(SKR_STAKE_CFG),b58dec(owner),b58dec(SKR_GUARDIAN)],SKR_STAKE_PROG);
+    const r=await rpc('getAccountInfo',[pda,{encoding:'base64',commitment:'confirmed'}]);datas=r?.value?[r.value.data[0]]:[]}
+  let raw=0n;
+  for(const x of datas){const d=b64bytes(x);if(d.length<169)continue;raw+=u128(d,105)*price/1000000000n+u64(d,153)}
   return Number(raw)/1e6;
 }
 async function skrPrice(){
@@ -70,7 +91,7 @@ async function checkWallet(force){
   try{
     const ta=await rpc('getTokenAccountsByOwner',[wallet.addr,{mint:MINT.SKR},{encoding:'jsonParsed',commitment:'confirmed'}]);
     wallet.skr=(ta.value||[]).reduce((s,a)=>s+(+a.account.data.parsed.info.tokenAmount.uiAmountString||0),0);
-    try{wallet.skrStaked=await skrStaked(wallet.addr);wallet.skr+=wallet.skrStaked}catch(e){console.warn('skr stake',e)}
+    try{wallet.skrStaked=await skrStaked(wallet.addr);wallet.skr+=wallet.skrStaked;wallet.stakeErr=false}catch(e){console.warn('skr stake',e);wallet.stakeErr=true}
     const p=await skrPrice();wallet.skrEur=p?wallet.skr*p:null;
     try{wallet.genesis=await hasSgt(wallet.addr)}catch(e){console.warn('sgt',e)}
     wallet.status='ok';wallet.t=Date.now();
@@ -158,7 +179,7 @@ function drawSheet(){
     const w=wallet;if(!w){flow.step='info';return drawSheet()}
     const ok=isPro(),n=needSkr();
     s.innerHTML=head('Το wallet σου')+`<dl class="status"><dt>Διεύθυνση</dt><dd class="num">${short(w.addr)}</dd>
-      <dt>SKR</dt><dd class="num">${w.skr==null?'—':nf(2).format(w.skr)}${w.skrEur!=null?` <span class="muted">(${eur2.format(w.skrEur)})</span>`:''}${w.skrStaked>0?`<br><small class="muted">από αυτά σε staking: ${nf(2).format(w.skrStaked)}</small>`:''}</dd><dt>Seeker Genesis Token</dt><dd>${w.genesis?'Ναι':w.status==='ok'?'Όχι':'—'}</dd></dl>`+
+      <dt>SKR</dt><dd class="num">${w.skr==null?'—':nf(2).format(w.skr)}${w.skrEur!=null?` <span class="muted">(${eur2.format(w.skrEur)})</span>`:''}${w.skrStaked>0?`<br><small class="muted">από αυτά σε staking: ${nf(2).format(w.skrStaked)}</small>`:w.stakeErr?`<br><small class="muted">Το SKR σε staking δεν διαβάστηκε. Πάτα ανανέωση.</small>`:''}</dd><dt>Seeker Genesis Token</dt><dd>${w.genesis?'Ναι':w.status==='ok'?'Όχι':'—'}</dd></dl>`+
       (wBusy?`<p class="muted">Ελέγχεται…</p>`:w.status==='error'?`<div class="verdict short">Δεν ήταν δυνατός ο έλεγχος. Έλεγξε τη σύνδεση στο internet και δοκίμασε ξανά.</div>`:
        ok?`<div class="verdict ok">Το Pro είναι ενεργό${w.genesis?' μέσω Seeker Genesis Token':''}.</div>`
          :`<div class="verdict short">${n?`Χρειάζονται περίπου ${nf(0).format(Math.max(0,n-(w.skr||0)))} SKR ακόμα για το Pro.`:'Για το Pro χρειάζεται SKR αξίας 20 € ή Seeker Genesis Token.'} Οι δωρεάν λειτουργίες μένουν διαθέσιμες κανονικά.</div>`)+

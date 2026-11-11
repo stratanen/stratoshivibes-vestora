@@ -254,6 +254,61 @@ $('alts').addEventListener('click',e=>{const r=e.target.closest('tr[data-b]');if
   if(k!=='SPY'&&!isPro())return openSheet('info');
   ui.bench=k;[...$('segBench').children].forEach(x=>x.setAttribute('aria-pressed',x.dataset.v===k));render()});
 
+// short money for the middle of the donut: €12.679, €1,2 εκ.
+const eurShort=v=>Math.abs(v)>=1e6?eur.format(Math.round(v/1e5)/10).replace(/[,.]0(?=\D|$)/,'')+(LANG==='en'?'M':' εκ.'):eur.format(v);
+// tapping a class in the legend (or a slice) brings it forward and fades the rest
+function mixFocus(c){const on=$('alegend').querySelector(`.arow[data-c="${c}"]`)?.classList.contains('on');
+  document.querySelectorAll('#alloc .seg,#alegend .arow').forEach(el=>el.classList.toggle('dim',!on&&el.dataset.c!==c));
+  document.querySelectorAll('#alegend .arow').forEach(el=>el.classList.toggle('on',!on&&el.dataset.c===c))}
+$('alegend').addEventListener('click',e=>{const r=e.target.closest('.arow');if(r)mixFocus(r.dataset.c)});
+$('alloc').addEventListener('click',e=>{const r=e.target.closest('.seg');if(r)mixFocus(r.dataset.c)});
+
+/* ---------- drawdown: how far below its last high the portfolio was, week by week ---------- */
+let DD=null;
+function ddSeries(idx,w0){const out=[];let peak=0;for(let w=w0;w<W;w++){const v=idx[w];if(v==null){out.push(null);continue}peak=Math.max(peak,v);out.push(peak?(v/peak-1)*100:0)}return out}
+function renderDD(D){
+  const svg=$('ddChart'),box=$('ddBox');$('ddTip').hidden=true;box.querySelector('.empty')?.remove();
+  const msg=t=>{svg.setAttribute('height',0);svg.innerHTML='';$('ddLegend').innerHTML='';$('ddNote').textContent='';box.insertAdjacentHTML('afterbegin',`<div class="empty">${t}</div>`);DD=null};
+  if(!D)return msg('Πρόσθεσε τι έχεις για να δεις τις πτώσεις του χαρτοφυλακίου σου.');
+  if(D.short)return msg('Το γράφημα χρειάζεται τουλάχιστον δύο μήνες ιστορικού. Αν έχεις τις επενδύσεις από παλιότερα, βάλε στις συναλλαγές πότε και σε ποια τιμή τις αγόρασες.');
+  if(!isPro())return msg(`<button class="btn" type="button" data-pro="1">${LOCK} Pro</button><br>Το γράφημα των πτώσεων είναι λειτουργία Pro.`);
+  const p=ddSeries(D.idx,D.w0),bk=D.bench.SPY?'SPY':ui.bench,b=D.bench[bk]?ddSeries(D.bench[bk].idx,D.w0):null;
+  const cw=Math.max(300,box.clientWidth),ch=cw<560?200:240,P={l:cw<560?44:52,r:12,t:12,b:26};
+  svg.setAttribute('viewBox',`0 0 ${cw} ${ch}`);svg.setAttribute('height',ch);
+  let mn=0;[p,b].forEach(a=>a&&a.forEach(v=>{if(v!=null)mn=Math.min(mn,v)}));
+  const Y=nice(mn,0,4),n=p.length;
+  const x=i=>P.l+i/Math.max(1,n-1)*(cw-P.l-P.r),y=v=>P.t+(1-(v-Y.lo)/(Y.hi-Y.lo||1))*(ch-P.t-P.b);
+  let g='';
+  Y.t.forEach(v=>{g+=`<line x1="${P.l}" x2="${cw-P.r}" y1="${y(v)}" y2="${y(v)}" stroke="${css(v===0?'--muted':'--line')}" stroke-width="1"/><text x="${P.l-8}" y="${y(v)+4}" text-anchor="end">${nf(0).format(v)}%</text>`});
+  const nT=cw<560?3:6;for(let i=0;i<=nT;i++){const k=Math.round(i*(n-1)/nT);g+=`<text x="${x(k)}" y="${ch-6}" text-anchor="${i===0?'start':i===nT?'end':'middle'}">${shortDate(wDate(D.w0+k))}</text>`}
+  const path=a=>{let d='';a.forEach((v,i)=>{if(v!=null)d+=(d?'L':'M')+x(i).toFixed(1)+','+y(v).toFixed(1)});return d};
+  const bad=css('--bad');
+  g+=`<defs><linearGradient id="gdd" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${bad}" stop-opacity=".08"/><stop offset="1" stop-color="${bad}" stop-opacity=".38"/></linearGradient></defs>`;
+  g+=`<path d="${path(p)}L${x(n-1)},${y(0)}L${x(0)},${y(0)}Z" fill="url(#gdd)"/>`;
+  if(b)g+=`<path d="${path(b)}" fill="none" stroke="${css('--bench')}" stroke-width="1.5" stroke-dasharray="4 3" stroke-linejoin="round"/>`;
+  g+=`<path class="draw" d="${path(p)}" fill="none" stroke="${bad}" stroke-width="2.2" stroke-linejoin="round"/>`;
+  // the worst week, marked and labelled
+  let wi=0;p.forEach((v,i)=>{if(v!=null&&v<p[wi])wi=i});
+  const lx=x(wi),ly=y(p[wi]),right=lx>cw*.62;
+  g+=`<circle cx="${lx}" cy="${ly}" r="4.5" fill="${bad}" stroke="${css('--surface')}" stroke-width="2"/><text x="${right?lx-8:lx+8}" y="${Math.min(ly+4,ch-P.b-6)}" text-anchor="${right?'end':'start'}" style="fill:var(--ink);font-weight:600">${nf(0).format(p[wi])}% · ${shortDate(wDate(D.w0+wi))}</text>`;
+  g+=`<line id="ddx" y1="${P.t}" y2="${ch-P.b}" stroke="${css('--muted')}" stroke-width="1" stroke-dasharray="2 3" visibility="hidden"/><rect id="ddhit" x="${P.l}" y="${P.t}" width="${cw-P.l-P.r}" height="${ch-P.t-P.b}" fill="transparent"/>`;
+  svg.innerHTML=g;
+  $('ddLegend').innerHTML=`<span><i style="background:${bad}"></i>Το χαρτοφυλάκιό σου</span>`+(b?`<span><i style="background:${css('--bench')};opacity:.8"></i>${BN[bk][2]}, για σύγκριση</span>`:'');
+  const now=p[n-1],bw=b?Math.min(...b.filter(v=>v!=null)):null;
+  $('ddNote').textContent=`Η χειρότερη στιγμή ήταν ${nf(0).format(Math.abs(p[wi]))}% κάτω από την προηγούμενη κορυφή, γύρω στις ${longDate(iso(wDate(D.w0+wi)))}.`+
+    (b?` Στο ίδιο διάστημα η χειρότερη πτώση του ${BN[bk][2]} ήταν ${nf(0).format(Math.abs(bw))}%.`:'')+
+    (now>-0.5?' Σήμερα είσαι στην κορυφή σου.':` Σήμερα είσαι ${nf(0).format(Math.abs(now))}% κάτω από την κορυφή.`);
+  DD={x,p,b,n,P,cw,w0:D.w0,bn:b?BN[bk][2]:''};
+}
+$('ddBox').addEventListener('pointermove',e=>{if(e.target.id!=='ddhit'||!DD)return;
+  const r=$('ddChart').getBoundingClientRect(),px=(e.clientX-r.left)*DD.cw/r.width;
+  const i=Math.max(0,Math.min(DD.n-1,Math.round((px-DD.P.l)/(DD.cw-DD.P.l-DD.P.r)*(DD.n-1))));
+  const l=$('ddx');l.setAttribute('x1',DD.x(i));l.setAttribute('x2',DD.x(i));l.setAttribute('visibility','visible');
+  const t=$('ddTip');t.innerHTML=`<b>${longDate(iso(wDate(DD.w0+i)))}</b><span>Χαρτοφυλάκιο <b class="num">${nf(1).format(DD.p[i]??0)}%</b></span>`+(DD.b&&DD.b[i]!=null?`<span>${DD.bn} <b class="num">${nf(1).format(DD.b[i])}%</b></span>`:'');
+  t.hidden=false;const tx=DD.x(i)*r.width/DD.cw;t.style.left=Math.min(Math.max(0,tx-85),r.width-180)+'px';t.style.top='4px'});
+$('ddBox').addEventListener('pointerleave',()=>{$('ddTip').hidden=true;$('ddx')?.setAttribute('visibility','hidden')});
+$('ddBox').addEventListener('click',e=>{if(e.target.closest('[data-pro]'))openSheet('info')});
+
 /* ---------- stress test ---------- */
 const SCN=[{id:'btc',n:'Bitcoin −50%'},{id:'ndq',n:'Nasdaq −30%'},{id:'world',n:'Μετοχές παγκόσμια −25%'},{id:'fx',n:'Ευρώ +10% έναντι $'},{id:'all',n:'Όλα μαζί'},{id:'custom',n:'Δικό σου σενάριο',pro:true}];
 const TECH=new Set(['NVDA','TSLA','COIN','MSTR']), MEGA=new Set(['AAPL','MSFT','AMZN','GOOGL','META']), NDQ=new Set(['QQQ','EQQQ']), GOLD=new Set(['GLD','XGLD']);
@@ -354,10 +409,14 @@ $('chartbox').addEventListener('pointerleave',()=>{$('tip').hidden=true;const hx
 function renderHoldings(D){
   if(!D||!D.hold.length){$('alloc').innerHTML='';$('alegend').innerHTML='';$('holdings').innerHTML='<tbody><tr><td class="empty" colspan="7">Καμία ανοιχτή θέση.</td></tr></tbody>';$('posCount').textContent='';return}
   $('posCount').textContent=D.hold.length+(D.hold.length===1?' θέση':' θέσεις');
-  const by={};D.hold.forEach(h=>{const c=meta(h.a).cls;by[c]=(by[c]||0)+h.wt});
+  const by={},val={};D.hold.forEach(h=>{const c=meta(h.a).cls;by[c]=(by[c]||0)+h.wt;val[c]=(val[c]||0)+h.val});
   const cls=Object.entries(by).sort((a,b)=>b[1]-a[1]);
-  $('alloc').innerHTML=cls.map(([c,w])=>`<span style="width:${w*100}%;background:var(--c-${c})" title="${CLS[c]}"></span>`).join('');
-  $('alegend').innerHTML=cls.map(([c,w])=>`<span><i class="dot" style="background:var(--c-${c})"></i>${CLS[c]} <span class="num">${nf(0).format(w*100)}%</span></span>`).join('');
+  // donut: one ring per class, a small gap between slices, the total in the middle
+  const R=62,C=2*Math.PI*R,gap=cls.length>1?2.5:0;let off=0;
+  $('alloc').innerHTML=`<circle cx="80" cy="80" r="${R}" fill="none" stroke="var(--soft)" stroke-width="20"/>`+
+    cls.map(([c,w])=>{const len=Math.max(0,w*C-gap),seg=`<circle class="seg" data-c="${c}" cx="80" cy="80" r="${R}" fill="none" stroke="var(--c-${c})" stroke-width="20" stroke-dasharray="${len.toFixed(2)} ${(C-len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 80 80)"><title>${CLS[c]} ${nf(0).format(w*100)}%</title></circle>`;off+=w*C;return seg}).join('')+
+    `<text x="80" y="76" text-anchor="middle" class="dv num">${eurShort(D.end)}</text><text x="80" y="96" text-anchor="middle" class="dl">${cls.length===1?'1 κατηγορία':cls.length+' κατηγορίες'}</text>`;
+  $('alegend').innerHTML=cls.map(([c,w])=>`<button type="button" class="arow" data-c="${c}"><i class="dot" style="background:var(--c-${c})"></i><span class="an">${CLS[c]}</span><b class="num">${nf(0).format(w*100)}%</b><small class="num">${eur.format(val[c])}</small></button>`).join('');
   $('holdings').innerHTML=`<thead><tr><th>Στοιχείο</th><th>Ποσότητα</th><th>Μέση τιμή</th><th>Τρέχουσα</th><th>Αξία</th><th>Κέρδος</th><th>Βάρος</th></tr></thead><tbody>`+
   D.hold.map(h=>{const m=meta(h.a),manual=m.custom&&!state.custom[h.a]?.mint;return `<tr><td><div class="an">${esc(m.name)}</div><div class="ac">${m.sym&&!m.custom?esc(m.sym)+' · ':''}${CLS[m.cls]}${ASSETS[h.a]?.live?' · ζωντανή τιμή':''}</div></td>
   <td class="num">${nf(h.qty<1?4:2).format(h.qty)}</td><td class="num">${price(h.avg)}</td><td class="num">${price(h.now)}${manual?`<div><button class="del edit" type="button" data-price="${esc(h.a)}">Αλλαγή τιμής</button></div>`:''}</td><td class="num">${eur.format(h.val)}</td>
@@ -467,7 +526,7 @@ $('txForm').addEventListener('submit',e=>{
   state.tx.push({id:uid(),a,type,date,qty,price:pr,fee,reason:type==='buy'||type==='sell'?$('fReason').value:''});$('fReason').value='';
   $('fQty').value='';$('fFee').value='0';$('fCName').value='';$('fCNow').value='';priceTouched=false;
   save();assetOptions('fAsset');$('fAsset').value=a;autoPrice();render();
-  msg.textContent='';toast('Καταχωρήθηκε.');
+  msg.textContent='';toast('Καταχωρήθηκε.',1);
 });
 const TYPE_N={buy:'Αγορά',sell:'Πώληση',div:'Μέρισμα/τόκος',reward:'Staking/ανταμοιβή'};
 function renderTx(){

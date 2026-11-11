@@ -549,7 +549,24 @@
 "Ο οδηγός κρύφτηκε. Τον ξαναβρίσκεις στις Συναλλαγές, «Οδηγός ξεκινήματος».": "The guide is hidden. You can find it again in Transactions, «Getting started guide».",
 "<h3 class=\"sub\">Αυτόματα, από το blockchain</h3><div class=\"opts\">\n      <button class=\"opt wallet-only\" type=\"button\" data-o=\"wallet\"><span class=\"ic\" style=\"background:var(--c-crypto)\" aria-hidden=\"true\">S</span><span><b>Solana wallet": "<h3 class=\"sub\">Automatically, from the blockchain</h3><div class=\"opts\">\n      <button class=\"opt wallet-only\" type=\"button\" data-o=\"wallet\"><span class=\"ic\" style=\"background:var(--c-crypto)\" aria-hidden=\"true\">S</span><span><b>Solana wallet",
 "<h3 class=\"sub\">Με το χέρι</h3><p class=\"muted small\">Μετοχές, ETF, crypto σε ανταλλακτήριο, καταθέσεις, ακίνητα. Βάλε την αξία που έχει σήμερα το καθένα, όσο περίπου. Αργότερα, στις συναλλαγές, μπορείς να βάλεις πότε και σε ποια τιμή αγόρασες, για ακριβή απόδοση.</p>\n    <div class=\"obrows\">": "<h3 class=\"sub\">By hand</h3><p class=\"muted small\">Stocks, ETFs, crypto on an exchange, deposits, real estate. Enter roughly what each one is worth today. Later, in transactions, you can enter when and at what price you bought, for an exact return.</p>\n    <div class=\"obrows\">",
-"Από διεύθυνση Ethereum ή με το χέρι.": "From an Ethereum address, or by hand."
+"Από διεύθυνση Ethereum ή με το χέρι.": "From an Ethereum address, or by hand.",
+" εκ.": "M",
+"Πρόσθεσε τι έχεις για να δεις τις πτώσεις του χαρτοφυλακίου σου.": "Add what you own to see how far your portfolio has fallen from its highs.",
+"Το γράφημα χρειάζεται τουλάχιστον δύο μήνες ιστορικού. Αν έχεις τις επενδύσεις από παλιότερα, βάλε στις συναλλαγές πότε και σε ποια τιμή τις αγόρασες.": "The chart needs at least two months of history. If you have held your investments for longer, enter when and at what price you bought them in Transactions.",
+"Pro</button><br>Το γράφημα των πτώσεων είναι λειτουργία Pro.": "Pro</button><br>The drawdown chart is a Pro feature.",
+"\"></i>Το χαρτοφυλάκιό σου</span>": "\"></i>Your portfolio</span>",
+", για σύγκριση</span>": ", for comparison</span>",
+"Η χειρότερη στιγμή ήταν": "The worst moment was",
+"% κάτω από την προηγούμενη κορυφή, γύρω στις": "% below the previous high, around",
+"Στο ίδιο διάστημα η χειρότερη πτώση του": "Over the same period the worst drop of the",
+"ήταν": "was",
+" Σήμερα είσαι στην κορυφή σου.": " Today you are at your high.",
+"Σήμερα είσαι": "Today you are",
+"% κάτω από την κορυφή.": "% below the high.",
+"</b><span>Χαρτοφυλάκιο <b class=\"num\">": "</b><span>Portfolio <b class=\"num\">",
+"<span>Σύγκριση <b class=\"num\">": "<span>Comparison <b class=\"num\">",
+"1 κατηγορία": "1 category",
+" κατηγορίες": " categories"
 },
 "html": {
 "Φορτώνουν οι τιμές…": "Loading prices…",
@@ -675,6 +692,11 @@
 "Τα 3 βήματα": "The 3 steps",
 "Περισσότερα εργαλεία: κατανομή-στόχος, έλεγχος νέας καταβολής, οικονομική αντοχή": "More tools: target allocation, new contribution check, financial resilience",
 "Εισαγωγή από Solana wallet": "Import from Solana wallet",
-"Εισαγωγή από Ethereum": "Import from Ethereum"
+"Εισαγωγή από Ethereum": "Import from Ethereum",
+"Κατανομή ανά κατηγορία": "Allocation by category",
+"Πτώσεις από την κορυφή": "Drops from the high",
+"Πόσο έπεσε από κάθε κορυφή": "How far it fell from each high",
+"Η απόσταση του χαρτοφυλακίου σου από την προηγούμενη υψηλότερη τιμή του, κάθε εβδομάδα": "How far your portfolio was below its previous high, week by week",
+"Γράφημα πτώσεων από την κορυφή": "Chart of drops from the high"
 }
 }

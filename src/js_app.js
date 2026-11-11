@@ -229,12 +229,12 @@ $('sheet').addEventListener('click',async e=>{
       else if(id){if(t.xstock)state.mints[id]=t.mint;if(PRICES[id])PRICES[id][W-1]=t.eur}
       else{id='m_'+t.mint;state.custom[id]={name:t.name,sym:t.sym,cls:STABLE.has(t.mint)?'cash':'crypto',current:t.eur,mint:t.mint}}
       state.tx.push({id:uid(),a:id,type:'buy',date,qty:t.qty,price:+px.toPrecision(8),fee:0,reason:'',src:E?'eth':'wallet'});n++});
-    state.onboarded=true;save();assetOptions('fAsset');render();closeSheet();if(n)toast(n===1?'Προστέθηκε 1 asset.':`Προστέθηκαν ${n} assets.`);
+    state.onboarded=true;save();assetOptions('fAsset');render();closeSheet();if(n)toast(n===1?'Προστέθηκε 1 asset.':`Προστέθηκαν ${n} assets.`,1);
     if(!$('onb').hidden)renderOnb();
     return;
   }
   if(a==='setprice'){const v=parseFloat($('pxNew').value);if(!(v>=0)){$('pxMsg').textContent='Βάλε μια τιμή 0 ή μεγαλύτερη.';return}
-    const c=state.custom[flow.arg];c.current=v;c.cls=$('pxCls').value;save();render();closeSheet();toast('Η τιμή ενημερώθηκε.')}
+    const c=state.custom[flow.arg];c.current=v;c.cls=$('pxCls').value;save();render();closeSheet();toast('Η τιμή ενημερώθηκε.',1)}
 });
 $('overlay').addEventListener('click',e=>{if(e.target.id==='overlay')closeSheet()});
 document.addEventListener('keydown',e=>{
@@ -442,6 +442,7 @@ function go(v){if(!VIEWS.includes(v))v='home';if(location.hash!=='#'+v)history.r
 function show(v){
   VIEWS.forEach(k=>{$('v-'+k).hidden=k!==v;const t=document.querySelector(`.tabs [data-v="${k}"]`);t.setAttribute('aria-current',k===v?'page':'false')});
   $('btnHome').hidden=v==='home';
+  if(!RM.matches){const el=$('v-'+v);el.classList.remove('enter');void el.offsetWidth;el.classList.add('enter')}
   window.scrollTo(0,0);requestAnimationFrame(redraw);if(typeof arm==='function')arm();
 }
 document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('[data-v]');if(b)go(b.dataset.v)});
@@ -466,15 +467,25 @@ addEventListener('popstate',()=>{
   else toast('Πάτα ξανά «πίσω» για έξοδο.');
 });
 
-let toastT;function toast(t){const el=$('toast');el.textContent=t;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,3200)}
+let toastT;function toast(t,ok){const el=$('toast');el.textContent=t;el.classList.toggle('ok',!!ok);el.hidden=false;el.classList.remove('in');void el.offsetWidth;el.classList.add('in');clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,3200)}
+/* visual feedback: the total counts to its new value, and pulses green or red when it changed because of something you did */
+const RM=matchMedia('(prefers-reduced-motion: reduce)');
+let cuRaf=0;
+function countUp(prev,D){
+  const el=$('totVal');if(!D||prev==null||RM.matches||Math.abs(D.end-prev)<0.5)return;
+  const from=prev,to=D.end,t0=performance.now(),dur=650;cancelAnimationFrame(cuRaf);
+  const step=now=>{const k=Math.min(1,(now-t0)/dur),e=1-Math.pow(1-k,3);el.textContent=eur.format(from+(to-from)*e);if(k<1)cuRaf=requestAnimationFrame(step)};
+  cuRaf=requestAnimationFrame(step);
+  el.classList.remove('up','down');void el.offsetWidth;el.classList.add(to>from?'up':'down');
+}
 function renderPriceNote(){
   if(!DATA)return;const u=new Date(DATA.updated),age=(Date.now()-u)/DAY;
   $('priceNote').innerHTML=`Τιμές: κλείσιμο ${longDate(iso(u))}${liveAt?', ζωντανές για crypto και xStocks':''}.${age>4?' <b class="neg">Οι τιμές δεν έχουν ενημερωθεί για μερικές μέρες.</b>':''}`;
 }
 
-function render(){renderWallet();D=compute();renderSummary(D);renderChart(D);renderStory(D);renderHoldings(D);renderInsights(D);renderPlan(D);renderGuide(D);renderStress(D);renderJournal();renderTx();renderBanner();renderPriceNote();renderBackupNote()}
-const redraw=()=>{if(!W)return;renderChart(D);if(lastProj)drawProj(lastProj,plan.bShow!==false?lastB:null)};
-let rt;const ro=new ResizeObserver(()=>{clearTimeout(rt);rt=setTimeout(redraw,80)});ro.observe($('chartbox'));ro.observe($('projBox'));
+function render(){renderWallet();const prev=D?D.end:null;D=compute();renderSummary(D);countUp(prev,D);renderChart(D);renderDD(D);renderStory(D);renderHoldings(D);renderInsights(D);renderPlan(D);renderGuide(D);renderStress(D);renderJournal();renderTx();renderBanner();renderPriceNote();renderBackupNote()}
+const redraw=()=>{if(!W)return;renderChart(D);if(!$('v-risk').hidden)renderDD(D);if(lastProj)drawProj(lastProj,plan.bShow!==false?lastB:null)};
+let rt;const ro=new ResizeObserver(()=>{clearTimeout(rt);rt=setTimeout(redraw,80)});ro.observe($('chartbox'));ro.observe($('ddBox'));ro.observe($('projBox'));
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',redraw);
 const MARK='<svg viewBox="0 0 32 32" width="100%" height="100%"><path d="M5 9 L16 25 L27 9" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="27" cy="9" r="3.2" fill="var(--accent)"/></svg>';
 

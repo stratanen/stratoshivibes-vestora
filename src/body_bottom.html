@@ -2,6 +2,12 @@
 
   <!-- ============ Κίνδυνος ============ -->
   <div class="view" id="v-risk" hidden>
+    <section class="panel" aria-label="Πτώσεις από την κορυφή">
+      <div class="phead"><div><h2>Πόσο έπεσε από κάθε κορυφή</h2><div class="muted small">Η απόσταση του χαρτοφυλακίου σου από την προηγούμενη υψηλότερη τιμή του, κάθε εβδομάδα</div></div></div>
+      <div class="chartbox" id="ddBox"><svg id="ddChart" role="img" aria-label="Γράφημα πτώσεων από την κορυφή"></svg><div class="tip" id="ddTip" hidden></div></div>
+      <div class="legend" id="ddLegend"></div>
+      <p class="small muted" id="ddNote"></p>
+    </section>
     <section class="panel" aria-label="Stress test">
       <div class="phead"><div><h2>Τι γίνεται αν πέσει η αγορά;</h2><div class="muted small">Υποθετικά σενάρια, όχι προβλέψεις</div></div></div>
       <div class="chips" id="scenChips" role="group" aria-label="Σενάριο"></div>

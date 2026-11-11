@@ -712,7 +712,10 @@ function hlPost(body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.a
   return fetch(HL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:ctl.signal}).then(r=>{if(!r.ok)throw new Error('HL '+r.status);return r.json()}).finally(()=>clearTimeout(to))}
 async function hlSpotPx(){
   const [m,ctx]=await hlPost({type:'spotMetaAndAssetCtxs'});const px={USDC:1};
-  m.universe.forEach((u,i)=>{const [b,q]=u.tokens;if(q!==0)return;const tk=m.tokens.find(t=>t.index===b),c=ctx[i];const p=+(c&&(c.midPx||c.markPx))||0;if(tk&&p>0&&!(tk.name in px))px[tk.name]=p});
+  /* match each market to its own price row by name (the two lists are not in the same order); a market with no live order book (no mid price) gives no price */
+  const byCoin={};for(const c of ctx||[])if(c&&c.coin)byCoin[c.coin]=c;
+  for(const u of m.universe){const [b,q]=u.tokens;if(q!==0)continue;const tk=m.tokens.find(t=>t.index===b),c=byCoin[u.name];const p=+(c&&c.midPx)||0;
+    if(tk&&p>0&&!(tk.name in px))px[tk.name]=p}
   return px;
 }
 let liveAt=0;

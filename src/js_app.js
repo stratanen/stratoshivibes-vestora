@@ -139,6 +139,7 @@ async function ethRead(addr){
 /* Hyperliquid uses the same 0x address. Spot balances, staked HYPE, the perps account and vault deposits. */
 const HL_MAP={UBTC:'BTC',UETH:'ETH',USOL:'SOL'},HL_CASH=new Set(['USDC','USDT0','USDE','USDH']);
 async function hlRead(addr){
+  addr=addr.toLowerCase();   // the Hyperliquid API answers with an empty account for a mixed-case (checksummed) address
   const [sp,pe,dg,vt,px]=await Promise.all([hlPost({type:'spotClearinghouseState',user:addr}),hlPost({type:'clearinghouseState',user:addr}).catch(()=>null),
     hlPost({type:'delegatorSummary',user:addr}).catch(()=>null),hlPost({type:'userVaultEquities',user:addr}).catch(()=>[]),hlSpotPx()]);
   const out=[],add=(key,name,sym,qty,usd,cls,extra)=>{if(qty>0&&usd>0)out.push({hlKey:key,name,sym,qty,eur:usd/FXL,cls,tag:'Hyperliquid',...extra})};
@@ -156,7 +157,7 @@ async function hlRead(addr){
 async function loadEth(addr){
   flow.eth={addr,loading:true};drawSheet();
   try{const [l1,l2]=await Promise.all([ethRead(addr).catch(e=>{console.warn('eth',e);return null}),hlRead(addr).catch(e=>{console.warn('hl',e);return null})]);if(!l1&&!l2)throw new Error('both failed');
-    const list=[...(l1||[]),...(l2||[])].sort((a,b)=>b.qty*b.eur-a.qty*a.eur);flow.hlErr=!l2;LS.set(EKEY,addr);flow.imp={list,src:'eth',addr};flow.eth={addr};flow.step='import'}
+    const list=[...(l1||[]),...(l2||[])].sort((a,b)=>b.qty*b.eur-a.qty*a.eur);flow.hlErr=!l2;flow.hlNone=!!l2&&!l2.length;LS.set(EKEY,addr);flow.imp={list,src:'eth',addr};flow.eth={addr};flow.step='import'}
   catch(e){console.warn(e);flow.eth={addr,error:true}}
   if(!$('overlay').hidden&&(flow.step==='eth'||flow.step==='import'))drawSheet();
 }
@@ -212,7 +213,7 @@ function drawSheet(){
       s.innerHTML=head(E?'Εισαγωγή από Ethereum':'Εισαγωγή από wallet')+(E?`<p class="muted small num">${shortE(I.addr)}</p>`:'')+`<p class="muted">Βρέθηκαν αυτά τα assets αξίας πάνω από 1 €. Διάλεξε ποια θα προστεθούν. Μπαίνουν σαν αγορά σήμερα, με τη σημερινή τιμή. Αν τα αγόρασες παλιότερα, άλλαξε μετά ημερομηνία και τιμή στις συναλλαγές για σωστή απόδοση.</p>`+
       (dup?`<div class="verdict short">${E?'Έχεις ήδη κάνει εισαγωγή από Ethereum.':'Έχεις ήδη κάνει εισαγωγή από wallet.'} Ό,τι επιλέξεις θα προστεθεί ξανά.</div>`:'')+
       (I.list.length?`<div class="imp">${I.list.map((t,i)=>`<label><input type="checkbox" id="imp${i}" data-i="${i}" checked> <span>${esc(t.id?ASSETS[t.id].name:t.name)} <small class="muted">${esc(t.sym)}${t.xstock?' · xStock':''}${t.tag?' · '+t.tag:''}${t.staked?' · staking':''}${t.id?'':' · χωρίς ιστορικό τιμών'}</small></span><span class="num">${nf(t.qty<1?6:2).format(t.qty)} · ${eur.format(t.qty*t.eur)}</span></label>`).join('')}</div>`:'<p>Δεν βρέθηκαν assets με αξία πάνω από 1 €.</p>')+
-      (E?`<p class="muted">Η ανάγνωση είναι μόνο για προβολή. Φαίνονται το ETH και τα tokens του Ethereum mainnet που έχουν τιμή αγοράς, και στο Hyperliquid τα spot υπόλοιπα, το HYPE σε staking, η αξία του λογαριασμού perps και τα vaults. Τα perps και τα vaults μπαίνουν με την αξία τους σε δολάρια σήμερα και δεν ενημερώνονται μόνα τους. Ό,τι έχεις σε άλλα δίκτυα (Arbitrum, Base κ.ά.) ή μέσα σε άλλα πρωτόκολλα δεν φαίνεται εδώ: πρόσθεσέ το χειροκίνητα.</p>${flow.hlErr?'<p class="neg small">Το Hyperliquid δεν απάντησε αυτή τη φορά.</p>':''}`
+      (E?`<p class="muted">Η ανάγνωση είναι μόνο για προβολή. Φαίνονται το ETH και τα tokens του Ethereum mainnet που έχουν τιμή αγοράς, και στο Hyperliquid τα spot υπόλοιπα, το HYPE σε staking, η αξία του λογαριασμού perps και τα vaults. Τα perps και τα vaults μπαίνουν με την αξία τους σε δολάρια σήμερα και δεν ενημερώνονται μόνα τους. Ό,τι έχεις σε άλλα δίκτυα (Arbitrum, Base κ.ά.) ή μέσα σε άλλα πρωτόκολλα δεν φαίνεται εδώ: πρόσθεσέ το χειροκίνητα.</p>${flow.hlErr?'<p class="neg small">Το Hyperliquid δεν απάντησε αυτή τη φορά.</p>':flow.hlNone?'<p class="muted small">Στο Hyperliquid δεν βρέθηκαν υπόλοιπα για αυτή τη διεύθυνση.</p>':''}`
         :`<p class="muted">Η ανάγνωση είναι μόνο για προβολή. Το SOL που έχεις σε native stake δεν φαίνεται εδώ: πρόσθεσέ το χειροκίνητα. Liquid staking tokens (π.χ. JitoSOL) εμφανίζονται κανονικά.</p>`)+
       `<div class="row"><button class="btn" type="button" data-act="${E?'eth':'done'}">Πίσω</button>${I.list.length?`<button class="btn primary" type="button" data-act="doimport">Προσθήκη επιλεγμένων</button>`:''}</div>`;
     }

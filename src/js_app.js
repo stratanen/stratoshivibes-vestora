@@ -123,7 +123,9 @@ async function ethRead(addr){
       const k=it.token||{};if(k.type&&k.type!=='ERC-20')continue;if(k.reputation&&k.reputation!=='ok')continue;
       const qty=Number(it.value||0)/10**(+k.decimals||0),usd=+k.exchange_rate||0,cap=+k.circulating_market_cap||0;
       if(cap>0&&qty*usd>cap)continue;                       // a "balance" worth more than the whole token is a fake
-      const t=ethToken(k.address_hash||k.address,k.name,k.symbol,qty,usd);if(t)list.push(t);
+      const t=ethToken(k.address_hash||k.address,k.name,k.symbol,qty,usd);if(!t)continue;
+      const hold=+k.holders_count||+k.holders||0,v24=k.volume_24h!=null?+k.volume_24h:null;
+      t.unc=t.cls!=='cash'&&((hold>0&&hold<100)||(v24!=null&&v24<MIN_VOL));list.push(t);
     }
   }catch(e1){
     console.warn('blockscout',e1);list.length=0;
@@ -143,9 +145,9 @@ async function hlRead(addr){
   const [sp,pe,dg,vt,px]=await Promise.all([hlPost({type:'spotClearinghouseState',user:addr}),hlPost({type:'clearinghouseState',user:addr}).catch(()=>null),
     hlPost({type:'delegatorSummary',user:addr}).catch(()=>null),hlPost({type:'userVaultEquities',user:addr}).catch(()=>[]),hlSpotPx()]);
   const out=[],add=(key,name,sym,qty,usd,cls,extra)=>{if(qty>0&&usd>0)out.push({hlKey:key,name,sym,qty,eur:usd/FXL,cls,tag:'Hyperliquid',...extra})};
-  for(const b of sp?.balances||[]){const q=+b.total||0,p=(b.token!=null?px['#'+b.token]:px[b.coin])||0,id=HL_MAP[b.coin]&&ASSETS[HL_MAP[b.coin]]?HL_MAP[b.coin]:null;
+  for(const b of sp?.balances||[]){const q=+b.total||0,key=b.token!=null?'#'+b.token:b.coin,p=px[key]||0,unc=!HL_CASH.has(b.coin)&&(px[' vol'][key]||0)<MIN_VOL,id=HL_MAP[b.coin]&&ASSETS[HL_MAP[b.coin]]?HL_MAP[b.coin]:null;
     if(id)out.push({id,name:ASSETS[id].name,sym:b.coin,qty:q,eur:p/FXL,cls:'crypto',tag:'Hyperliquid'});
-    else add('s_'+b.coin,b.coin==='HYPE'?'Hyperliquid':b.coin,b.coin,q,p,HL_CASH.has(b.coin)?'cash':'crypto',{hl:b.token!=null?'#'+b.token:b.coin})}
+    else add('s_'+b.coin,b.coin==='HYPE'?'Hyperliquid':b.coin,b.coin,q,p,HL_CASH.has(b.coin)?'cash':'crypto',{hl:key,unc})}
   const st=(+dg?.delegated||0)+(+dg?.undelegated||0)+(+dg?.totalPendingWithdrawal||0);
   add('stake_HYPE','Hyperliquid (staked)','HYPE',st,px.HYPE||0,'crypto',{hl:'HYPE',staked:true});
   const av=+pe?.marginSummary?.accountValue||0,open=(pe?.assetPositions||[]).length;
@@ -212,7 +214,7 @@ function drawSheet(){
       const dup=state.tx.some(t=>t.src===(E?'eth':'wallet'));
       s.innerHTML=head(E?'Εισαγωγή από Ethereum':'Εισαγωγή από wallet')+(E?`<p class="muted small num">${shortE(I.addr)}</p>`:'')+`<p class="muted">Βρέθηκαν αυτά τα assets αξίας πάνω από 1 €. Διάλεξε ποια θα προστεθούν. Μπαίνουν σαν αγορά σήμερα, με τη σημερινή τιμή. Αν τα αγόρασες παλιότερα, άλλαξε μετά ημερομηνία και τιμή στις συναλλαγές για σωστή απόδοση.</p>`+
       (dup?`<div class="verdict short">${E?'Έχεις ήδη κάνει εισαγωγή από Ethereum.':'Έχεις ήδη κάνει εισαγωγή από wallet.'} Δεν θα διπλασιαστεί τίποτα: οι ποσότητες θα ενημερωθούν ώστε να ταιριάζουν με το wallet.</div>`:'')+
-      (I.list.length?`<div class="imp">${I.list.map((t,i)=>`<label><input type="checkbox" id="imp${i}" data-i="${i}" checked> <span>${esc(t.id?ASSETS[t.id].name:t.name)} <small class="muted">${esc(t.sym)}${t.xstock?' · xStock':''}${t.tag?' · '+t.tag:''}${t.staked?' · staking':''}${t.id?'':' · χωρίς ιστορικό τιμών'}</small></span><span class="num">${nf(t.qty<1?6:2).format(t.qty)} · ${eur.format(t.qty*t.eur)}</span></label>`).join('')}</div>`:'<p>Δεν βρέθηκαν assets με αξία πάνω από 1 €.</p>')+
+      (I.list.length?`<div class="imp">${I.list.map((t,i)=>`<label><input type="checkbox" id="imp${i}" data-i="${i}"${t.unc?'':' checked'}> <span>${esc(t.id?ASSETS[t.id].name:t.name)} <small class="muted">${esc(t.sym)}${t.xstock?' · xStock':''}${t.tag?' · '+t.tag:''}${t.staked?' · staking':''}${t.id?'':' · χωρίς ιστορικό τιμών'}${t.unc?' · <span class="neg">αβέβαιη τιμή</span>':''}</small></span><span class="num">${nf(t.qty<1?6:2).format(t.qty)} · ${eur.format(t.qty*t.eur)}</span></label>`).join('')}</div>${I.list.some(t=>t.unc)?'<p class="muted small">Όσα γράφουν «αβέβαιη τιμή» έχουν πολύ μικρή αγορά, οπότε η τιμή τους μπορεί να μην ισχύει στην πράξη. Γι\' αυτό δεν είναι επιλεγμένα. Πολλά τέτοια tokens είναι spam που στάλθηκε χωρίς να το ζητήσεις.</p>':''}`:'<p>Δεν βρέθηκαν assets με αξία πάνω από 1 €.</p>')+
       (E?`<p class="muted">Η ανάγνωση είναι μόνο για προβολή. Φαίνονται το ETH και τα tokens του Ethereum mainnet που έχουν τιμή αγοράς, και στο Hyperliquid τα spot υπόλοιπα, το HYPE σε staking, η αξία του λογαριασμού perps και τα vaults. Τα perps και τα vaults μπαίνουν με την αξία τους σε δολάρια σήμερα και δεν ενημερώνονται μόνα τους. Ό,τι έχεις σε άλλα δίκτυα (Arbitrum, Base κ.ά.) ή μέσα σε άλλα πρωτόκολλα δεν φαίνεται εδώ: πρόσθεσέ το χειροκίνητα.</p>${flow.hlErr?'<p class="neg small">Το Hyperliquid δεν απάντησε αυτή τη φορά.</p>':flow.hlNone?'<p class="muted small">Στο Hyperliquid δεν βρέθηκαν υπόλοιπα για αυτή τη διεύθυνση.</p>':''}`
         :`<p class="muted">Η ανάγνωση είναι μόνο για προβολή. Το SOL που έχεις σε native stake δεν φαίνεται εδώ: πρόσθεσέ το χειροκίνητα. Liquid staking tokens (π.χ. JitoSOL) εμφανίζονται κανονικά.</p>`)+
       `<div class="row"><button class="btn" type="button" data-act="${E?'eth':'done'}">Πίσω</button>${I.list.length?`<button class="btn primary" type="button" data-act="doimport">Προσθήκη επιλεγμένων</button>`:''}</div>`;
@@ -253,7 +255,7 @@ async function loadImport(){
     try{const st=await skrStaked(wallet.addr);if(st>0)list.push({mint:MINT.SKR,id:null,name:'Seeker (staked)',sym:'SKR',qty:st,staked:true})}catch(e){console.warn('skr stake',e)}
     const mints=[...new Set(list.map(t=>t.mint))],pr={};
     for(let i=0;i<mints.length;i+=50){const r=await fetch(JUP+mints.slice(i,i+50).join(','));if(r.ok)Object.assign(pr,await r.json())}
-    const out=list.map(t=>({...t,eur:(pr[t.mint]?.usdPrice||0)/FXL})).filter(t=>t.eur>0&&t.qty*t.eur>=1).sort((a,b)=>b.qty*b.eur-a.qty*a.eur);
+    const out=list.map(t=>{const q=pr[t.mint];return{...t,eur:(q?.usdPrice||0)/FXL,unc:!t.id&&!STABLE.has(t.mint)&&q?.liquidity!=null&&+q.liquidity<MIN_LIQ}}).filter(t=>t.eur>0&&t.qty*t.eur>=1).sort((a,b)=>b.qty*b.eur-a.qty*a.eur);
     flow.imp={list:out};
   }catch(e){console.warn(e);flow.imp={error:'Έλεγξε τη σύνδεση στο internet.'}}
   if(!$('overlay').hidden&&flow.step==='import')drawSheet();
@@ -281,9 +283,9 @@ $('sheet').addEventListener('click',async e=>{
     if(state.sample)state={sample:false,onboarded:true,custom:{},mints:{},tx:[]};
     const E=flow.imp.src==='eth';
     $('sheet').querySelectorAll('.imp input:checked').forEach(c=>{const t=flow.imp.list[+c.dataset.i];let id=t.id,px=t.eur;
-      if(E){if(id)px=nowPrice(id)||t.eur;else if(t.hlKey){id='h_'+t.hlKey;state.custom[id]={name:t.name,sym:t.sym,cls:t.cls,current:t.eur,...(t.hl?{hl:t.hl}:{usdv:1})}}else{id='e_'+t.contract;state.custom[id]={name:t.name,sym:t.sym,cls:t.cls,current:t.eur,evm:t.contract}}}
+      if(E){if(id)px=nowPrice(id)||t.eur;else if(t.hlKey){id='h_'+t.hlKey;state.custom[id]={name:t.name,sym:t.sym,cls:t.cls,current:t.eur,unc:!!t.unc,...(t.hl?{hl:t.hl}:{usdv:1})}}else{id='e_'+t.contract;state.custom[id]={name:t.name,sym:t.sym,cls:t.cls,current:t.eur,unc:!!t.unc,evm:t.contract}}}
       else if(id){if(t.xstock)state.mints[id]=t.mint;if(PRICES[id])PRICES[id][W-1]=t.eur}
-      else{id='m_'+t.mint+(t.staked?'_st':'');state.custom[id]={name:t.name,sym:t.sym,cls:STABLE.has(t.mint)?'cash':'crypto',current:t.eur,mint:t.mint}}
+      else{id='m_'+t.mint+(t.staked?'_st':'');state.custom[id]={name:t.name,sym:t.sym,cls:STABLE.has(t.mint)?'cash':'crypto',current:t.eur,unc:!!t.unc,mint:t.mint}}
       /* a repeat import only brings the quantity in line with the wallet: it adds (or sells) the difference from what earlier imports from this source added */
       const src=E?'eth':'wallet',had=state.tx.filter(x=>x.a===id&&x.src===src&&x.type!=='div').reduce((q,x)=>q+(x.type==='sell'?-x.qty:x.qty),0),d=t.qty-had;
       if(Math.abs(d)<=Math.max(1e-9,t.qty*1e-6))return;

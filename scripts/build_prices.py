@@ -111,6 +111,32 @@ def ecb_latest():
     return float(rows[-1]['OBS_VALUE'])
 
 
+def clean_spikes(w, crypto):
+    """Removes one-week glitches in the source data: a value that jumps (or falls) far from both neighbours
+    while the neighbours agree with each other is a bad tick, not a market move. It is replaced by the week before."""
+    lim = 2.5 if crypto else 1.8
+    out = list(w)
+    fixed = 0
+    for i in range(1, len(out) - 1):
+        a, b, c = out[i - 1], out[i], out[i + 1]
+        if not a or not b or not c:
+            continue
+        if max(b / a, a / b) > lim and max(b / c, c / b) > lim and max(a / c, c / a) < 1.3:
+            out[i] = a
+            fixed += 1
+    return out, fixed
+
+
+def plausible_last(aid, new, prev_assets, crypto):
+    """The latest price is checked against the previous file (one trading day earlier).
+    A move larger than a real day can bring is treated as a data error and the previous price is kept."""
+    old = (prev_assets.get(aid) or {}).get('last')
+    if not old or not new:
+        return True
+    lim = 1.6 if crypto else 1.35
+    return max(new / old, old / new) <= lim
+
+
 def main():
     prev = {}
     if os.path.exists(OUT):
@@ -174,6 +200,23 @@ def main():
                 raise RuntimeError('unsupported currency ' + cur)
             if not any(eur):
                 raise RuntimeError('no data')
+            crypto = cls == 'crypto'
+            eur, fixed = clean_spikes(eur, crypto)
+            if fixed:
+                print(f'  {aid}: smoothed {fixed} one-week glitch(es)', file=sys.stderr)
+            if not plausible_last(aid, last_eur, prev.get('assets') or {}, crypto):
+                old = prev['assets'][aid]['last']
+                confirmed = False
+                if st:
+                    try:
+                        c2, _, l2, _ = stooq(st)
+                        l2e = l2 / fx_last if c2 == 'USD' else l2
+                        confirmed = l2e and abs(l2e / last_eur - 1) < 0.05
+                    except Exception:  # noqa: BLE001
+                        pass
+                if not confirmed:
+                    print(f'  {aid}: latest {last_eur:.6g} vs previous {old:.6g} not confirmed; keeping previous', file=sys.stderr)
+                    last_eur = old
             eur[-1] = last_eur  # this week's value = latest price
             assets[aid] = {'name': name, 'cls': cls, 'usd': usd, 'w': [None if v is None else float(f'{v:.6g}') for v in eur],
                            'last': float(f'{last_eur:.6g}'), 'lastTime': last_t}

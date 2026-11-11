@@ -19,14 +19,14 @@ const HL='https://api.hyperliquid.xyz/info';
 function hlPost(body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
   return fetch(HL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:ctl.signal}).then(r=>{if(!r.ok)throw new Error('HL '+r.status);return r.json()}).finally(()=>clearTimeout(to))}
 async function hlSpotPx(){
-  const [m,ctx]=await hlPost({type:'spotMetaAndAssetCtxs'});const px={USDC:1};
+  const [m,ctx]=await hlPost({type:'spotMetaAndAssetCtxs'});const vol={USDC:1e12,'#0':1e12},px={USDC:1,'#0':1,' vol':vol};
   /* Each market is matched to its own price row by name, and a token is keyed by its index (names are not guaranteed unique).
      Thin books on small tokens give absurd mid prices (a far-away ask), so the value used is the LOWEST of mark, mid and
      yesterday's price: for a portfolio it is safer to under-count dust than to show it worth hundreds. */
   const byCoin={};for(const c of ctx||[])if(c&&c.coin)byCoin[c.coin]=c;
   for(const u of m.universe){const [b,q]=u.tokens;if(q!==0)continue;const c=byCoin[u.name];if(!c)continue;
     const ps=[c.markPx,c.midPx,c.prevDayPx].map(Number).filter(x=>x>0);if(!ps.length)continue;
-    const p=Math.min(...ps),tk=m.tokens.find(t=>t.index===b);px['#'+b]=p;if(tk&&!(tk.name in px))px[tk.name]=p}
+    const p=Math.min(...ps),v=+c.dayNtlVlm||0,tk=m.tokens.find(t=>t.index===b);px['#'+b]=p;vol['#'+b]=v;if(tk&&!(tk.name in px)){px[tk.name]=p;vol[tk.name]=v}}
   return px;
 }
 let liveAt=0;
@@ -42,6 +42,14 @@ function applyData(d){
   ASSETS.DEP={name:'Κατάθεση με τόκο 2%',sym:'',cls:'cash',usd:0,fixed:.02};
   PRICES.DEP=Array.from({length:W},(_,t)=>Math.pow(1.02,t/52));
 }
+/* ---------- price guards: a live price is used only if it is believable ----------
+   Known assets: the live price must stay within a day's plausible move of the daily closing file.
+   Other tokens: a refresh may not jump more than 5x from the stored price, and thin markets are marked "uncertain". */
+const MIN_LIQ=10000,MIN_VOL=1000;
+function okLive(k,e){const b=DATA?.assets?.[k]?.last;if(!(b>0))return true;const lim=ASSETS[k]?.cls==='crypto'?1.35:1.25;return Math.max(e/b,b/e)<=lim}
+function setCustom(k,e,unc){const c=state.custom[k];if(!c)return false;const old=+c.current||0;
+  if(old>0&&Math.max(e/old,old/e)>5){c.unc=true;console.warn('price jump ignored',k,old,e);return true}
+  c.current=e;c.unc=!!unc;return true}
 async function livePrices(){
   if(!DATA)return;
   const ids={...MINT,...(state.mints||{})};
@@ -52,22 +60,22 @@ async function livePrices(){
     for(let i=0;i<mints.length;i+=50){const r=await fetch(JUP+mints.slice(i,i+50).join(','));if(!r.ok)throw new Error('jup '+r.status);Object.assign(out,await r.json())}
     let changed=false;
     for(const [k,m] of Object.entries(ids)){
-      const p=out[m]?.usdPrice;if(!(p>0))continue;const e=p/FXL;
+      const q=out[m],p=q?.usdPrice;if(!(p>0))continue;const e=p/FXL,thin=q.liquidity!=null&&+q.liquidity<MIN_LIQ;
       if(k==='SKR'){skrEur=e;continue}
-      if(PRICES[k]){PRICES[k][W-1]=e;ASSETS[k].live=true;changed=true}
-      else if(state.custom[k]){state.custom[k].current=e;changed=true}
+      if(PRICES[k]){if(!okLive(k,e)){console.warn('live price out of range',k,e);ASSETS[k].live=false;continue}PRICES[k][W-1]=e;ASSETS[k].live=true;changed=true}
+      else if(setCustom(k,e,thin))changed=true
     }
     liveAt=Date.now();if(changed){save();render()}else renderPriceNote();
   }catch(e){console.warn('live prices',e);renderPriceNote()}
   const hl=Object.entries(state.custom).filter(([,c])=>c.hl);
-  if(hl.length)try{const px=await hlSpotPx();let ch=false;for(const [k,c] of hl){const p=px[c.hl];if(p>0){state.custom[k].current=p/FXL;ch=true}}if(ch){save();render()}}catch(e){console.warn('hl prices',e)}
+  if(hl.length)try{const px=await hlSpotPx();let ch=false;for(const [k,c] of hl){const p=px[c.hl];if(p>0&&setCustom(k,p/FXL,c.hl!=='USDC'&&(px[' vol'][c.hl]||0)<MIN_VOL))ch=true}if(ch){save();render()}}catch(e){console.warn('hl prices',e)}
   const ev=Object.entries(state.custom).filter(([,c])=>c.evm);
   if(ev.length)try{
     let changed=false;
     for(let i=0;i<ev.length;i+=40){
       const part=ev.slice(i,i+40),r=await fetch(LLAMA+part.map(([,c])=>'ethereum:'+c.evm).join(','));if(!r.ok)throw new Error('llama '+r.status);
       const j=(await r.json()).coins||{};
-      for(const [k,c] of part){const p=j['ethereum:'+c.evm]?.price;if(p>0&&state.custom[k]){state.custom[k].current=p/FXL;changed=true}}
+      for(const [k,c] of part){const q=j['ethereum:'+c.evm],p=q?.price;if(p>0&&setCustom(k,p/FXL,q.confidence!=null&&q.confidence<.9))changed=true}
     }
     if(changed){save();render()}
   }catch(e){console.warn('eth prices',e)}
@@ -435,7 +443,7 @@ function renderHoldings(D){
     `<text x="80" y="76" text-anchor="middle" class="dv num">${eurShort(D.end)}</text><text x="80" y="96" text-anchor="middle" class="dl">${cls.length===1?'1 κατηγορία':cls.length+' κατηγορίες'}</text>`;
   $('alegend').innerHTML=cls.map(([c,w])=>`<button type="button" class="arow" data-c="${c}"><i class="dot" style="background:var(--c-${c})"></i><span class="an">${CLS[c]}</span><b class="num">${nf(0).format(w*100)}%</b><small class="num">${eur.format(val[c])}</small></button>`).join('');
   $('holdings').innerHTML=`<thead><tr><th>Στοιχείο</th><th>Ποσότητα</th><th>Μέση τιμή</th><th>Τρέχουσα</th><th>Αξία</th><th>Κέρδος</th><th>Βάρος</th></tr></thead><tbody>`+
-  D.hold.map(h=>{const m=meta(h.a),manual=m.custom&&!state.custom[h.a]?.mint;return `<tr><td><div class="an">${esc(m.name)}</div><div class="ac">${m.sym&&!m.custom?esc(m.sym)+' · ':''}${CLS[m.cls]}${ASSETS[h.a]?.live?' · ζωντανή τιμή':''}</div></td>
+  D.hold.map(h=>{const m=meta(h.a),manual=m.custom&&!state.custom[h.a]?.mint;return `<tr><td><div class="an">${esc(m.name)}</div><div class="ac">${m.sym&&!m.custom?esc(m.sym)+' · ':''}${CLS[m.cls]}${ASSETS[h.a]?.live?' · ζωντανή τιμή':''}${state.custom[h.a]?.unc?' · <span class="neg">αβέβαιη τιμή</span>':''}</div></td>
   <td class="num">${nf(h.qty<1?4:2).format(h.qty)}</td><td class="num">${price(h.avg)}</td><td class="num">${price(h.now)}${manual?`<div><button class="del edit" type="button" data-price="${esc(h.a)}">Αλλαγή τιμής</button></div>`:''}</td><td class="num">${eur.format(h.val)}</td>
   <td class="num ${sgn(h.pl)}">${(h.pl>0?'+':'')+eur.format(h.pl)}<div class="ac ${sgn(h.pl)}">${pct(h.plp)}</div></td>
   <td class="num">${nf(0).format(h.wt*100)}%<span class="wbar"><b style="width:${h.wt*100}%"></b></span></td></tr>`}).join('')+'</tbody>';

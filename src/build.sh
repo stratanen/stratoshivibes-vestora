@@ -11,6 +11,9 @@ core=open('i18n/js_core.js',encoding='utf-8').read();rt=open('i18n/runtime.js',e
 assert core.count("'use strict';\n")==1;core=core.replace("'use strict';\n","'use strict';\n"+rt,1)
 parts=[open(f,encoding='utf-8').read() for f in ['head.html','css_base.css','css_extra.css','body_top.html','plan_section.html','body_bottom.html']]
 js=core+open('i18n/js_plan.js',encoding='utf-8').read()+open('i18n/js_app.js',encoding='utf-8').read()
+guide=open('js_guide.js',encoding='utf-8').read()
+assert js.count('\nboot();\n})();')==1
+js=js.replace('\nboot();\n})();','\n'+guide+'\nboot();\n})();')
 open('../index.html','w',encoding='utf-8').write(''.join(parts)+js+'</script>\n</body>\n</html>\n')
 PY
 rm -rf i18n i18n_strings.json

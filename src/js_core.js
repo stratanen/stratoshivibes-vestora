@@ -227,9 +227,9 @@ function renderSummary(D){
     [D.short?'—':pct(D.mdd),'Μέγιστη πτώση από κορυφή','neg',true]
   ];
   const pro=isPro();
-  $('kpis').innerHTML=k.map(([v,l,c,p])=>p&&!pro
+  $('kpis').innerHTML=k.map(([v,l,c,p],i)=>p&&!pro
     ?`<div class="kpi locked" role="button" tabindex="0" data-pro="1"><span class="v">${LOCK} Pro</span><span class="l">${l}</span></div>`
-    :`<div class="kpi"><span class="v num ${c}">${v}</span><span class="l">${l}</span></div>`).join('');
+    :`<div class="kpi" role="button" tabindex="0" data-how="${['twr','mwr','bench','risk'][i]}"><span class="v num ${c}">${v}</span><span class="l">${l}</span></div>`).join('');
 }
 const BN={SPY:['S&P 500','Ίδια ποσά σε S&P 500','S&P 500'],QQQ:['Nasdaq 100','Ίδια ποσά σε Nasdaq 100','Nasdaq 100'],
   BTC:['Bitcoin','Ίδια ποσά σε Bitcoin','Bitcoin'],DEP:['κατάθεσης','Ίδια ποσά σε κατάθεση','Κατάθεση'],

@@ -498,11 +498,11 @@ $('planHow').addEventListener('click',e=>{const b=e.target.closest('[data-h]');i
   else if(b.dataset.h==='risk')go('risk')});
 
 /* ---------- views (bottom tabs) ---------- */
-const VIEWS=['home','plan','risk','tx'];
+const VIEWS=['home','plan','risk','tx','how'];
 function go(v){if(!VIEWS.includes(v))v='home';if(location.hash!=='#'+v)history.replaceState(null,'','#'+v);show(v)}
 function show(v){
   VIEWS.forEach(k=>{$('v-'+k).hidden=k!==v;const t=document.querySelector(`.tabs [data-v="${k}"]`);t.setAttribute('aria-current',k===v?'page':'false')});
-  $('btnHome').hidden=v==='home';
+  $('btnHome').hidden=v==='home';if(v==='how')renderHowPage();
   if(!RM.matches){const el=$('v-'+v);el.classList.remove('enter');void el.offsetWidth;el.classList.add('enter')}
   window.scrollTo(0,0);requestAnimationFrame(redraw);if(typeof arm==='function')arm();
 }
@@ -512,6 +512,7 @@ function closeOnb(){$('onb').hidden=true;if(!state.onboarded){state.onboarded=tr
 function goHome(){if(!$('overlay').hidden)closeSheet();if(!$('onb').hidden)closeOnb();go('home')}
 $('onbHome').addEventListener('click',goHome);
 $('btnHome').addEventListener('click',goHome);
+$('howLink').addEventListener('click',()=>go('how'));
 $('brandHome').addEventListener('click',goHome);$('brandHome').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();goHome()}});
 $('btnAdd').addEventListener('click',()=>{go('tx');setTimeout(()=>$('fAsset').focus(),60)});
 /* Android back button: close what is open, step back in the guide, return to Summary, and only then leave the app.
@@ -544,7 +545,7 @@ function renderPriceNote(){
   $('priceNote').innerHTML=`Τιμές: κλείσιμο ${longDate(iso(u))}${liveAt?', ζωντανές για crypto και xStocks':''}.${age>4?' <b class="neg">Οι τιμές δεν έχουν ενημερωθεί για μερικές μέρες.</b>':''}`;
 }
 
-function render(){applyDep();renderWallet();const prev=D?D.end:null;D=compute();renderSummary(D);countUp(prev,D);renderChart(D);renderDD(D);renderStory(D);renderHoldings(D);renderInsights(D);renderPlan(D);renderGuide(D);renderStress(D);renderJournal();renderTx();renderBanner();renderPriceNote();renderBackupNote()}
+function render(){applyDep();if(!$('v-how').hidden)renderHowPage();renderWallet();const prev=D?D.end:null;D=compute();renderSummary(D);countUp(prev,D);renderChart(D);renderDD(D);renderStory(D);renderHoldings(D);renderInsights(D);renderPlan(D);renderGuide(D);renderStress(D);renderJournal();renderTx();renderBanner();renderPriceNote();renderBackupNote()}
 const redraw=()=>{if(!W)return;renderChart(D);if(!$('v-risk').hidden)renderDD(D);if(lastProj)drawProj(lastProj,plan.bShow!==false?lastB:null)};
 let rt;const ro=new ResizeObserver(()=>{clearTimeout(rt);rt=setTimeout(redraw,80)});ro.observe($('chartbox'));ro.observe($('ddBox'));ro.observe($('projBox'));
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',redraw);

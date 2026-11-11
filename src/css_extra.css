@@ -11,12 +11,12 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .brand b{font-weight:700;letter-spacing:-.01em;font-size:17px}
 .view{display:grid;gap:20px}
 .tabs{position:fixed;left:0;right:0;bottom:0;z-index:15;background:var(--surface);border-top:1px solid var(--line);
-  display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:env(safe-area-inset-bottom,0px);
+  display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:env(safe-area-inset-bottom,0px);
   padding-left:max(0px,env(safe-area-inset-left,0px));padding-right:max(0px,env(safe-area-inset-right,0px))}
 .tabs button{border:0;background:none;height:var(--tabh);display:grid;place-items:center;align-content:center;gap:3px;font-size:12px;color:var(--muted);font-weight:500}
 .tabs svg{width:22px;height:22px}
 .tabs button[aria-current="page"]{color:var(--accent);font-weight:600}
-@media (min-width:900px){.tabs{left:50%;right:auto;transform:translateX(-50%);bottom:12px;width:520px;border:1px solid var(--line);border-radius:14px;box-shadow:0 6px 24px rgba(0,0,0,.08)}}
+@media (min-width:900px){.tabs{left:50%;right:auto;transform:translateX(-50%);bottom:12px;width:600px;border:1px solid var(--line);border-radius:14px;box-shadow:0 6px 24px rgba(0,0,0,.08)}}
 .banner{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;border:1px solid var(--warn);color:var(--ink);border-radius:10px;padding:10px 14px;font-size:13.5px}
 .banner b{color:var(--warn)}
 .pricenote{font-size:12.5px;color:var(--muted);margin:0}
@@ -166,3 +166,31 @@ details.more[open]>summary{margin-bottom:16px}
   #txTable .t-x{grid-column:3;grid-row:4;text-align:right}
   .tablewrap:has(#txTable){overflow:visible}
 }
+
+/* ---------- "How it works" page ---------- */
+.howlink{display:inline-flex;gap:6px;align-items:center;border:0;background:none;color:var(--accent);font-weight:600;font-size:14px;padding:4px 0;margin:2px 0 6px;cursor:pointer}
+.kpi[data-how]{cursor:pointer;border-radius:8px;transition:background .15s}
+.kpi[data-how]:hover,.kpi[data-how]:focus-visible{background:var(--soft)}
+.howtoc{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 14px}
+.howtoc a{min-width:34px;height:34px;display:grid;place-items:center;border:1px solid var(--line);border-radius:17px;color:var(--ink,inherit);text-decoration:none;font-weight:600;font-size:13px}
+.howtoc a:hover{border-color:var(--accent);color:var(--accent)}
+.howc{border:1px solid var(--line);border-radius:12px;margin:0 0 10px;background:var(--surface);scroll-margin-top:140px;overflow:hidden}
+.howc summary{list-style:none;cursor:pointer;padding:14px 44px 14px 16px;display:grid;gap:3px;position:relative}
+.howc summary::-webkit-details-marker{display:none}
+.howc summary::after{content:'';position:absolute;right:18px;top:50%;width:9px;height:9px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-70%) rotate(45deg);transition:transform .2s}
+.howc[open] summary::after{transform:translateY(-30%) rotate(-135deg)}
+.howc .hq{font-weight:700;font-size:16px;line-height:1.3}
+.howc .hs{font-size:12.5px;color:var(--muted)}
+.howc[open]{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.howc .hb{padding:0 16px 14px;font-size:14.5px;line-height:1.55}
+.howc .hb p{margin:0 0 10px}
+.howc .hb ul{margin:0 0 10px;padding-left:18px}.howc .hb li{margin:0 0 6px}
+.howc .fx{font-family:var(--f-num,inherit);background:var(--soft);border-radius:8px;padding:9px 12px;font-size:13.5px;font-weight:600}
+.howc .mine,.howc .hex{border-radius:10px;padding:10px 12px;margin:0 0 10px}
+.howc .mine{background:color-mix(in srgb,var(--accent) 12%,transparent);border:1px solid color-mix(in srgb,var(--accent) 35%,transparent)}
+.howc .hex{border:1px dashed var(--line)}
+.howc .mine p:last-child,.howc .hex p:last-child,.howc .mine ul{margin-bottom:0}
+.howc .mlbl{display:block;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--muted);margin-bottom:4px}
+.howc .mine .mlbl{color:var(--accent)}
+.howc .split{display:flex;height:12px;border-radius:6px;overflow:hidden;margin:8px 0;background:var(--soft)}
+.howc .split .own{background:var(--muted)}.howc .split .grow{background:var(--accent)}

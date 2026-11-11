@@ -734,6 +734,10 @@
 "Γράφημα πτώσεων από την κορυφή": "Chart of drops from the high",
 "Κατάθεση": "Deposit",
 "Επιτόκιο καταθέσεων (% τον χρόνο)": "Deposit interest (% a year)",
-"Βάλε τον τόκο που σου δίνει η τράπεζά σου. Οι απλές καταθέσεις στις ελληνικές τράπεζες δίνουν 0%. Χρησιμοποιείται στη θέση «Κατάθεση», στη σύγκριση με κατάθεση και στο πλάνο.": "Enter the interest your bank pays you. Ordinary deposits at Greek banks pay 0%. It is used for the “Deposit” holding, the deposit comparison and the plan."
+"Βάλε τον τόκο που σου δίνει η τράπεζά σου. Οι απλές καταθέσεις στις ελληνικές τράπεζες δίνουν 0%. Χρησιμοποιείται στη θέση «Κατάθεση», στη σύγκριση με κατάθεση και στο πλάνο.": "Enter the interest your bank pays you. Ordinary deposits at Greek banks pay 0%. It is used for the “Deposit” holding, the deposit comparison and the plan.",
+"Πώς υπολογίζονται αυτά τα νούμερα;": "How are these numbers calculated?",
+"Πώς υπολογίζονται τα νούμερα": "How the numbers are calculated",
+"Κάθε νούμερο της εφαρμογής, εξηγημένο απλά, με τα δικά σου στοιχεία. Πάτα μια ερώτηση για να ανοίξει.": "Every number in the app, explained simply, with your own figures. Tap a question to open it.",
+"Εξηγήσεις": "Explained"
 }
 }

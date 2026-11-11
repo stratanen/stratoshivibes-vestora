@@ -143,9 +143,9 @@ async function hlRead(addr){
   const [sp,pe,dg,vt,px]=await Promise.all([hlPost({type:'spotClearinghouseState',user:addr}),hlPost({type:'clearinghouseState',user:addr}).catch(()=>null),
     hlPost({type:'delegatorSummary',user:addr}).catch(()=>null),hlPost({type:'userVaultEquities',user:addr}).catch(()=>[]),hlSpotPx()]);
   const out=[],add=(key,name,sym,qty,usd,cls,extra)=>{if(qty>0&&usd>0)out.push({hlKey:key,name,sym,qty,eur:usd/FXL,cls,tag:'Hyperliquid',...extra})};
-  for(const b of sp?.balances||[]){const q=+b.total||0,p=px[b.coin]||0,id=HL_MAP[b.coin]&&ASSETS[HL_MAP[b.coin]]?HL_MAP[b.coin]:null;
+  for(const b of sp?.balances||[]){const q=+b.total||0,p=(b.token!=null?px['#'+b.token]:px[b.coin])||0,id=HL_MAP[b.coin]&&ASSETS[HL_MAP[b.coin]]?HL_MAP[b.coin]:null;
     if(id)out.push({id,name:ASSETS[id].name,sym:b.coin,qty:q,eur:p/FXL,cls:'crypto',tag:'Hyperliquid'});
-    else add('s_'+b.coin,b.coin==='HYPE'?'Hyperliquid':b.coin,b.coin,q,p,HL_CASH.has(b.coin)?'cash':'crypto',{hl:b.coin})}
+    else add('s_'+b.coin,b.coin==='HYPE'?'Hyperliquid':b.coin,b.coin,q,p,HL_CASH.has(b.coin)?'cash':'crypto',{hl:b.token!=null?'#'+b.token:b.coin})}
   const st=(+dg?.delegated||0)+(+dg?.undelegated||0)+(+dg?.totalPendingWithdrawal||0);
   add('stake_HYPE','Hyperliquid (staked)','HYPE',st,px.HYPE||0,'crypto',{hl:'HYPE',staked:true});
   const av=+pe?.marginSummary?.accountValue||0,open=(pe?.assetPositions||[]).length;

@@ -712,10 +712,13 @@ function hlPost(body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.a
   return fetch(HL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:ctl.signal}).then(r=>{if(!r.ok)throw new Error('HL '+r.status);return r.json()}).finally(()=>clearTimeout(to))}
 async function hlSpotPx(){
   const [m,ctx]=await hlPost({type:'spotMetaAndAssetCtxs'});const px={USDC:1};
-  /* match each market to its own price row by name (the two lists are not in the same order); a market with no live order book (no mid price) gives no price */
+  /* Each market is matched to its own price row by name, and a token is keyed by its index (names are not guaranteed unique).
+     Thin books on small tokens give absurd mid prices (a far-away ask), so the value used is the LOWEST of mark, mid and
+     yesterday's price: for a portfolio it is safer to under-count dust than to show it worth hundreds. */
   const byCoin={};for(const c of ctx||[])if(c&&c.coin)byCoin[c.coin]=c;
-  for(const u of m.universe){const [b,q]=u.tokens;if(q!==0)continue;const tk=m.tokens.find(t=>t.index===b),c=byCoin[u.name];const p=+(c&&c.midPx)||0;
-    if(tk&&p>0&&!(tk.name in px))px[tk.name]=p}
+  for(const u of m.universe){const [b,q]=u.tokens;if(q!==0)continue;const c=byCoin[u.name];if(!c)continue;
+    const ps=[c.markPx,c.midPx,c.prevDayPx].map(Number).filter(x=>x>0);if(!ps.length)continue;
+    const p=Math.min(...ps),tk=m.tokens.find(t=>t.index===b);px['#'+b]=p;if(tk&&!(tk.name in px))px[tk.name]=p}
   return px;
 }
 let liveAt=0;
@@ -1620,9 +1623,9 @@ async function hlRead(addr){
   const [sp,pe,dg,vt,px]=await Promise.all([hlPost({type:'spotClearinghouseState',user:addr}),hlPost({type:'clearinghouseState',user:addr}).catch(()=>null),
     hlPost({type:'delegatorSummary',user:addr}).catch(()=>null),hlPost({type:'userVaultEquities',user:addr}).catch(()=>[]),hlSpotPx()]);
   const out=[],add=(key,name,sym,qty,usd,cls,extra)=>{if(qty>0&&usd>0)out.push({hlKey:key,name,sym,qty,eur:usd/FXL,cls,tag:'Hyperliquid',...extra})};
-  for(const b of sp?.balances||[]){const q=+b.total||0,p=px[b.coin]||0,id=HL_MAP[b.coin]&&ASSETS[HL_MAP[b.coin]]?HL_MAP[b.coin]:null;
+  for(const b of sp?.balances||[]){const q=+b.total||0,p=(b.token!=null?px['#'+b.token]:px[b.coin])||0,id=HL_MAP[b.coin]&&ASSETS[HL_MAP[b.coin]]?HL_MAP[b.coin]:null;
     if(id)out.push({id,name:ASSETS[id].name,sym:b.coin,qty:q,eur:p/FXL,cls:'crypto',tag:'Hyperliquid'});
-    else add('s_'+b.coin,b.coin==='HYPE'?'Hyperliquid':b.coin,b.coin,q,p,HL_CASH.has(b.coin)?'cash':'crypto',{hl:b.coin})}
+    else add('s_'+b.coin,b.coin==='HYPE'?'Hyperliquid':b.coin,b.coin,q,p,HL_CASH.has(b.coin)?'cash':'crypto',{hl:b.token!=null?'#'+b.token:b.coin})}
   const st=(+dg?.delegated||0)+(+dg?.undelegated||0)+(+dg?.totalPendingWithdrawal||0);
   add('stake_HYPE','Hyperliquid (staked)','HYPE',st,px.HYPE||0,'crypto',{hl:'HYPE',staked:true});
   const av=+pe?.marginSummary?.accountValue||0,open=(pe?.assetPositions||[]).length;

@@ -20,10 +20,13 @@ function hlPost(body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.a
   return fetch(HL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:ctl.signal}).then(r=>{if(!r.ok)throw new Error('HL '+r.status);return r.json()}).finally(()=>clearTimeout(to))}
 async function hlSpotPx(){
   const [m,ctx]=await hlPost({type:'spotMetaAndAssetCtxs'});const px={USDC:1};
-  /* match each market to its own price row by name (the two lists are not in the same order); a market with no live order book (no mid price) gives no price */
+  /* Each market is matched to its own price row by name, and a token is keyed by its index (names are not guaranteed unique).
+     Thin books on small tokens give absurd mid prices (a far-away ask), so the value used is the LOWEST of mark, mid and
+     yesterday's price: for a portfolio it is safer to under-count dust than to show it worth hundreds. */
   const byCoin={};for(const c of ctx||[])if(c&&c.coin)byCoin[c.coin]=c;
-  for(const u of m.universe){const [b,q]=u.tokens;if(q!==0)continue;const tk=m.tokens.find(t=>t.index===b),c=byCoin[u.name];const p=+(c&&c.midPx)||0;
-    if(tk&&p>0&&!(tk.name in px))px[tk.name]=p}
+  for(const u of m.universe){const [b,q]=u.tokens;if(q!==0)continue;const c=byCoin[u.name];if(!c)continue;
+    const ps=[c.markPx,c.midPx,c.prevDayPx].map(Number).filter(x=>x>0);if(!ps.length)continue;
+    const p=Math.min(...ps),tk=m.tokens.find(t=>t.index===b);px['#'+b]=p;if(tk&&!(tk.name in px))px[tk.name]=p}
   return px;
 }
 let liveAt=0;

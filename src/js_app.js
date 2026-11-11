@@ -136,9 +136,27 @@ async function ethRead(addr){
   for(const t of list)if(t.id&&nowPrice(t.id)>0)t.eur=nowPrice(t.id);   // ETH and wrapped BTC use the app's own price, so the list shows exactly what gets added
   return list.filter(t=>t.qty*t.eur>=1).sort((a,b)=>b.qty*b.eur-a.qty*a.eur);
 }
+/* Hyperliquid uses the same 0x address. Spot balances, staked HYPE, the perps account and vault deposits. */
+const HL_MAP={UBTC:'BTC',UETH:'ETH',USOL:'SOL'},HL_CASH=new Set(['USDC','USDT0','USDE','USDH']);
+async function hlRead(addr){
+  const [sp,pe,dg,vt,px]=await Promise.all([hlPost({type:'spotClearinghouseState',user:addr}),hlPost({type:'clearinghouseState',user:addr}).catch(()=>null),
+    hlPost({type:'delegatorSummary',user:addr}).catch(()=>null),hlPost({type:'userVaultEquities',user:addr}).catch(()=>[]),hlSpotPx()]);
+  const out=[],add=(key,name,sym,qty,usd,cls,extra)=>{if(qty>0&&usd>0)out.push({hlKey:key,name,sym,qty,eur:usd/FXL,cls,tag:'Hyperliquid',...extra})};
+  for(const b of sp?.balances||[]){const q=+b.total||0,p=px[b.coin]||0,id=HL_MAP[b.coin]&&ASSETS[HL_MAP[b.coin]]?HL_MAP[b.coin]:null;
+    if(id)out.push({id,name:ASSETS[id].name,sym:b.coin,qty:q,eur:p/FXL,cls:'crypto',tag:'Hyperliquid'});
+    else add('s_'+b.coin,b.coin==='HYPE'?'Hyperliquid':b.coin,b.coin,q,p,HL_CASH.has(b.coin)?'cash':'crypto',{hl:b.coin})}
+  const st=(+dg?.delegated||0)+(+dg?.undelegated||0)+(+dg?.totalPendingWithdrawal||0);
+  add('stake_HYPE','Hyperliquid (staked)','HYPE',st,px.HYPE||0,'crypto',{hl:'HYPE',staked:true});
+  const av=+pe?.marginSummary?.accountValue||0,open=(pe?.assetPositions||[]).length;
+  add('perps','Hyperliquid perps','USDC',av,1,open?'crypto':'cash',{usdv:true});
+  const vq=(Array.isArray(vt)?vt:[]).reduce((s,v)=>s+(+v.equity||0),0);
+  add('vaults','Hyperliquid vaults','USDC',vq,1,'crypto',{usdv:true});
+  return out.filter(t=>t.qty*t.eur>=1);
+}
 async function loadEth(addr){
   flow.eth={addr,loading:true};drawSheet();
-  try{const list=await ethRead(addr);LS.set(EKEY,addr);flow.imp={list,src:'eth',addr};flow.eth={addr};flow.step='import'}
+  try{const [l1,l2]=await Promise.all([ethRead(addr).catch(e=>{console.warn('eth',e);return null}),hlRead(addr).catch(e=>{console.warn('hl',e);return null})]);if(!l1&&!l2)throw new Error('both failed');
+    const list=[...(l1||[]),...(l2||[])].sort((a,b)=>b.qty*b.eur-a.qty*a.eur);flow.hlErr=!l2;LS.set(EKEY,addr);flow.imp={list,src:'eth',addr};flow.eth={addr};flow.step='import'}
   catch(e){console.warn(e);flow.eth={addr,error:true}}
   if(!$('overlay').hidden&&(flow.step==='eth'||flow.step==='import'))drawSheet();
 }
@@ -193,8 +211,8 @@ function drawSheet(){
       const dup=state.tx.some(t=>t.src===(E?'eth':'wallet'));
       s.innerHTML=head(E?'Εισαγωγή από Ethereum':'Εισαγωγή από wallet')+(E?`<p class="muted small num">${shortE(I.addr)}</p>`:'')+`<p class="muted">Βρέθηκαν αυτά τα assets αξίας πάνω από 1 €. Διάλεξε ποια θα προστεθούν. Μπαίνουν σαν αγορά σήμερα, με τη σημερινή τιμή. Αν τα αγόρασες παλιότερα, άλλαξε μετά ημερομηνία και τιμή στις συναλλαγές για σωστή απόδοση.</p>`+
       (dup?`<div class="verdict short">${E?'Έχεις ήδη κάνει εισαγωγή από Ethereum.':'Έχεις ήδη κάνει εισαγωγή από wallet.'} Ό,τι επιλέξεις θα προστεθεί ξανά.</div>`:'')+
-      (I.list.length?`<div class="imp">${I.list.map((t,i)=>`<label><input type="checkbox" id="imp${i}" data-i="${i}" checked> <span>${esc(t.id?ASSETS[t.id].name:t.name)} <small class="muted">${esc(t.sym)}${t.xstock?' · xStock':''}${t.staked?' · staking':''}${t.id?'':' · χωρίς ιστορικό τιμών'}</small></span><span class="num">${nf(t.qty<1?6:2).format(t.qty)} · ${eur.format(t.qty*t.eur)}</span></label>`).join('')}</div>`:'<p>Δεν βρέθηκαν assets με αξία πάνω από 1 €.</p>')+
-      (E?`<p class="muted">Η ανάγνωση είναι μόνο για προβολή. Φαίνονται το ETH και τα tokens του Ethereum mainnet που έχουν τιμή αγοράς. Ό,τι έχεις σε άλλα δίκτυα (Arbitrum, Base κ.ά.), σε staking ή μέσα σε πρωτόκολλα δεν φαίνεται εδώ: πρόσθεσέ το χειροκίνητα.</p>`
+      (I.list.length?`<div class="imp">${I.list.map((t,i)=>`<label><input type="checkbox" id="imp${i}" data-i="${i}" checked> <span>${esc(t.id?ASSETS[t.id].name:t.name)} <small class="muted">${esc(t.sym)}${t.xstock?' · xStock':''}${t.tag?' · '+t.tag:''}${t.staked?' · staking':''}${t.id?'':' · χωρίς ιστορικό τιμών'}</small></span><span class="num">${nf(t.qty<1?6:2).format(t.qty)} · ${eur.format(t.qty*t.eur)}</span></label>`).join('')}</div>`:'<p>Δεν βρέθηκαν assets με αξία πάνω από 1 €.</p>')+
+      (E?`<p class="muted">Η ανάγνωση είναι μόνο για προβολή. Φαίνονται το ETH και τα tokens του Ethereum mainnet που έχουν τιμή αγοράς, και στο Hyperliquid τα spot υπόλοιπα, το HYPE σε staking, η αξία του λογαριασμού perps και τα vaults. Τα perps και τα vaults μπαίνουν με την αξία τους σε δολάρια σήμερα και δεν ενημερώνονται μόνα τους. Ό,τι έχεις σε άλλα δίκτυα (Arbitrum, Base κ.ά.) ή μέσα σε άλλα πρωτόκολλα δεν φαίνεται εδώ: πρόσθεσέ το χειροκίνητα.</p>${flow.hlErr?'<p class="neg small">Το Hyperliquid δεν απάντησε αυτή τη φορά.</p>':''}`
         :`<p class="muted">Η ανάγνωση είναι μόνο για προβολή. Το SOL που έχεις σε native stake δεν φαίνεται εδώ: πρόσθεσέ το χειροκίνητα. Liquid staking tokens (π.χ. JitoSOL) εμφανίζονται κανονικά.</p>`)+
       `<div class="row"><button class="btn" type="button" data-act="${E?'eth':'done'}">Πίσω</button>${I.list.length?`<button class="btn primary" type="button" data-act="doimport">Προσθήκη επιλεγμένων</button>`:''}</div>`;
     }
@@ -262,7 +280,7 @@ $('sheet').addEventListener('click',async e=>{
     if(state.sample)state={sample:false,onboarded:true,custom:{},mints:{},tx:[]};
     const E=flow.imp.src==='eth';
     $('sheet').querySelectorAll('.imp input:checked').forEach(c=>{const t=flow.imp.list[+c.dataset.i];let id=t.id,px=t.eur;
-      if(E){if(id)px=nowPrice(id)||t.eur;else{id='e_'+t.contract;state.custom[id]={name:t.name,sym:t.sym,cls:t.cls,current:t.eur,evm:t.contract}}}
+      if(E){if(id)px=nowPrice(id)||t.eur;else if(t.hlKey){id='h_'+t.hlKey;state.custom[id]={name:t.name,sym:t.sym,cls:t.cls,current:t.eur,...(t.hl?{hl:t.hl}:{usdv:1})}}else{id='e_'+t.contract;state.custom[id]={name:t.name,sym:t.sym,cls:t.cls,current:t.eur,evm:t.contract}}}
       else if(id){if(t.xstock)state.mints[id]=t.mint;if(PRICES[id])PRICES[id][W-1]=t.eur}
       else{id='m_'+t.mint+(t.staked?'_st':'');state.custom[id]={name:t.name,sym:t.sym,cls:STABLE.has(t.mint)?'cash':'crypto',current:t.eur,mint:t.mint}}
       state.tx.push({id:uid(),a:id,type:'buy',date,qty:t.qty,price:+px.toPrecision(8),fee:0,reason:'',src:E?'eth':'wallet'});n++});

@@ -14,6 +14,15 @@ const MINT={SOL:'So11111111111111111111111111111111111111112',SKR:'SKRbvo6Gf7Gon
 const JUP='https://lite-api.jup.ag/price/v3?ids=';
 /* Ethereum tokens added from a pasted address: prices by contract address from DefiLlama (no wallet address is sent) */
 const LLAMA='https://coins.llama.fi/prices/current/';
+/* Hyperliquid, public read-only info API (no key, no signature). Spot token prices: the token's /USDC pair mark price. */
+const HL='https://api.hyperliquid.xyz/info';
+function hlPost(body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
+  return fetch(HL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:ctl.signal}).then(r=>{if(!r.ok)throw new Error('HL '+r.status);return r.json()}).finally(()=>clearTimeout(to))}
+async function hlSpotPx(){
+  const [m,ctx]=await hlPost({type:'spotMetaAndAssetCtxs'});const px={USDC:1};
+  m.universe.forEach((u,i)=>{const [b,q]=u.tokens;if(q!==0)return;const tk=m.tokens.find(t=>t.index===b),c=ctx[i];const p=+(c&&(c.midPx||c.markPx))||0;if(tk&&p>0&&!(tk.name in px))px[tk.name]=p});
+  return px;
+}
 let liveAt=0;
 
 function applyData(d){
@@ -44,6 +53,8 @@ async function livePrices(){
     }
     liveAt=Date.now();if(changed){save();render()}else renderPriceNote();
   }catch(e){console.warn('live prices',e);renderPriceNote()}
+  const hl=Object.entries(state.custom).filter(([,c])=>c.hl);
+  if(hl.length)try{const px=await hlSpotPx();let ch=false;for(const [k,c] of hl){const p=px[c.hl];if(p>0){state.custom[k].current=p/FXL;ch=true}}if(ch){save();render()}}catch(e){console.warn('hl prices',e)}
   const ev=Object.entries(state.custom).filter(([,c])=>c.evm);
   if(ev.length)try{
     let changed=false;
@@ -100,7 +111,7 @@ function sample(){
   return {sample:true,onboarded:true,custom:{},mints:{},tx};
 }
 
-function meta(a){return ASSETS[a]||{name:state.custom[a]?.name||'Άλλο',sym:state.custom[a]?.sym||'',cls:state.custom[a]?.cls||'other',usd:state.custom[a]?.mint||state.custom[a]?.evm?1:0,custom:true}}
+function meta(a){return ASSETS[a]||{name:state.custom[a]?.name||'Άλλο',sym:state.custom[a]?.sym||'',cls:state.custom[a]?.cls||'other',usd:state.custom[a]?.mint||state.custom[a]?.evm||state.custom[a]?.hl||state.custom[a]?.usdv?1:0,custom:true}}
 function series(a){
   if(PRICES[a])return PRICES[a];
   const c=state.custom[a];const txs=state.tx.filter(t=>t.a===a&&t.type!=='div').sort((x,y)=>x.date.localeCompare(y.date));

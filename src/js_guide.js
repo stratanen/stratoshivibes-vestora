@@ -112,19 +112,68 @@ function renderHowPage(){
     `<p>${T('Όλες οι προμήθειες που έγραψες στις συναλλαγές αθροίζονται και συγκρίνονται με το ποσό των αγορών σου. Οι προμήθειες μπαίνουν στη μέση τιμή, οπότε μειώνουν το κέρδος σου, όπως και στην πραγματικότητα.','All the fees you entered in transactions are added up and compared with the amount you bought. Fees are included in the average price, so they reduce your profit, as they do in reality.')}</p>
     ${howMine(has?`<p>${b(eur2.format(D0.fees))} · ${D0.bought>0?b(nf(2).format(D0.fees/D0.bought*100)+'%')+' '+T('του ποσού των αγορών','of the amount bought'):''}</p>`:noData)}`));
 
-  /* 11. plan */
-  let mp=`<p>${T('Συμπλήρωσε το πλάνο σου για να δεις εδώ τα δικά σου νούμερα.','Fill in your plan to see your own figures here.')}</p>`;
-  try{if(typeof planRun==='function'&&has){const R=planRun(),L=R.last,a=R.args,own=L.contrib,grow=L.p50-own;
-    mp=`<p>${T('Σε','In')} ${b(a.years)} ${T('χρόνια, με','years, with')} ${b(eur.format(a.monthly))} ${T('τον μήνα, το μεσαίο σενάριο δίνει','a month, the middle scenario gives')} ${b(eur.format(L.p50))}.</p>
+  /* 11. plan: the whole method, step by step, with the user's own allocation and three estimate levels */
+  const kEur=v=>Math.abs(v)<10000?eur.format(v):LANG==='en'?'€'+nf(0).format(v/1000)+'k':nf(0).format(v/1000)+' χιλ. €';
+  const pct0=v=>nf(1).format(v*100)+'%';
+  const CLN={eq:T('Μετοχές & ETF','Stocks & ETFs'),crypto:'Crypto',cash:T('Καταθέσεις','Deposits'),other:T('Άλλα','Other')};
+  const muOf=(k,a)=>PC[k].mu+(k==='cash'?0:a);
+  const clsTable=`<div class="tablewrap"><table class="htab"><thead><tr><th>${T('Κατηγορία','Class')}</th><th class="num">${T('Συντηρ.','Conserv.')}</th><th class="num">${T('Μέτριες','Moderate')}</th><th class="num">${T('Αισιόδ.','Optim.')}</th><th class="num">${T('Διακύμ.','Swings')}</th></tr></thead><tbody>`+
+    PK.map(k=>`<tr><td>${CLN[k]}</td>${[-.02,0,.02].map(a=>`<td class="num">${pct0(muOf(k,a))}</td>`).join('')}<td class="num">${pct0(PC[k].s)}</td></tr>`).join('')+'</tbody></table></div>';
+  let mine1=`<p>${T('Συμπλήρωσε το πλάνο σου για να δεις εδώ τα δικά σου νούμερα.','Fill in your plan to see your own figures here.')}</p>`,mine2='',mine3='';
+  try{if(typeof planRun==='function'&&has){
+    const R=planRun(),L=R.last,a=R.args,own=L.contrib,grow=L.p50-own,useT=targetValid();
+    mine1=`<p>${useT?T('Υπολογίζεται με την <b>κατανομή-στόχο</b> σου:','Calculated with your <b>target allocation</b>:'):T('Υπολογίζεται με τη <b>σημερινή</b> κατανομή σου:','Calculated with your <b>current</b> allocation:')}</p>
+      <ul>${PK.filter(k=>R.w[k]>.0005).map(k=>`<li>${CLN[k]}: ${b(nf(0).format(R.w[k]*100)+'%')} × ${pct0(muOf(k,+plan.ass))}</li>`).join('')}</ul>
+      <p>${T('Αναμενόμενη απόδοση:','Expected return:')} ${b(pct0(R.mu))} ${T('τον χρόνο','a year')} · ${T('διακύμανση:','swings:')} ${b(pct0(R.s))}<br>${T('Μεσαία πορεία μετά τη διακύμανση και τη χρέωση:','Typical growth after swings and fees:')} ${b(pct(R.mu-a.fee-R.s*R.s/2),sgn(R.mu-a.fee-R.s*R.s/2))} ${T('τον χρόνο','a year')}</p>`;
+    mine2=`<p>${T('Σε','In')} ${b(a.years)} ${T('χρόνια, με','years, with')} ${b(eur.format(a.monthly))} ${T('τον μήνα:','a month:')}</p>
+      <ul><li>${T('Κακό σενάριο (1 στα 10 βγαίνει χειρότερα):','Bad scenario (1 in 10 is worse):')} ${b(eur.format(L.p10))}</li><li>${T('Μεσαίο σενάριο:','Middle scenario:')} ${b(eur.format(L.p50))}</li><li>${T('Καλό σενάριο (1 στα 10 βγαίνει καλύτερα):','Good scenario (1 in 10 is better):')} ${b(eur.format(L.p90))}</li>${a.goal>0?`<li>${T('Ο στόχος των','The goal of')} ${eur.format(a.goal)} ${T('πιάνεται σε','is reached in')} ${b(Math.round(R.hit*100)+' '+T('από τα 100','out of 100'))}</li>`:''}</ul>
       <div class="split"><span style="flex:${Math.max(own,0)}" class="own"></span><span style="flex:${Math.max(grow,0)}" class="grow"></span></div>
-      <p class="small">${T('Δικά σου χρήματα (σημερινή αξία + καταβολές):','Your own money (today’s value + payments):')} ${b(eur.format(own))}<br>${T('Απόδοση και ανατοκισμός:','Returns and compounding:')} ${b((grow>0?'+':'')+eur.format(grow),sgn(grow))}${a.real?' · '+T('σε σημερινά ευρώ','in today’s euros'):''}</p>`}}catch(e){console.warn('how plan',e)}
-  cards.push(howCard('plan',T('Πώς βγαίνει το πλάνο για το μέλλον;','How is the plan for the future worked out?'),T('Ανατοκισμός, σενάρια, εκτιμήσεις','Compounding, scenarios, assumptions'),
-    `<p>${T('<b>Ανατοκισμός:</b> κάθε μήνα η απόδοση υπολογίζεται πάνω σε <b>όλα</b> όσα έχουν μαζευτεί, δηλαδή και στα κέρδη των προηγούμενων μηνών, και μετά προστίθεται η μηνιαία καταβολή σου. Έτσι τα κέρδη φέρνουν κι αυτά κέρδη, και το αποτέλεσμα μεγαλώνει όλο και πιο γρήγορα με τα χρόνια.','<b>Compounding:</b> every month the return is calculated on <b>everything</b> built up so far, including earlier months’ gains, and then your monthly payment is added. So gains earn gains too, and the result grows faster and faster over the years.')}</p>
+      <p class="small">${T('Δικά σου χρήματα (σημερινή αξία + καταβολές):','Your own money (today’s value + payments):')} ${b(eur.format(own))}<br>${T('Απόδοση και ανατοκισμός (μεσαίο σενάριο):','Returns and compounding (middle scenario):')} ${b((grow>0?'+':'')+eur.format(grow),sgn(grow))}${a.real?' · '+T('σε σημερινά ευρώ','in today’s euros'):''}</p>`;
+    const lv=[['-0.02',T('Συντηρητικές','Conservative')],['0',T('Μέτριες','Moderate')],['0.02',T('Αισιόδοξες','Optimistic')]];
+    mine3=`<div class="tablewrap"><table class="htab"><thead><tr><th>${T('Εκτιμήσεις','Estimates')}</th><th class="num">${T('Κακό','Bad')}</th><th class="num">${T('Μεσαίο','Middle')}</th><th class="num">${T('Καλό','Good')}</th></tr></thead><tbody>`+
+      lv.map(([v,n])=>{const x=planRun({ass:v}).last;return `<tr${v===String(plan.ass)?' class="sel"':''}><td>${n}</td><td class="num">${kEur(x.p10)}</td><td class="num"><b>${kEur(x.p50)}</b></td><td class="num">${kEur(x.p90)}</td></tr>`}).join('')+'</tbody></table></div>';
+  }}catch(e){console.warn('how plan',e)}
+  cards.push(howCard('plan',T('Πώς βγαίνει το πλάνο για το μέλλον;','How is the plan for the future worked out?'),T('Βήμα βήμα: αποδόσεις, ανατοκισμός, σενάρια, εκτιμήσεις','Step by step: returns, compounding, scenarios, estimates'),
+    `<p>${T('Το πλάνο απαντά στο «πού μπορεί να φτάσω;». Δεν μαντεύει το μέλλον: δοκιμάζει πολλά πιθανά μέλλοντα και σου δείχνει πού πέφτουν τα περισσότερα. Γίνεται σε 5 βήματα.','The plan answers “where could I get to?”. It does not guess the future: it tries many possible futures and shows you where most of them land. It works in 5 steps.')}</p>
+
+    <h4>${T('1. Τι απόδοση υποθέτουμε για κάθε κατηγορία','1. What return we assume for each class')}</h4>
+    <p>${T('Κάθε κατηγορία έχει δύο νούμερα: τη <b>μέση ετήσια απόδοση</b> και τη <b>διακύμανση</b>, δηλαδή πόσο ανεβοκατεβαίνει σε μια συνηθισμένη χρονιά. Διακύμανση 16% σημαίνει ότι 2 στις 3 χρονιές βγαίνουν περίπου από −10% έως +22% γύρω από το 6%.','Each class has two numbers: the <b>average yearly return</b> and the <b>swings</b>, how much it moves up and down in a normal year. Swings of 16% mean that 2 in 3 years land roughly between −10% and +22% around the 6%.')}</p>
+    ${clsTable}
+    <p class="small muted">${T('Οι καταθέσεις παίρνουν το επιτόκιο από τις Ρυθμίσεις και δεν αλλάζουν με τις εκτιμήσεις. Τα νούμερα είναι σκόπιμα μετριοπαθή: οι παγκόσμιες μετοχές ιστορικά έχουν δώσει κάτι παραπάνω, αλλά το μέλλον δεν είναι υποχρεωμένο να επαναλάβει το παρελθόν.','Deposits use the rate from Settings and do not change with the estimates. The numbers are deliberately modest: global stocks have historically returned somewhat more, but the future does not have to repeat the past.')}</p>
+
+    <h4>${T('2. Ανάμειξη με την κατανομή σου','2. Blending with your allocation')}</h4>
+    <p>${T('Η αναμενόμενη απόδοση του χαρτοφυλακίου είναι ο μέσος όρος των κατηγοριών, ζυγισμένος με το πόσο έχεις στην καθεμία. Η διακύμανση βγαίνει μικρότερη από το απλό άθροισμα, γιατί οι κατηγορίες δεν κινούνται πάντα μαζί (π.χ. οι καταθέσεις δεν πέφτουν όταν πέφτουν οι μετοχές). Για μετοχές και crypto υποθέτουμε ότι συχνά κινούνται προς την ίδια κατεύθυνση.','The portfolio’s expected return is the average of the classes, weighted by how much you hold in each. The swings come out smaller than a simple sum, because classes do not always move together (e.g. deposits do not fall when stocks fall). For stocks and crypto we assume they often move in the same direction.')}</p>
+    ${howMine(mine1)}
+
+    <h4>${T('3. Μήνα με τον μήνα, με ανατοκισμό','3. Month by month, with compounding')}</h4>
+    <p>${T('Για κάθε μήνα: παίρνουμε όσα έχουν μαζευτεί, τα πολλαπλασιάζουμε με μια απόδοση του μήνα, και προσθέτουμε τη μηνιαία σου καταβολή. Η απόδοση κάθε μήνα είναι «τυχαία» αλλά ρεαλιστική: συνήθως κοντά στον μέσο όρο, πότε πότε πολύ πάνω ή πολύ κάτω, όπως στις πραγματικές αγορές. Επειδή η απόδοση εφαρμόζεται σε όλο το ποσό, και στα κέρδη των προηγούμενων μηνών, έχουμε <b>ανατοκισμό</b>.','For each month: we take what has built up, multiply it by that month’s return, and add your monthly payment. Each month’s return is “random” but realistic: usually near the average, sometimes far above or below, as in real markets. Because the return applies to the whole amount, including earlier gains, there is <b>compounding</b>.')}</p>
+    ${howFx(T('νέα αξία = αξία × (1 + απόδοση μήνα − χρέωση) + μηνιαία καταβολή','new value = value × (1 + month’s return − fee) + monthly payment'))}
     ${howEx(T('1.000 € με 6% τον χρόνο: μετά από 1 χρόνο 1.060 €, μετά από 10 χρόνια ~1.790 €, μετά από 30 χρόνια ~5.740 €. Χωρίς ανατοκισμό τα 30 χρόνια θα έδιναν μόνο 2.800 €.','€1,000 at 6% a year: after 1 year €1,060, after 10 years ~€1,790, after 30 years ~€5,740. Without compounding, 30 years would give only €2,800.'))}
-    <p>${T('<b>Σενάρια:</b> οι αγορές δεν ανεβαίνουν ίσια. Γι’ αυτό η εφαρμογή «παίζει» 400 διαφορετικές πιθανές πορείες, με καλές και κακές χρονιές. Το <b>μεσαίο σενάριο</b> είναι αυτό που βρίσκεται στη μέση: τα μισά βγαίνουν καλύτερα, τα μισά χειρότερα. Το <b>εύρος</b> δείχνει πού πέφτουν τα 8 στα 10.','<b>Scenarios:</b> markets do not rise in a straight line. So the app plays out 400 different possible paths, with good and bad years. The <b>middle scenario</b> sits in the middle: half come out better, half worse. The <b>range</b> shows where 8 out of 10 land.')}</p>
-    <p>${T(`<b>Εκτιμήσεις (μέτριες):</b> μετοχές και ETF 6% τον χρόνο, crypto 8% αλλά με πολύ μεγάλες διακυμάνσεις, καταθέσεις ${nf(2).format(r)}% (από τις Ρυθμίσεις). Οι «συντηρητικές» αφαιρούν 2 μονάδες, οι «αισιόδοξες» προσθέτουν 2. Οι διακυμάνσεις μειώνουν τον ανατοκισμό: αν χάσεις 50% και μετά κερδίσεις 50%, μένεις στο 75%.`,`<b>Assumptions (moderate):</b> stocks and ETFs 6% a year, crypto 8% but with very large swings, deposits ${nf(2).format(r)}% (from Settings). “Conservative” subtracts 2 points, “optimistic” adds 2. Swings reduce compounding: lose 50% then gain 50% and you are at 75%.`)}</p>
-    <p>${T('Η ετήσια χρέωση που δηλώνεις αφαιρείται κάθε μήνα. Με «σημερινά ευρώ» τα ποσά διορθώνονται για πληθωρισμό 2,5% τον χρόνο, ώστε να δείχνουν πραγματική αγοραστική δύναμη.','The yearly fee you enter is deducted every month. With “today’s euros” amounts are adjusted for 2.5% yearly inflation, so they show real buying power.')}</p>
-    ${howMine(mp)}`));
+    <p>${T('<b>Οι διακυμάνσεις κοστίζουν.</b> Αν χάσεις 50% και μετά κερδίσεις 50%, μένεις στο 75%. Γι’ αυτό η τυπική (μεσαία) πορεία μεγαλώνει λιγότερο από τη μέση απόδοση, περίπου κατά το μισό του τετραγώνου της διακύμανσης. Για μετοχές: 6% − 1,3% ≈ 4,7% τον χρόνο. Για ένα χαρτοφυλάκιο μόνο με crypto η διαφορά είναι τεράστια (8% − 21%), γι’ αυτό η μεσαία πορεία του βγαίνει πτωτική, ενώ οι καλές πορείες βγαίνουν πολύ ψηλά.','<b>Swings cost money.</b> Lose 50% then gain 50% and you are at 75%. So the typical (middle) path grows less than the average return, by roughly half the square of the swings. For stocks: 6% − 1.3% ≈ 4.7% a year. For an all-crypto portfolio the gap is huge (8% − 21%), so its middle path comes out falling, while the good paths end very high.')}</p>
+    <p>${T('Η ετήσια χρέωση που δηλώνεις (π.χ. 0,3% για ένα ETF) αφαιρείται κάθε μήνα.','The yearly fee you enter (e.g. 0.3% for an ETF) is deducted every month.')}</p>
+
+    <h4>${T('4. 400 πιθανά μέλλοντα','4. 400 possible futures')}</h4>
+    <p>${T('Το βήμα 3 επαναλαμβάνεται για 400 διαφορετικές πορείες, η καθεμία με τη δική της σειρά από καλούς και κακούς μήνες. Στο τέλος οι 400 πορείες μπαίνουν σε σειρά από τη χειρότερη στην καλύτερη:','Step 3 is repeated for 400 different paths, each with its own sequence of good and bad months. At the end the 400 paths are lined up from worst to best:')}</p>
+    <ul>
+      <li>${T('<b>Μεσαίο σενάριο:</b> η πορεία στη μέση. Οι μισές βγαίνουν καλύτερα, οι μισές χειρότερα.','<b>Middle scenario:</b> the path in the middle. Half do better, half do worse.')}</li>
+      <li>${T('<b>Κακό σενάριο:</b> μόνο 1 στις 10 πορείες βγαίνει χειρότερα από αυτό.','<b>Bad scenario:</b> only 1 in 10 paths does worse than this.')}</li>
+      <li>${T('<b>Καλό σενάριο:</b> μόνο 1 στις 10 πορείες βγαίνει καλύτερα από αυτό.','<b>Good scenario:</b> only 1 in 10 paths does better than this.')}</li>
+      <li>${T('<b>Πιθανότητα στόχου:</b> πόσες από τις 400 πορείες φτάνουν ή ξεπερνούν τον στόχο σου, ανά 100.','<b>Chance of the goal:</b> how many of the 400 paths reach or pass your goal, per 100.')}</li>
+    </ul>
+    <p class="small muted">${T('Χρησιμοποιούνται πάντα οι ίδιες 400 πορείες, ώστε όταν αλλάζεις κάτι (π.χ. +50 € τον μήνα) η διαφορά να οφείλεται μόνο στην αλλαγή σου και όχι στην τύχη.','The same 400 paths are always used, so when you change something (e.g. +€50 a month) the difference comes only from your change, not from luck.')}</p>
+    ${howMine(mine2)}
+
+    <h4>${T('5. Εκτιμήσεις: συντηρητικές, μέτριες, αισιόδοξες','5. Estimates: conservative, moderate, optimistic')}</h4>
+    <p>${T('Προσοχή, είναι δύο διαφορετικά πράγματα:','Careful, these are two different things:')}</p>
+    <ul>
+      <li>${T('Οι <b>εκτιμήσεις</b> αλλάζουν το «πόσο καλές θα είναι οι αγορές κατά μέσο όρο»: οι συντηρητικές αφαιρούν 2 μονάδες από κάθε κατηγορία (εκτός καταθέσεων), οι αισιόδοξες προσθέτουν 2.','<b>Estimates</b> change “how good markets will be on average”: conservative subtracts 2 points from every class (except deposits), optimistic adds 2.')}</li>
+      <li>${T('Τα <b>σενάρια</b> (κακό, μεσαίο, καλό) δείχνουν την <b>τύχη</b> μέσα σε κάθε εκτίμηση: ακόμα και με αισιόδοξες εκτιμήσεις μπορεί να πέσεις σε κακή δεκαετία.','<b>Scenarios</b> (bad, middle, good) show <b>luck</b> within each estimate: even with optimistic estimates you can land in a bad decade.')}</li>
+    </ul>
+    ${has&&mine3?howMine(mine3):''}
+
+    <h4>${T('Σημερινά ευρώ','Today’s euros')}</h4>
+    <p>${T('Με την επιλογή «σημερινά ευρώ», όλα τα ποσά διορθώνονται για πληθωρισμό 2,5% τον χρόνο. Έτσι τα 100.000 € του 2045 φαίνονται σε αυτό που θα αγοράζουν σε σημερινές τιμές, που είναι πολύ λιγότερο.','With “today’s euros”, all amounts are adjusted for 2.5% yearly inflation. So €100,000 in 2045 is shown as what it would buy at today’s prices, which is much less.')}</p>
+    <p class="small muted">${T('Όλα αυτά είναι εκτιμήσεις, όχι πρόβλεψη. Οι πραγματικές αποδόσεις μπορεί να βγουν έξω από το εύρος.','All of this is an estimate, not a forecast. Real returns can fall outside the range.')}</p>`));
 
   /* 12. not included */
   cards.push(howCard('left',T('Τι ΔΕΝ υπολογίζεται;','What is NOT included?'),T('Για να ξέρεις τα όρια','So you know the limits'),

@@ -203,3 +203,23 @@ details.more[open]>summary{margin-bottom:16px}
   #btnWallet{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;display:inline-flex;align-items:center;gap:6px}
   #btnWallet .num{overflow:hidden;text-overflow:ellipsis}
 }
+
+.howc h4{margin:16px 0 6px;font-size:15px}
+.howc .htab{width:100%;border-collapse:collapse;font-size:13.5px;margin:0 0 10px}
+.howc .htab th,.howc .htab td{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left}
+.howc .htab th{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.howc .htab .num{text-align:right}
+.howc .htab tr.sel td{background:color-mix(in srgb,var(--accent) 12%,transparent);font-weight:600}
+@media (max-width:640px){
+  .howc .htab{font-size:12.5px;table-layout:auto}
+  .howc .htab th,.howc .htab td{padding:6px 3px;white-space:nowrap}
+  .howc .htab th{white-space:normal;font-size:10px;letter-spacing:.03em}
+  .howc .mine .htab td:first-child,.howc .htab td:first-child{white-space:normal}
+  .howc .hb{padding-inline:12px}
+  .howc .mine{padding-inline:10px}
+}
+@media (max-width:640px){
+  .howp{padding-inline:12px}
+  .howc .htab{font-size:12px}
+  .howc .htab th,.howc .htab td{padding:5px 2px}
+}

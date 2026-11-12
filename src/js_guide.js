@@ -1,7 +1,7 @@
 /* ---------- "Πώς υπολογίζεται" / "How it works": every number in the app explained simply, with the user's own figures ----------
    This file is written in both languages side by side (T(greek, english)) and is NOT passed through the i18n extractor. */
 const T=(el,en)=>LANG==='en'?en:el;
-const HOW_IDS=['prices','value','capital','gain','avg','twr','mwr','bench','risk','fees','plan','left'];
+const HOW_IDS=['prices','value','capital','gain','avg','twr','mwr','bench','risk','fees','plan','left','ai'];
 function howMine(html){return `<div class="mine"><span class="mlbl">${T('Στο δικό σου χαρτοφυλάκιο','In your portfolio')}</span>${html}</div>`}
 function howEx(html){return `<div class="hex"><span class="mlbl">${T('Παράδειγμα','Example')}</span>${html}</div>`}
 function howFx(html){return `<p class="fx">${html}</p>`}
@@ -183,6 +183,18 @@ function renderHowPage(){
       <li>${T('<b>Μερίσματα που δεν κατέγραψες:</b> μετράνε μόνο όσα πέρασες στις συναλλαγές.','<b>Dividends you did not record:</b> only those entered in transactions count.')}</li>
       <li>${T('<b>Το μέλλον:</b> το πλάνο δείχνει τι γίνεται <b>αν</b> ισχύσουν οι εκτιμήσεις. Δεν είναι πρόβλεψη και δεν είναι επενδυτική συμβουλή.','<b>The future:</b> the plan shows what happens <b>if</b> the assumptions hold. It is not a forecast and not investment advice.')}</li>
     </ul>`));
+
+  /* 13. why not just ask an AI chatbot */
+  cards.push(howCard('ai',T('Γιατί να μη ρωτήσω απλώς ένα AI (ChatGPT, Claude κ.ά.);','Why not just ask an AI (ChatGPT, Claude, etc.)?'),T('Τι κάνει το Vestora που ένα chatbot δυσκολεύεται','What Vestora does that a chatbot struggles with'),
+    `<p>${T('Τα chatbots είναι πολύ καλά για να ρωτάς και να μαθαίνεις: να σου εξηγήσουν μια έννοια, να ψάξουν κάτι, να σε βοηθήσουν να σκεφτείς. Το Vestora κάνει κάτι διαφορετικό: <b>κρατά τον λογαριασμό</b> των δικών σου χρημάτων.','Chatbots are very good for asking and learning: explaining a concept, looking something up, helping you think. Vestora does something different: it <b>keeps the books</b> on your own money.')}</p>
+    <ul>
+      <li>${T('<b>Δουλεύει με τα πραγματικά σου δεδομένα, κάθε μέρα.</b> Σε ένα chatbot πρέπει να περιγράψεις τι έχεις, πότε το αγόρασες και σε ποια τιμή, και να το ξανακάνεις κάθε φορά. Εδώ οι συναλλαγές σου μένουν αποθηκευμένες, έρχονται από το wallet με ένα πάτημα και οι τιμές ενημερώνονται μόνες τους.','<b>It works with your real data, every day.</b> With a chatbot you have to describe what you own, when you bought it and at what price, every time. Here your transactions stay saved, come from your wallet in one tap, and prices update on their own.')}</li>
+      <li>${T('<b>Τα νούμερα είναι σωστά και ίδια κάθε φορά.</b> Ένα chatbot μπορεί να κάνει λάθος σε πράξεις, να χρησιμοποιήσει παλιές τιμές ή να «επινοήσει» ένα νούμερο που ακούγεται λογικό, και η ίδια ερώτηση μπορεί να φέρει δύο διαφορετικές απαντήσεις. Εδώ όλα υπολογίζονται με κώδικα πάνω σε 10 χρόνια πραγματικών τιμών, με ελέγχους για λάθος δεδομένα, και κάθε τιμή γράφει την πηγή της.','<b>The numbers are correct and the same every time.</b> A chatbot can get arithmetic wrong, use stale prices or “invent” a plausible-sounding figure, and the same question can bring two different answers. Here everything is calculated in code on 10 years of real prices, with checks for bad data, and every price shows its source.')}</li>
+      <li>${T('<b>Μετράει όσα ένα chat δύσκολα κάνει σωστά:</b> απόδοση επιλογών και απόδοση χρημάτων (TWR και MWR), «τι θα είχες αν τα ίδια ποσά τις ίδιες μέρες πήγαιναν στο S&P 500», και 400 σενάρια για το πλάνο σου, πάντα τα ίδια, ώστε να βλέπεις καθαρά τι αλλάζει όταν αλλάζεις κάτι εσύ.','<b>It measures what a chat struggles to get right:</b> return on choices and return on money (TWR and MWR), “what you would have if the same amounts on the same days had gone into the S&P 500”, and 400 scenarios for your plan, always the same ones, so you see clearly what changes when you change something.')}</li>
+      <li>${T('<b>Τα δεδομένα σου μένουν σε σένα.</b> Δεν χρειάζεται λογαριασμός και το χαρτοφυλάκιο αποθηκεύεται στη συσκευή σου. Δεν το επικολλάς σε ένα chatbot.','<b>Your data stays with you.</b> No account is needed and the portfolio is stored on your device. You do not paste it into a chatbot.')}</li>
+      <li>${T('<b>Δεν σου πουλάει τίποτα.</b> Αν ρωτήσεις ένα chatbot «τι να αγοράσω», θα σου απαντήσει, συχνά με σιγουριά που δεν δικαιολογείται. Το Vestora δεν προτείνει αγορές: σου δείχνει τι έκαναν πραγματικά τα χρήματά σου και εξηγεί κάθε νούμερο, για να αποφασίζεις εσύ.','<b>It does not sell you anything.</b> Ask a chatbot “what should I buy” and it will answer, often with confidence it has not earned. Vestora does not recommend purchases: it shows what your money really did and explains every number, so you decide.')}</li>
+    </ul>
+    ${howFx(T('Χρησιμοποίησε και τα δύο: το chatbot για ερωτήσεις, το Vestora για τον λογαριασμό.','Use both: the chatbot for questions, Vestora for the books.'))}`));
 
   box.innerHTML=`<div class="howtoc">${HOW_IDS.map((id,i)=>`<a href="#h-${id}" data-hid="${id}">${i+1}</a>`).join('')}</div>`+cards.join('');
 }

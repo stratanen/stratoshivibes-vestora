@@ -71,7 +71,7 @@ function renderPlan(D){
     lv.map(([n,o],i)=>{const r=i?planRun(o):R0,d=r.last.p50-L.p50;return `<tr${i?'':' class="sel"'}><td>${n}</td><td class="num">${eur.format(r.last.p50)}${i?` <span class="${sgn(d)} small">${(d>0?'+':'')+eur.format(d)}</span>`:''}</td><td class="num">${eur.format(r.last.p10)}</td><td class="num">${eur.format(r.last.contrib)}</td><td class="num">${Math.round(r.hit*100)}/100</td></tr>`}).join('')+'</tbody>';
   lastProj=R0;
   lastNeed=renderNeed(R0);renderTol(R0);lastB=renderPlanB(R0);drawProj(R0,plan.bShow!==false?lastB:null);
-  $('projAssume').textContent=`Παραδοχές (${ASSN[plan.ass]}): ετήσια απόδοση μετοχών ${nf(0).format((PC.eq.mu+ +plan.ass)*100)}%, crypto ${nf(0).format((PC.crypto.mu+ +plan.ass)*100)}%, καταθέσεων ${nf(1).format(PC.cash.mu*100)}%, με διακυμάνσεις αντίστοιχες κάθε κατηγορίας. Εφαρμόζονται ${targetValid()?'στην κατανομή-στόχο σου':'στη σημερινή σου κατανομή'}: αναμενόμενη απόδοση ${nf(1).format(R0.mu*100)}% και διακύμανση ${nf(0).format(R0.s*100)}% τον χρόνο. 400 προσομοιωμένες πορείες, καταβολή στο τέλος κάθε μήνα, χωρίς φόρους.${real?' Τα ποσά είναι σε σημερινά ευρώ, με πληθωρισμό 2,5%.':''} Δεν είναι πρόβλεψη: οι πραγματικές αποδόσεις μπορεί να βγουν έξω από το εύρος.`;
+  $('projAssume').textContent=`Εκτιμήσεις (${ASSN[plan.ass]}): ετήσια απόδοση μετοχών ${nf(0).format((PC.eq.mu+ +plan.ass)*100)}%, crypto ${nf(0).format((PC.crypto.mu+ +plan.ass)*100)}%, καταθέσεων ${nf(1).format(PC.cash.mu*100)}%, με διακυμάνσεις αντίστοιχες κάθε κατηγορίας. Εφαρμόζονται ${targetValid()?'στην κατανομή-στόχο σου':'στη σημερινή σου κατανομή'}: αναμενόμενη απόδοση ${nf(1).format(R0.mu*100)}% και διακύμανση ${nf(0).format(R0.s*100)}% τον χρόνο. 400 προσομοιωμένες πορείες, καταβολή στο τέλος κάθε μήνα, χωρίς φόρους.${real?' Τα ποσά είναι σε σημερινά ευρώ, με πληθωρισμό 2,5%.':''} Δεν είναι πρόβλεψη: οι πραγματικές αποδόσεις μπορεί να βγουν έξω από το εύρος.`;
   renderTarget();renderNext();lastRes=renderReserve();renderHow(R0);
 }
 /* The plan in plain steps: what to do every month, before and after each contribution, and when the market falls. It describes; it does not recommend assets. */
@@ -136,7 +136,7 @@ function renderNeed(R0){
     ${line('Καταβολή για τον στόχο σε 3 στα 4 σενάρια',m75==null?'—':eur.format(m75)+' /μήνα',rel(m75))}
     ${line('Χρόνια με τη σημερινή καταβολή (μισά σενάρια)',y50==null?'πάνω από 50':y50+' χρόνια',y50==null?'Με αυτή την καταβολή ο στόχος δεν πιάνεται στα μισά σενάρια μέσα σε 50 χρόνια.':y50<=a.years?`Μέσα στον ορίζοντα των ${a.years} ετών που έβαλες.`:`${y50-a.years} χρόνια μετά τον ορίζοντα που έβαλες.`)}
   </div>
-  <p class="assume" style="margin-top:8px">Ίδιες παραδοχές και ίδιες πορείες με την προβολή. Δείχνει ποιες μεταβλητές κάνουν τον στόχο πιο ή λιγότερο εφικτό. Δεν υπόσχεται ότι θα επιτευχθεί.</p>`;
+  <p class="assume" style="margin-top:8px">Ίδιες εκτιμήσεις και ίδιες πορείες με την προβολή. Δείχνει ποιες μεταβλητές κάνουν τον στόχο πιο ή λιγότερο εφικτό. Δεν υπόσχεται ότι θα επιτευχθεί.</p>`;
   return {μηνιαία_για_50_στα_100:m50,μηνιαία_για_75_στα_100:m75,χρόνια_για_50_στα_100_με_σημερινή_καταβολή:y50};
 }
 function renderTol(R0){
@@ -169,7 +169,7 @@ function renderPlanB(R0){
     ['Σενάρια με στόχο',r=>Math.round(r.hit*100),v=>v+'/100']];
   $('planBTable').innerHTML=`<thead><tr><th></th><th>Α (σημερινό)</th><th>Β</th><th>Β − Α</th></tr></thead><tbody>`+
     rows.map(([n,f,fmt])=>`<tr><td>${n}</td><td class="num">${fmt(f(A))}</td><td class="num">${fmt(f(Bp))}</td><td>${diff(f,fmt)}</td></tr>`).join('')+
-    `<tr><td>Παραδοχές</td><td>${ASSN[plan.ass]}</td><td>${ASSN[b.ass]}</td><td></td></tr></tbody>`;
+    `<tr><td>Εκτιμήσεις</td><td>${ASSN[plan.ass]}</td><td>${ASSN[b.ass]}</td><td></td></tr></tbody>`;
   return RB;
 }
 function renderTarget(){

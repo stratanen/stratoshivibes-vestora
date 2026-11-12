@@ -1,5 +1,5 @@
   <section class="panel plan" aria-label="Το πλάνο σου">
-    <div class="phead"><div><h2>Το πλάνο σου</h2><div class="muted small">Από εδώ και πέρα: στόχος, κατανομή και αντοχή. Υπολογισμοί με παραδοχές, όχι προβλέψεις.</div></div></div>
+    <div class="phead"><div><h2>Το πλάνο σου</h2><div class="muted small">Από εδώ και πέρα: στόχος, κατανομή και αντοχή. Υπολογισμοί με εκτιμήσεις, όχι προβλέψεις.</div></div></div>
     <div class="howbox" id="planHow"></div>
     <div class="plangrid">
       <div class="pcol">
@@ -9,7 +9,7 @@
           <div class="f"><label for="pMonthly">Μηνιαία καταβολή €</label><input id="pMonthly" type="number" min="0" step="10" inputmode="numeric"></div>
           <div class="f"><label for="pYears">Χρόνια <output id="pYearsO" class="num"></output></label><input id="pYears" type="range" min="1" max="40" step="1"></div>
           <div class="f"><label for="pFee">Ετήσια έξοδα %</label><input id="pFee" type="number" min="0" max="5" step="0.1" inputmode="decimal"></div>
-          <div class="f"><label for="pAss">Παραδοχές απόδοσης</label><select id="pAss"><option value="-0.02">Συντηρητικές</option><option value="0">Μέτριες</option><option value="0.02">Αισιόδοξες</option></select></div>
+          <div class="f"><label for="pAss">Εκτιμήσεις απόδοσης</label><select id="pAss"><option value="-0.02">Συντηρητικές</option><option value="0">Μέτριες</option><option value="0.02">Αισιόδοξες</option></select></div>
           <div class="f"><label for="pReal">Ποσά σε</label><select id="pReal"><option value="1">σημερινά ευρώ (με πληθωρισμό 2,5%)</option><option value="0">ονομαστικά ευρώ</option></select></div>
           <div class="f wide"><label for="pTol">Πόση πτώση θα άντεχες χωρίς να πουλήσεις;</label><select id="pTol"><option value="10">Έως −10%</option><option value="20">Έως −20%</option><option value="30">Έως −30%</option><option value="40">Έως −40%</option><option value="50">Έως −50%</option><option value="70">Έως −70%</option></select></div>
         </div>
@@ -38,7 +38,7 @@
           <div class="f"><label for="bMonthly">Μηνιαία καταβολή €</label><input id="bMonthly" type="number" min="0" step="10" inputmode="numeric"></div>
           <div class="f"><label for="bYears">Χρόνια</label><input id="bYears" type="number" min="1" max="50" step="1" inputmode="numeric"></div>
           <div class="f"><label for="bFee">Ετήσια έξοδα %</label><input id="bFee" type="number" min="0" max="5" step="0.1" inputmode="decimal"></div>
-          <div class="f"><label for="bAss">Παραδοχές απόδοσης</label><select id="bAss"><option value="-0.02">Συντηρητικές</option><option value="0">Μέτριες</option><option value="0.02">Αισιόδοξες</option></select></div>
+          <div class="f"><label for="bAss">Εκτιμήσεις απόδοσης</label><select id="bAss"><option value="-0.02">Συντηρητικές</option><option value="0">Μέτριες</option><option value="0.02">Αισιόδοξες</option></select></div>
         </div>
         <label class="check"><input type="checkbox" id="bShow"> Δείξε το πλάνο Β στο γράφημα</label>
         <div class="tablewrap"><table id="planBTable"></table></div>

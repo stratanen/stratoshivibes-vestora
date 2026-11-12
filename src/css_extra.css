@@ -194,3 +194,12 @@ details.more[open]>summary{margin-bottom:16px}
 .howc .mine .mlbl{color:var(--accent)}
 .howc .split{display:flex;height:12px;border-radius:6px;overflow:hidden;margin:8px 0;background:var(--soft)}
 .howc .split .own{background:var(--muted)}.howc .split .grow{background:var(--accent)}
+
+/* phone header: all buttons on one line (Home becomes an icon, the wallet button shortens) */
+@media (max-width:560px){
+  .top .btns{display:flex;flex-wrap:nowrap;gap:8px;min-width:0;max-width:100%}
+  .top .btn{white-space:nowrap;flex:0 0 auto}
+  .btn.home span{display:none}.btn.home{padding-inline:10px}
+  #btnWallet{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;display:inline-flex;align-items:center;gap:6px}
+  #btnWallet .num{overflow:hidden;text-overflow:ellipsis}
+}

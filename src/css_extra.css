@@ -223,3 +223,10 @@ details.more[open]>summary{margin-bottom:16px}
   .howc .htab{font-size:12px}
   .howc .htab th,.howc .htab td{padding:5px 2px}
 }
+
+.pwstr{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:6px}
+.pwstr span{height:5px;border-radius:3px;background:var(--line)}
+.pwstr[data-s="1"] span:nth-child(-n+1){background:var(--bad)}
+.pwstr[data-s="2"] span:nth-child(-n+2){background:var(--warn)}
+.pwstr[data-s="3"] span:nth-child(-n+3){background:var(--good)}
+.pwstr[data-s="4"] span{background:var(--good)}

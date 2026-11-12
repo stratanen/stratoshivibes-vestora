@@ -328,7 +328,7 @@ async function deriveKey(pw,salt,iter){
 }
 async function makeBackup(pw){
   const payload={app:'vestora',v:1,created:new Date().toISOString(),portfolio:state,plan};
-  const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12)),iter=250000;
+  const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12)),iter=600000;   // OWASP 2023 for PBKDF2-HMAC-SHA256; old files keep their own count
   const key=await deriveKey(pw,salt,iter);
   const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(payload)));
   return JSON.stringify({format:'vestora-backup',v:1,kdf:'PBKDF2-SHA256',iter,salt:b64(salt),iv:b64(iv),data:b64(ct)});
@@ -342,7 +342,20 @@ async function openBackup(text,pw){
   return p;
 }
 const bkMsg=(t,bad)=>{const m=$('bkMsg');m.textContent=t;m.classList.toggle('neg',!!bad)};
-function bkPw(){const pw=$('bkPw').value;if(pw.length<8){bkMsg('Ο κωδικός πρέπει να έχει τουλάχιστον 8 χαρακτήρες.',true);return null}return pw}
+/* password strength: a rough estimate of how many guesses it would take, shown as a bar under the field */
+const PW_COMMON=/^(?:(?:password|passw0rd|p@ssw0rd|qwerty|qwertz|asdf\w*|1q2w3e\w*|abc|letmein|welcome|iloveyou|admin|vestora|bitcoin|btc|crypto|solana|ethereum|eth|seeker|monkey|dragon|football|summer|winter|kodikos|κωδικος|κωδικός)[\d\W_]*|(\d)\1+|(?:0123456789|1234567890|9876543210|12345678|87654321)\d*)$/i;
+function pwScore(pw){
+  if(!pw)return 0;if(PW_COMMON.test(pw)||/^(.)\1+$/.test(pw)||/^(.{1,3})\1+$/.test(pw))return 1;
+  let pool=0;if(/[a-z]/.test(pw))pool+=26;if(/[A-Z]/.test(pw))pool+=26;if(/\d/.test(pw))pool+=10;if(/[^\w\s]|_/.test(pw))pool+=20;if(/\s/.test(pw))pool+=1;if(/[^\x00-\x7f]/.test(pw))pool+=48;
+  const uniq=new Set(pw).size,len=Math.min(pw.length,uniq*2+2),words=pw.trim().split(/[\s\-_.]+/).filter(w=>w.length>=3).length;
+  let bits=len*Math.log2(Math.max(pool,10));if(words>=4)bits=Math.max(bits,words*11);if(/^\d+$/.test(pw))bits=Math.min(bits,pw.length*3.3);
+  return bits<40?1:bits<60?2:bits<80?3:4;
+}
+const PW_LBL=['','Πολύ αδύναμος','Μέτριος','Καλός','Πολύ καλός'];
+function pwMeter(){const pw=$('bkPw').value,s=pwScore(pw),m=$('bkStr');if(!m)return;m.hidden=!pw;m.dataset.s=s;$('bkStrT').textContent=pw?PW_LBL[s]+(s===1?' · πρόσθεσε μήκος ή γράψε 4–5 τυχαίες λέξεις':''):''}
+$('bkPw').addEventListener('input',pwMeter);
+function bkPw(){const pw=$('bkPw').value;if(pw.length<8){bkMsg('Ο κωδικός πρέπει να έχει τουλάχιστον 8 χαρακτήρες.',true);return null}
+  if(pwScore(pw)<2){bkMsg('Ο κωδικός είναι πολύ εύκολος να μαντευτεί. Πρόσθεσε μήκος, ή γράψε 4–5 τυχαίες λέξεις.',true);return null}return pw}
 $('bkFile').addEventListener('click',async()=>{const pw=bkPw();if(!pw)return;
   try{const txt=await makeBackup(pw);const blob=new Blob([txt],{type:'application/json'});const name='vestora-backup-'+todayIso()+'.json';
     let done=false;

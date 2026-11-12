@@ -600,7 +600,13 @@
 "Κατάθεση": "Deposit",
 "%, καταθέσεων": "%, deposits",
 "%, με διακυμάνσεις αντίστοιχες κάθε κατηγορίας. Εφαρμόζονται": "%, with the swings typical of each class. Applied to",
-"Το επιτόκιο καταθέσεων ενημερώθηκε.": "Deposit interest updated."
+"Το επιτόκιο καταθέσεων ενημερώθηκε.": "Deposit interest updated.",
+"Πολύ αδύναμος": "Very weak",
+"Μέτριος": "Fair",
+"Καλός": "Good",
+"Πολύ καλός": "Very good",
+" · πρόσθεσε μήκος ή γράψε 4–5 τυχαίες λέξεις": " · make it longer or use 4–5 random words",
+"Ο κωδικός είναι πολύ εύκολος να μαντευτεί. Πρόσθεσε μήκος, ή γράψε 4–5 τυχαίες λέξεις.": "This password is too easy to guess. Make it longer, or use 4–5 random words."
 },
 "html": {
 "Φορτώνουν οι τιμές…": "Loading prices…",

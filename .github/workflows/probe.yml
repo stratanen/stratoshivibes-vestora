@@ -9,6 +9,10 @@ on:
       url:
         description: URLs to fetch, separated by spaces
         required: true
+      jq:
+        description: optional jq filter applied to each body instead of printing it
+        required: false
+        default: ""
 
 jobs:
   probe:
@@ -17,10 +21,11 @@ jobs:
       - name: Fetch
         env:
           URLS: ${{ inputs.url }}
+          JQ: ${{ inputs.jq }}
         run: |
           for URL in $URLS; do
             echo "=== $URL"
             curl -sS -D h.txt -o b.txt -H "Origin: https://vestora.stratoshivibes.com" "$URL" || true
             grep -i "^HTTP\|^access-control-allow-origin" h.txt || true
-            echo "--- body ($(wc -c < b.txt) bytes)"; head -c 6000 b.txt; echo
+            echo "--- body ($(wc -c < b.txt) bytes)"; if [ -n "$JQ" ]; then jq -c "$JQ" b.txt | head -c 8000; else head -c 6000 b.txt; fi; echo
           done

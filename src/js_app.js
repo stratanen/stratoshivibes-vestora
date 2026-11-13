@@ -207,18 +207,25 @@ function drawSheet(){
       `<p class="muted">Ο έλεγχος ξαναγίνεται κάθε φορά που ανοίγεις την εφαρμογή. Αν το υπόλοιπο πέσει κάτω από το όριο, το Pro κλειδώνει ξανά χωρίς να χαθεί κανένα δεδομένο.</p>`+
       `<div class="row"><button class="btn" type="button" data-act="disconnect">Αποσύνδεση</button><button class="btn" type="button" data-act="refresh">Έλεγχος ξανά</button>${ok?`<button class="btn" type="button" data-act="import">Εισαγωγή assets</button>`:`<button class="btn" type="button" data-act="info">Τι ξεκλειδώνει</button>`}<button class="btn primary" type="button" data-act="close">Συνέχεια</button></div>`;
   }else if(st==='import'){
-    const I=flow.imp,E=I&&I.src==='eth';
+    const I=flow.imp,E=I&&I.src==='eth',S=I&&I.src==='sol';
     if(!I||I.loading){s.innerHTML=head('Εισαγωγή από wallet')+`<p class="muted">Διαβάζονται τα υπόλοιπα του ${wallet?short(wallet.addr):''}…</p>`;if(!I)loadImport();}
     else if(I.error){s.innerHTML=head('Εισαγωγή από wallet')+`<div class="verdict short">Δεν ήταν δυνατή η ανάγνωση. ${esc(I.error)}</div><div class="row"><button class="btn" type="button" data-act="retryimp">Δοκίμασε ξανά</button><button class="btn" type="button" data-act="done">Πίσω</button></div>`}
     else{
-      const dup=state.tx.some(t=>t.src===(E?'eth':'wallet'));
-      s.innerHTML=head(E?'Εισαγωγή από Ethereum':'Εισαγωγή από wallet')+(E?`<p class="muted small num">${shortE(I.addr)}</p>`:'')+`<p class="muted">Βρέθηκαν αυτά τα assets αξίας πάνω από 1 €. Διάλεξε ποια θα προστεθούν. Μπαίνουν σαν αγορά σήμερα, με τη σημερινή τιμή. Αν τα αγόρασες παλιότερα, άλλαξε μετά ημερομηνία και τιμή στις συναλλαγές για σωστή απόδοση.</p>`+
-      (dup?`<div class="verdict short">${E?'Έχεις ήδη κάνει εισαγωγή από Ethereum.':'Έχεις ήδη κάνει εισαγωγή από wallet.'} Δεν θα διπλασιαστεί τίποτα: οι ποσότητες θα ενημερωθούν ώστε να ταιριάζουν με το wallet.</div>`:'')+
+      const dup=state.tx.some(t=>t.src===(E?'eth':S?'sol':'wallet'));
+      s.innerHTML=head(E?'Εισαγωγή από Ethereum':S?'Εισαγωγή από Solana':'Εισαγωγή από wallet')+(E?`<p class="muted small num">${shortE(I.addr)}</p>`:S?`<p class="muted small num">${short(I.addr)}</p>`:'')+`<p class="muted">Βρέθηκαν αυτά τα assets αξίας πάνω από 1 €. Διάλεξε ποια θα προστεθούν. Μπαίνουν σαν αγορά σήμερα, με τη σημερινή τιμή. Αν τα αγόρασες παλιότερα, άλλαξε μετά ημερομηνία και τιμή στις συναλλαγές για σωστή απόδοση.</p>`+
+      (dup?`<div class="verdict short">${E?'Έχεις ήδη κάνει εισαγωγή από Ethereum.':S?'Έχεις ήδη κάνει εισαγωγή από διεύθυνση Solana.':'Έχεις ήδη κάνει εισαγωγή από wallet.'} Δεν θα διπλασιαστεί τίποτα: οι ποσότητες θα ενημερωθούν ώστε να ταιριάζουν με το wallet.</div>`:'')+
       (I.list.length?`<div class="imp">${I.list.map((t,i)=>`<label><input type="checkbox" id="imp${i}" data-i="${i}"${t.unc?'':' checked'}> <span>${esc(t.id?ASSETS[t.id].name:t.name)} <small class="muted">${t.kmn?'DeFi':esc(t.sym)}${t.xstock?' · xStock':''}${t.tag?' · '+t.tag:''}${t.staked?' · staking':''}${t.id||t.kmn?'':' · χωρίς ιστορικό τιμών'}${t.unc?' · <span class="neg">αβέβαιη τιμή</span>':''}</small></span><span class="num">${t.kmn?'':nf(t.qty<1?6:2).format(t.qty)+' · '}${eur.format(t.qty*t.eur)}</span></label>`).join('')}</div>${I.defiMsg?`<p class="muted small">${esc(I.defiMsg)}</p>`:''}${I.list.some(t=>t.kmn)?'<p class="muted small">Οι θέσεις DeFi μπαίνουν με την καθαρή τους αξία: καταθέσεις μείον δάνεια. Η αξία ενημερώνεται μόνη της. Αν προσθέσεις ή αποσύρεις χρήματα από τη θέση, η αλλαγή θα φανεί ως κέρδος ή ζημιά.</p>':''}${I.list.some(t=>t.unc)?'<p class="muted small">Όσα γράφουν «αβέβαιη τιμή» έχουν πολύ μικρή αγορά, οπότε η τιμή τους μπορεί να μην ισχύει στην πράξη. Γι\' αυτό δεν είναι επιλεγμένα. Πολλά τέτοια tokens είναι spam που στάλθηκε χωρίς να το ζητήσεις.</p>':''}`:'<p>Δεν βρέθηκαν assets με αξία πάνω από 1 €.</p>')+
       (E?`<p class="muted">Η ανάγνωση είναι μόνο για προβολή. Φαίνονται το ETH και τα tokens του Ethereum mainnet που έχουν τιμή αγοράς, και στο Hyperliquid τα spot υπόλοιπα, το HYPE σε staking, η αξία του λογαριασμού perps και τα vaults. Τα perps και τα vaults μπαίνουν με την αξία τους σε δολάρια σήμερα και δεν ενημερώνονται μόνα τους. Ό,τι έχεις σε άλλα δίκτυα (Arbitrum, Base κ.ά.) ή μέσα σε άλλα πρωτόκολλα δεν φαίνεται εδώ: πρόσθεσέ το χειροκίνητα.</p>${flow.hlErr?'<p class="neg small">Το Hyperliquid δεν απάντησε αυτή τη φορά.</p>':flow.hlNone?'<p class="muted small">Στο Hyperliquid δεν βρέθηκαν υπόλοιπα για αυτή τη διεύθυνση.</p>':''}`
         :`<p class="muted">Η ανάγνωση είναι μόνο για προβολή. Το SOL που έχεις σε native stake δεν φαίνεται εδώ: πρόσθεσέ το χειροκίνητα. Liquid staking tokens (π.χ. JitoSOL) εμφανίζονται κανονικά.</p>`)+
-      `<div class="row"><button class="btn" type="button" data-act="${E?'eth':'done'}">Πίσω</button>${I.list.length?`<button class="btn primary" type="button" data-act="doimport">Προσθήκη επιλεγμένων</button>`:''}</div>`;
+      `<div class="row"><button class="btn" type="button" data-act="${E?'eth':S?'sol':'done'}">Πίσω</button>${I.list.length?`<button class="btn primary" type="button" data-act="doimport">Προσθήκη επιλεγμένων</button>`:''}</div>`;
     }
+  }else if(st==='sol'){
+    const P=flow.sol||{},last=P.addr||LS.get(SKEY)||'';
+    s.innerHTML=head('Εισαγωγή από Solana')+`<p>Επικόλλησε τη δημόσια διεύθυνση του Solana wallet σου. Η Vestora διαβάζει τα υπόλοιπα και τις θέσεις στο Kamino και σου δείχνει τι βρήκε, για να διαλέξεις τι θα προστεθεί.</p>
+      <p class="muted">Μόνο ανάγνωση: δεν συνδέεται wallet, δεν ζητείται υπογραφή, seed phrase ή private key, και τίποτα δεν μπορεί να μετακινηθεί. Η διεύθυνση στέλνεται στο δημόσιο RPC του Solana και στο Kamino για να διαβαστούν τα υπόλοιπα.</p>
+      <div class="f"><label for="solAddr">Διεύθυνση Solana</label><input id="solAddr" type="text" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="π.χ. 7xKX…" value="${esc(last)}"></div>
+      ${P.loading?`<p class="muted" role="status">Διαβάζονται τα υπόλοιπα…</p>`:P.error?`<div class="verdict short" role="status">Δεν ήταν δυνατή η ανάγνωση. Έλεγξε τη σύνδεση στο internet και δοκίμασε ξανά.</div>`:`<p class="neg small" id="solMsg" role="status"></p>`}
+      <div class="row"><button class="btn" type="button" data-act="close">Άκυρο</button><button class="btn primary" type="button" data-act="solgo"${P.loading?' disabled':''}>Διάβασε τα υπόλοιπα</button></div>`;
   }else if(st==='eth'){
     const E=flow.eth||{},last=E.addr||LS.get(EKEY)||'';
     s.innerHTML=head('Εισαγωγή από Ethereum')+`<p>Επικόλλησε τη δημόσια διεύθυνση του Ethereum wallet σου. Η Vestora διαβάζει τα υπόλοιπα και σου δείχνει τι βρήκε, για να διαλέξεις τι θα προστεθεί.</p>
@@ -272,6 +279,47 @@ async function refreshDefi(){
     catch(e){console.warn('kamino',e)}}
   if(ch){save();render()}
 }
+/* ---------- Solana by pasted address (both editions; the only Solana import in the Play edition) ----------
+   Balances from the public Solana RPC, names and prices from Jupiter by token address (without the wallet address),
+   lending positions from Kamino. No Helius, no wallet connection, no signature. */
+const SKEY='vestora-sol-v1',TOKEN_PROG='TokenkegQfeZyiNwAJbNbGqPFXcQeP8ZpBYsLmQkPEeH6ug';
+async function solPublicList(addr){
+  const opt={encoding:'jsonParsed',commitment:'confirmed'};
+  const [bal,a1,a2]=await Promise.all([rpcAt(PUBLIC_RPC,'getBalance',[addr,{commitment:'confirmed'}]),
+    rpcAt(PUBLIC_RPC,'getTokenAccountsByOwner',[addr,{programId:TOKEN_PROG},opt],20000),
+    rpcAt(PUBLIC_RPC,'getTokenAccountsByOwner',[addr,{programId:TOKEN_2022},opt],20000).catch(()=>({value:[]}))]);
+  const qty={};
+  for(const a of [...(a1.value||[]),...(a2.value||[])]){const i=a.account?.data?.parsed?.info,q=+i?.tokenAmount?.uiAmount;if(i&&q>0)qty[i.mint]=(qty[i.mint]||0)+q}
+  const mints=Object.keys(qty),meta={};
+  for(let i=0;i<mints.length;i+=100){try{const r=await jfetch(JUPS+mints.slice(i,i+100).join(','));if(r.ok)for(const t of await r.json())meta[t.id]=t}catch(e){console.warn('jup meta',e)}}
+  const list=[];const lam=+(bal?.value??bal)||0;
+  if(lam>0)list.push({mint:MINT.SOL,id:'SOL',name:'Solana',sym:'SOL',qty:lam/1e9});
+  for(const mint of mints){const t=meta[mint]||{},sym=String(t.symbol||'').trim(),name=String(t.name||sym||mint.slice(0,4)+'…'+mint.slice(-4)).trim().slice(0,40);
+    let id=null,xstock=false;
+    if(mint===MINT.SOL)id='SOL';else if(mint===MINT.BTC)id='BTC';else if(mint===MINT.ETH)id='ETH';
+    else{const k=Object.keys(ASSETS).find(x=>ASSETS[x].mint===mint);if(k){id=k;xstock=true}
+      else if(/^Xs/.test(mint)&&/^[A-Z.]{1,6}x$/.test(sym)&&ASSETS[sym.slice(0,-1)]){id=sym.slice(0,-1);xstock=true}}
+    list.push({mint,id,name,sym,qty:qty[mint],xstock})}
+  return list;
+}
+/* prices the raw token list and adds Kamino positions; shared by the wallet import and the pasted-address import */
+async function finishSolList(addr,list){
+  const mints=[...new Set(list.map(t=>t.mint))],pr={};
+  for(let i=0;i<mints.length;i+=50){const r=await jfetch(JUP+mints.slice(i,i+50).join(','));if(r.ok)Object.assign(pr,await r.json())}
+  const out=list.map(t=>{const q=pr[t.mint];return{...t,eur:(q?.usdPrice||0)/FXL,unc:!t.id&&!STABLE.has(t.mint)&&q?.liquidity!=null&&+q.liquidity<MIN_LIQ}}).filter(t=>t.eur>0&&t.qty*t.eur>=1);
+  let defi=[],defiMsg='';
+  try{const k=await kaminoPositions(addr);defi=k.list.filter(p=>p.eur>=1).map(p=>({...p,id:null,name:kmnName(p),sym:'',qty:1,tag:(p.mode?p.mode+' · ':'')+(p.bor>0?'δάνειο '+eur.format(p.bor):'').replace(/ · $/,'')||''}));
+    if(k.failed)defiMsg=`Δεν απάντησαν ${k.failed} από τις ${k.checked} αγορές του Kamino. Δοκίμασε ξανά αργότερα για να εμφανιστούν όλες οι θέσεις.`}
+  catch(e){console.warn('kamino',e);defiMsg='Δεν ήταν δυνατή η ανάγνωση θέσεων από το Kamino αυτή τη φορά.'}
+  return{list:[...out,...defi].sort((a,b)=>b.qty*b.eur-a.qty*a.eur),defiMsg};
+}
+async function loadSol(addr){
+  flow.sol={addr,loading:true};drawSheet();
+  try{const r=await finishSolList(addr,await solPublicList(addr));LS.set(SKEY,addr);flow.imp={...r,src:'sol',addr};flow.sol={addr};flow.step='import'}
+  catch(e){console.warn(e);flow.sol={addr,error:true}}
+  if(!$('overlay').hidden&&(flow.step==='sol'||flow.step==='import'))drawSheet();
+}
+function openSol(){if(!isPro())return openSheet('info');flow.sol=null;openSheet('sol')}
 async function loadImport(){
   flow.imp={loading:true};
   try{
@@ -286,18 +334,12 @@ async function loadImport(){
       const name=String(it.content?.metadata?.name||sym||'Token').trim().slice(0,40);
       let id=null,xstock=false;
       if(mint===MINT.SOL)id='SOL';else if(mint===MINT.BTC)id='BTC';else if(mint===MINT.ETH)id='ETH';
+      else if(Object.keys(ASSETS).some(x=>ASSETS[x].mint===mint)){id=Object.keys(ASSETS).find(x=>ASSETS[x].mint===mint);xstock=true}
       else if(/^Xs/.test(mint)&&/^[A-Z.]{1,6}x$/.test(sym)&&ASSETS[sym.slice(0,-1)]){id=sym.slice(0,-1);xstock=true}
       list.push({mint,id,name,sym,qty,xstock});
     }
     try{const st=await skrStaked(wallet.addr);if(st>0)list.push({mint:MINT.SKR,id:null,name:'Seeker (staked)',sym:'SKR',qty:st,staked:true})}catch(e){console.warn('skr stake',e)}
-    const mints=[...new Set(list.map(t=>t.mint))],pr={};
-    for(let i=0;i<mints.length;i+=50){const r=await fetch(JUP+mints.slice(i,i+50).join(','));if(r.ok)Object.assign(pr,await r.json())}
-    let defi=[],defiMsg='';
-    try{const k=await kaminoPositions(wallet.addr);defi=k.list.filter(p=>p.eur>=1).map(p=>({...p,id:null,name:kmnName(p),sym:'',qty:1,tag:(p.mode?p.mode+' · ':'')+(p.bor>0?'δάνειο '+eur.format(p.bor):'').replace(/ · $/,'')||''}));
-      if(k.failed)defiMsg=`Δεν απάντησαν ${k.failed} από τις ${k.checked} αγορές του Kamino. Δοκίμασε ξανά αργότερα για να εμφανιστούν όλες οι θέσεις.`}
-    catch(e){console.warn('kamino',e);defiMsg='Δεν ήταν δυνατή η ανάγνωση θέσεων από το Kamino αυτή τη φορά.'}
-    const out=list.map(t=>{const q=pr[t.mint];return{...t,eur:(q?.usdPrice||0)/FXL,unc:!t.id&&!STABLE.has(t.mint)&&q?.liquidity!=null&&+q.liquidity<MIN_LIQ}}).filter(t=>t.eur>0&&t.qty*t.eur>=1).sort((a,b)=>b.qty*b.eur-a.qty*a.eur);
-    flow.imp={list:[...out,...defi].sort((a,b)=>b.qty*b.eur-a.qty*a.eur),defiMsg};
+    flow.imp=await finishSolList(wallet.addr,list);
   }catch(e){console.warn(e);flow.imp={error:'Έλεγξε τη σύνδεση στο internet.'}}
   if(!$('overlay').hidden&&flow.step==='import')drawSheet();
 }
@@ -306,6 +348,8 @@ $('sheet').addEventListener('click',async e=>{
   if(a==='close')return closeSheet();
   if(a==='info'||a==='pick'||a==='done'){flow.step=a;if(a==='pick')loadBundle();return drawSheet()}
   if(a==='eth'){flow.step='eth';flow.eth=null;return drawSheet()}
+  if(a==='sol'){flow.step='sol';flow.sol=null;return drawSheet()}
+  if(a==='solgo'){const v=$('solAddr').value.trim();if(!validAddr(v)){const m=$('solMsg');if(m)m.textContent=/\.sol$/i.test(v)?'Τα ονόματα .sol δεν υποστηρίζονται ακόμα. Επικόλλησε τη διεύθυνση.':'Αυτή δεν μοιάζει με διεύθυνση Solana. Έχει 32 έως 44 γράμματα και αριθμούς, χωρίς 0x.';return}return loadSol(v)}
   if(a==='ethgo'){const v=$('ethAddr').value.trim();
     if(!validEth(v)){const m=$('ethMsg');if(m)m.textContent=/\.eth$/i.test(v)?'Τα ονόματα .eth δεν υποστηρίζονται ακόμα. Επικόλλησε τη διεύθυνση που ξεκινά με 0x.':'Αυτή δεν μοιάζει με διεύθυνση Ethereum. Ξεκινά με 0x και έχει 42 χαρακτήρες.';return}
     return loadEth(v)}
@@ -322,14 +366,14 @@ $('sheet').addEventListener('click',async e=>{
   if(a==='doimport'){
     const date=todayIso();let n=0;
     if(state.sample)state={sample:false,onboarded:true,custom:{},mints:{},tx:[]};
-    const E=flow.imp.src==='eth';
+    const E=flow.imp.src==='eth',S=flow.imp.src==='sol',owner=S?flow.imp.addr:wallet?.addr;
     $('sheet').querySelectorAll('.imp input:checked').forEach(c=>{const t=flow.imp.list[+c.dataset.i];let id=t.id,px=t.eur;
       if(E){if(id)px=nowPrice(id)||t.eur;else if(t.hlKey){id='h_'+t.hlKey;state.custom[id]={name:t.name,sym:t.sym,cls:t.cls,current:t.eur,unc:!!t.unc,at:Date.now(),...(t.hl?{hl:t.hl}:{usdv:1})}}else{id='e_'+t.contract;state.custom[id]={name:t.name,sym:t.sym,cls:t.cls,current:t.eur,unc:!!t.unc,at:Date.now(),evm:t.contract}}}
-      else if(t.kmn){id='k_'+t.kmn.o;state.custom[id]={name:t.name,sym:'',cls:kmnCls(t),current:t.eur,at:Date.now(),kmn:t.kmn,w:wallet.addr,mode:t.mode,dep:t.dep,bor:t.bor,ltv:t.ltv,liq:t.liq}}
+      else if(t.kmn){id='k_'+t.kmn.o;state.custom[id]={name:t.name,sym:'',cls:kmnCls(t),current:t.eur,at:Date.now(),kmn:t.kmn,w:owner,mode:t.mode,dep:t.dep,bor:t.bor,ltv:t.ltv,liq:t.liq}}
       else if(id){if(t.xstock)state.mints[id]=t.mint;if(PRICES[id])PRICES[id][W-1]=t.eur}
       else{id='m_'+t.mint+(t.staked?'_st':'');state.custom[id]={name:t.name,sym:t.sym,cls:STABLE.has(t.mint)?'cash':'crypto',current:t.eur,unc:!!t.unc,at:Date.now(),mint:t.mint}}
       /* a repeat import only brings the quantity in line with the wallet: it adds (or sells) the difference from what earlier imports from this source added */
-      const src=E?'eth':'wallet',had=state.tx.filter(x=>x.a===id&&x.src===src&&x.type!=='div').reduce((q,x)=>q+(x.type==='sell'?-x.qty:x.qty),0),d=t.qty-had;
+      const src=E?'eth':S?'sol':'wallet',had=state.tx.filter(x=>x.a===id&&x.src===src&&x.type!=='div').reduce((q,x)=>q+(x.type==='sell'?-x.qty:x.qty),0),d=t.qty-had;
       if(Math.abs(d)<=Math.max(1e-9,t.qty*1e-6))return;
       state.tx.push({id:uid(),a:id,type:d>0?'buy':'sell',date,qty:+Math.abs(d).toPrecision(12),price:+px.toPrecision(8),fee:0,reason:'',src});n++});
     state.onboarded=true;save();assetOptions('fAsset');render();closeSheet();toast(!n?'Όλα ήταν ήδη ενημερωμένα.':n===1?'Ενημερώθηκε 1 asset.':`Ενημερώθηκαν ${n} assets.`,1);
@@ -351,11 +395,12 @@ $('btnWallet').addEventListener('click',()=>{if(wallet){openSheet('done');checkW
 $('btnImport').addEventListener('click',()=>{if(!wallet)return openSheet('pick');if(!isPro())return openSheet('info');flow.imp=null;openSheet('import')});
 function openEth(){if(!isPro())return openSheet('info');flow.eth=null;openSheet('eth')}
 $('btnImportEth').addEventListener('click',openEth);
+$('btnImportSol').addEventListener('click',openSol);
 function renderWallet(){
   const b=$('btnWallet'),pro=isPro();
   b.classList.toggle('on',!!wallet);
   b.innerHTML=wallet?(pro?'<span class="probadge">PRO</span>':'')+`<span class="num">${short(wallet.addr)}</span>`:'Σύνδεση wallet';
-  $('btnImport').innerHTML='Εισαγωγή από Solana wallet'+(pro?'':LOCK);$('btnImportEth').innerHTML='Εισαγωγή από Ethereum'+(pro?'':LOCK);
+  $('btnImport').innerHTML='Εισαγωγή από Solana wallet'+(pro?'':LOCK);$('btnImportEth').innerHTML='Εισαγωγή από Ethereum'+(pro?'':LOCK);$('btnImportSol').innerHTML='Εισαγωγή από διεύθυνση Solana'+(pro?'':LOCK);
   [...$('segBench').children].forEach(x=>{const lock=x.dataset.v!=='SPY'&&!pro;x.innerHTML=esc(x.dataset.n)+(lock?LOCK:'')});
   if(!pro&&ui.bench!=='SPY'){ui.bench='SPY';[...$('segBench').children].forEach(x=>x.setAttribute('aria-pressed',x.dataset.v==='SPY'))}
 }
@@ -466,6 +511,7 @@ function renderOnb(){
     ${have?`<div class="verdict ok">${have===1?'Έχει προστεθεί 1 θέση':`Έχουν προστεθεί ${have} θέσεις`}, συνολικής αξίας <span class="num">${eur.format(D.end)}</span>.</div>`:''}
     ${`<h3 class="sub">Αυτόματα, από το blockchain</h3><div class="opts">
       <button class="opt wallet-only" type="button" data-o="wallet"><span class="ic" style="background:var(--c-crypto)" aria-hidden="true">S</span><span><b>Solana wallet${lk}</b><small>Σύνδεση wallet. Μπαίνουν tokens και xStocks. Μόνο ανάγνωση, χωρίς υπογραφές.</small></span></button>
+      <button class="opt" type="button" data-o="sol"><span class="ic" style="background:var(--c-crypto)" aria-hidden="true">S</span><span><b>Διεύθυνση Solana${lk}</b><small>Επικολλάς τη δημόσια διεύθυνση. Χωρίς σύνδεση wallet, μόνο ανάγνωση. Μπαίνουν tokens, xStocks και θέσεις στο Kamino.</small></span></button>
       <button class="opt" type="button" data-o="eth"><span class="ic" style="background:var(--c-stock)" aria-hidden="true">E</span><span><b>Διεύθυνση Ethereum${lk}</b><small>Επικολλάς τη δημόσια διεύθυνση. Χωρίς σύνδεση wallet, μόνο ανάγνωση.</small></span></button></div>`}
     <h3 class="sub">Με το χέρι</h3><p class="muted small">Μετοχές, ETF, crypto σε ανταλλακτήριο, καταθέσεις, ακίνητα. Βάλε την αξία που έχει σήμερα το καθένα, όσο περίπου. Αργότερα, στις συναλλαγές, μπορείς να βάλεις πότε και σε ποια τιμή αγόρασες, για ακριβή απόδοση.</p>
     <div class="obrows">${onb.rows.map((r,i)=>`<div class="obrow">${onbAssetSelect(i,r)}${r.a==='__new'?`<input id="ob_n${i}" data-i="${i}" data-k="name" placeholder="π.χ. Διαμέρισμα" value="${esc(r.name)}" aria-label="Όνομα">`:''}<input id="ob_v${i}" data-i="${i}" data-k="v" type="number" min="0" step="10" inputmode="decimal" placeholder="Αξία σήμερα €" value="${esc(r.v)}" aria-label="Αξία σήμερα σε ευρώ">${onb.rows.length>1?`<button class="x" type="button" data-o="rm" data-i="${i}" aria-label="Αφαίρεση">×</button>`:''}</div>`).join('')}</div>
@@ -495,6 +541,7 @@ $('onbBody').addEventListener('click',e=>{const b=e.target.closest('[data-o]');i
   if(o==='rm'){onb.rows.splice(+b.dataset.i,1);renderOnb();return}
   if(o==='wallet'){if(!wallet)openSheet('pick');else if(isPro()){flow.imp=null;openSheet('import')}else openSheet('done');return}
   if(o==='eth'){openEth();return}
+  if(o==='sol'){openSol();return}
   if(o==='setm'){onb.monthly=b.dataset.v;renderOnb();return}
   if(o==='tol'){onb.tol=b.dataset.v;renderOnb();return}
   if(o==='back'){onb.step=Math.max(0,onb.step-1);renderOnb();return}

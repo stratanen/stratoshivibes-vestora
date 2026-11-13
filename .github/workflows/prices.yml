@@ -1,12 +1,18 @@
 name: Update prices
 
-# Builds data/history.json (weekly prices in EUR, 10 years) every weekday evening after the US close,
-# and commits it so GitHub Pages serves fresh prices to the app. Can also be run by hand.
+# Full run (data/history.json: 10 years of weekly prices, ISIN checks, xStock addresses) every weekday evening after the US close.
+# Quick run (data/latest.json: current price of stocks and ETFs) every hour while European or US markets are open.
+# Both commit the file so GitHub Pages serves it to the app. Can also be run by hand (full run).
 
 on:
   schedule:
-    - cron: "37 22 * * 1-5"
+    - cron: "37 22 * * 1-5"   # full
+    - cron: "12 8-21 * * 1-5" # hourly, 08:12-21:12 UTC (10:12-23:12 Athens in winter)
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "full or latest"
+        default: full
 
 permissions:
   contents: write
@@ -18,18 +24,25 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-24.04
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: Download prices
-        run: python3 scripts/build_prices.py
+        run: |
+          if [ "${{ github.event.schedule }}" = "12 8-21 * * 1-5" ] || [ "${{ inputs.mode }}" = "latest" ]; then
+            python3 scripts/build_prices.py --latest
+          else
+            python3 scripts/build_prices.py
+          fi
       - name: Commit if changed
         run: |
           git config user.name "vestora-prices"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/history.json
+          git add data/history.json data/latest.json 2>/dev/null || true
           if git diff --cached --quiet; then echo "No change"; exit 0; fi
-          git commit -m "Update prices $(date -u +%Y-%m-%d)"
-          git push
+          git commit -m "Update prices $(date -u +'%Y-%m-%d %H:%M')"
+          for i in 1 2 3; do git pull --rebase -q && git push && exit 0; sleep 5; done
+          exit 1

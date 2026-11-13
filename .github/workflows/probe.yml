@@ -13,6 +13,10 @@ on:
         description: optional jq filter applied to each body instead of printing it
         required: false
         default: ""
+      data:
+        description: optional JSON body; if set, each URL is called with POST
+        required: false
+        default: ""
 
 jobs:
   probe:
@@ -22,10 +26,11 @@ jobs:
         env:
           URLS: ${{ inputs.url }}
           JQ: ${{ inputs.jq }}
+          DATA: ${{ inputs.data }}
         run: |
           for URL in $URLS; do
             echo "=== $URL"
-            curl -sS -D h.txt -o b.txt -H "Origin: https://vestora.stratoshivibes.com" "$URL" || true
+            if [ -n "$DATA" ]; then curl -sS -D h.txt -o b.txt -H "Origin: https://vestora.stratoshivibes.com" -H "Content-Type: application/json" -X POST --data "$DATA" "$URL" || true; else curl -sS -D h.txt -o b.txt -H "Origin: https://vestora.stratoshivibes.com" "$URL" || true; fi
             grep -i "^HTTP\|^access-control-allow-origin" h.txt || true
             echo "--- body ($(wc -c < b.txt) bytes)"; if [ -n "$JQ" ]; then jq -c "$JQ" b.txt | head -c 8000; else head -c 6000 b.txt; fi; echo
           done

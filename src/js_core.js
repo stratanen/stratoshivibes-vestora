@@ -52,9 +52,17 @@ function applyData(d){
   for(const [id,a] of Object.entries(d.assets)){
     const w=a.w.slice();let first=w.find(v=>v!=null);if(first==null)continue;
     for(let i=0;i<w.length;i++){if(w[i]==null)w[i]=first;else first=w[i]}
-    ASSETS[id]={name:LANG==='en'&&NAME_EN[id]||a.name,sym:id,cls:a.cls,usd:a.usd??1};if(a.mint)ASSETS[id].mint=a.mint;PRICES[id]=w;
+    ASSETS[id]={name:LANG==='en'&&(NAME_EN[id]||a.en)||a.name,sym:id,cls:a.cls,usd:a.usd??1};if(a.mint)ASSETS[id].mint=a.mint;if(a.k)ASSETS[id].k=a.k;PRICES[id]=w;
   }
-  ASSETS.DEP={name:'',sym:'',cls:'cash',usd:0,fixed:0};applyDep();
+  ASSETS.DEP={name:'',sym:'',cls:'cash',usd:0,fixed:0};applyDep();SIDX=null;
+}
+let SIDX=null; /* search index, rebuilt when prices load */
+/* hourly prices for stocks and ETFs (data/latest.json, updated while markets are open); a newer Jupiter price still wins */
+async function loadLatest(){
+  try{const r=await fetch('data/latest.json',{cache:'no-cache'});if(!r.ok)return;const j=await r.json();
+    for(const [id,[e,t]] of Object.entries(j.p||{})){const d=DATA?.assets?.[id];if(!d||!ASSETS[id]||ASSETS[id].live||!(e>0)||t<=(d.lastTime||0))continue;
+      PRICES[id][W-1]=e;d.last=e;d.lastTime=t;ASSETS[id].hourly=true}
+  }catch(e){console.warn('latest prices',e)}
 }
 /* ---------- price guards: a live price is used only if it is believable ----------
    Known assets: the live price must stay within a day's plausible move of the daily closing file.
@@ -66,7 +74,7 @@ function when(t){if(!t)return'';const d=Date.now()-t,m=Math.round(d/6e4),x=new D
   return x.getDate()+' '+MONTHS[x.getMonth()]+' '+hm}
 function priceSrc(a){
   const A=ASSETS[a],c=state.custom[a];
-  if(A){if(a==='DEP')return '';if(A.live&&A.at)return 'Jupiter · '+when(A.at);const t=DATA?.assets?.[a]?.lastTime;return 'κλείσιμο '+(t?when(t*1000):'')}
+  if(A){if(a==='DEP')return '';if(A.live&&A.at)return 'Jupiter · '+when(A.at);const t=DATA?.assets?.[a]?.lastTime;return (A.hourly?'τιμή ':'κλείσιμο ')+(t?when(t*1000):'')}
   if(!c)return '';
   const src=c.man?'δική σου τιμή':c.usdv?'αξία εισαγωγής':c.hl?'Hyperliquid':c.evm?'DefiLlama':c.mint?'Jupiter':'δική σου τιμή';
   return src+(c.at?' · '+when(c.at):'');
@@ -361,12 +369,13 @@ $('ddBox').addEventListener('click',e=>{if(e.target.closest('[data-pro]'))openSh
 
 /* ---------- stress test ---------- */
 const SCN=[{id:'btc',n:'Bitcoin −50%'},{id:'ndq',n:'Nasdaq −30%'},{id:'world',n:'Μετοχές παγκόσμια −25%'},{id:'fx',n:'Ευρώ +10% έναντι $'},{id:'all',n:'Όλα μαζί'},{id:'custom',n:'Δικό σου σενάριο',pro:true}];
-const TECH=new Set(['NVDA','TSLA','COIN','MSTR']), MEGA=new Set(['AAPL','MSFT','AMZN','GOOGL','META']), NDQ=new Set(['QQQ','EQQQ']), GOLD=new Set(['GLD','XGLD']);
+const MEGA=new Set(['AAPL','MSFT','AMZN','GOOGL','META']), kind=a=>ASSETS[a]?.k||'';
+const TECH={has:a=>kind(a)==='tech'}, NDQ={has:a=>kind(a)==='ndq'}, GOLD={has:a=>kind(a)==='gold'};
 /* Market move (before currency) for each scenario, by asset. */
 function baseShock(a,id){
   const m=meta(a),c=m.cls;
-  if(id==='fx'||c==='cash'||m.custom&&c==='other')return 0;
-  const crypto=c==='crypto'?(a==='BTC'?{btc:-.5,ndq:-.3,world:-.3}:{btc:-.6,ndq:-.4,world:-.4}):null;
+  if(id==='fx'||c==='cash'||m.custom&&c==='other'||kind(a)==='mm'||kind(a)==='bond')return 0;
+  const crypto=c==='crypto'||kind(a)==='btc'?(a==='BTC'||kind(a)==='btc'?{btc:-.5,ndq:-.3,world:-.3}:{btc:-.6,ndq:-.4,world:-.4}):null;
   if(crypto)return crypto[id]??Math.min(crypto.btc,crypto.ndq,crypto.world);
   if(GOLD.has(a))return 0;
   const S=NDQ.has(a)?{ndq:-.3,world:-.28}:TECH.has(a)?{ndq:-.45,world:-.38}:MEGA.has(a)?{ndq:-.32,world:-.28}:c==='etf'?{ndq:-.22,world:-.25}:{ndq:-.18,world:-.3};
@@ -383,7 +392,7 @@ const SDESC={btc:'Το Bitcoin χάνει το μισό. Τα άλλα crypto π
 let sui={id:'btc',c:{crypto:-40,eq:-20,gold:0,fx:5}};
 function shockOf(a,id){
   const m=meta(a),usd=m.usd||0;let s=0,fx=0;
-  if(id==='custom'){const c=m.cls;s=(c==='crypto'?sui.c.crypto:GOLD.has(a)?sui.c.gold:(c==='stock'||c==='etf')?sui.c.eq:0)/100;fx=sui.c.fx/100}
+  if(id==='custom'){const c=m.cls;s=(c==='crypto'||kind(a)==='btc'?sui.c.crypto:GOLD.has(a)?sui.c.gold:kind(a)==='bond'||kind(a)==='mm'?0:(c==='stock'||c==='etf')?sui.c.eq:0)/100;fx=sui.c.fx/100}
   else{s=baseShock(a,id);fx=id==='fx'||id==='all'?.1:0}
   return (1+s)*(1-usd+usd/(1+fx))-1;
 }
@@ -497,8 +506,8 @@ function renderInsights(D){
     e:'Η συγκέντρωση δεν είναι από μόνη της λάθος, αλλά καθορίζει πόσο πολύ μια κακή εξέλιξη σε ένα asset επηρεάζει όλο το κεφάλαιο. Είναι καλό να είναι επιλογή και όχι κάτι που προέκυψε επειδή ανέβηκε μια θέση.'})}
   tagPro=true;
   const has=a=>D.hold.some(h=>h.a===a);
-  const sp500=['SPY','SXR8'].some(has),ndq=['QQQ','EQQQ'].some(has),world=['VWCE','EUNL'].some(has);
-  const inIdx=[...MEGA,...TECH].filter(a=>has(a)&&a!=='COIN'&&a!=='MSTR').map(a=>ASSETS[a].name);
+  const sp500=['SPY','SXR8','VOO','IVV','VUAA','VUSA'].some(has),ndq=['QQQ','EQQQ','QQQM','SXRV'].some(has),world=['VWCE','EUNL','VGWL','XDWD','IUSQ','SPYI','VT'].some(has);
+  const inIdx=[...MEGA,'NVDA','TSLA','AVGO','BRK-B','JPM','LLY','V','MA','NFLX','ORCL','WMT','COST'].filter(a=>has(a)&&ASSETS[a]).map(a=>ASSETS[a].name);
   const idxN=[sp500,ndq,world].filter(Boolean).length;
   if(idxN&&(inIdx.length||idxN>1))out.push({l:'info',chip:'Επικάλυψη',t:'Έχεις την ίδια έκθεση από δύο δρόμους',
     p:`${idxN>1?'Οι δείκτες που κατέχεις (S&P 500, Nasdaq 100, παγκόσμιοι) μοιράζονται πολλές από τις μεγαλύτερες εταιρείες. ':''}${inIdx.length?`Η θέση σε ${inIdx.join(', ')} υπάρχει ήδη μέσα στους δείκτες που κατέχεις.`:''} Η πραγματική σου έκθεση στις μεγάλες αμερικανικές τεχνολογικές είναι μεγαλύτερη από όσο δείχνει η λίστα.`,
@@ -536,16 +545,98 @@ function assetOptions(sel,withNew=true){
   if(withNew)h+=`<option value="__new">+ Άλλο: ακίνητο, μετοχή ΧΑ ή ό,τι άλλο (δική σου τιμή)</option>`;
   const el=$(sel),cur=el.value;el.innerHTML=h;if(cur&&[...el.options].some(o=>o.value===cur))el.value=cur;
 }
+/* ---------- asset search ----------
+   Searches the price catalog (name, ticker, ISIN, extra words, in Greek or English, accents ignored) and the user's own assets.
+   From 2 letters on it also asks Jupiter, so every xStock and Solana token can be found; those get a live price but no history. */
+const JUPS='https://lite-api.jup.ag/tokens/v2/search?query=';
+const norm=x=>String(x||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/ς/g,'σ');
+const exName=x=>x==='Athens'?'ΧΑ':x||'';
+const POPULAR=['VWCE','SXR8','EUNL','BTC','ETH','SOL','SPY','QQQ','DEP'];
+function searchIndex(){
+  if(SIDX)return SIDX;
+  SIDX=Object.entries(ASSETS).map(([k,a])=>{const d=DATA?.assets?.[k]||{};
+    return{k,id:norm(k),y:norm(d.y),isin:norm(d.isin),name:norm(a.name),txt:' '+norm([a.name,d.name,d.en,d.q,k,d.y,d.isin,d.ex,k==='DEP'?'καταθεση προθεσμιακη τοκος deposit':''].join(' ')).replace(/[()\-,.&/]/g,' ')}});
+  return SIDX;
+}
+function heldIds(){return [...new Set(state.tx.map(t=>t.a))]}
+function searchLocal(q){
+  const n=norm(q).trim(),words=n.split(/\s+/).filter(Boolean),held=new Set(heldIds());
+  const out=[];
+  if(!n){for(const k of [...held,...POPULAR])if((ASSETS[k]||state.custom[k])&&!out.some(o=>o.k===k))out.push({k});return out.slice(0,12)}
+  for(const e of searchIndex()){let sc=0;
+    if(e.id===n||e.y===n||e.isin===n)sc=100;else if(e.id.startsWith(n)||e.y.startsWith(n))sc=80;else if(e.name.startsWith(n))sc=70;
+    else if(words.every(w=>e.txt.includes(w)))sc=words.every(w=>e.txt.includes(' '+w))?50:30;
+    if(sc)out.push({k:e.k,sc:sc+(held.has(e.k)?5:0)})}
+  for(const [k,c] of Object.entries(state.custom))if(words.every(w=>norm(c.name+' '+(c.sym||'')).includes(w)))out.push({k,sc:60});
+  return out.sort((a,b)=>b.sc-a.sc||meta(a.k).name.localeCompare(meta(b.k).name,'el')).slice(0,30);
+}
+function knownMints(){const m=new Set(Object.values(MINT));for(const a of Object.values(ASSETS))if(a.mint)m.add(a.mint);return m}
+async function searchJup(q){
+  const r=await fetch(JUPS+encodeURIComponent(q));if(!r.ok)throw new Error('jup '+r.status);
+  const known=knownMints();
+  return (await r.json()).filter(t=>t.id&&!known.has(t.id)&&t.usdPrice>0)
+    .map(t=>{const xs=/^Xs/.test(t.id)&&/x$/.test(t.symbol||'')&&!!t.isVerified;return{mint:t.id,sym:t.symbol||'',name:t.name||t.symbol,ver:!!t.isVerified,xs,eur:t.usdPrice/FXL,liq:+t.liquidity||0}})
+    .sort((a,b)=>b.ver-a.ver||b.liq-a.liq).slice(0,8);
+}
+function resultLine(k){
+  const m=meta(k),d=DATA?.assets?.[k],c=state.custom[k];
+  if(k==='DEP')return [m.name,'Καταθέσεις · σταθερό επιτόκιο'];
+  if(c)return [c.name,'Δικό σου'+(c.mint?' · Jupiter':'')];
+  const live=m.cls==='crypto'||m.mint;
+  return [m.name,[d?.y&&d.y!==k&&!/^[A-Z]+-USD$/.test(d.y)&&!m.name.includes(k)?k:'',exName(d?.ex),CLS[m.cls],live?'ζωντανή τιμή':'τιμή ανά ώρα'].filter(Boolean).join(' · ')];
+}
+/* attaches the search to an input; onPick gets {k} for a known asset, {k:'__new',q} for "something else", or {tok} for a Jupiter token */
+function attachPicker(inp,list,onPick){
+  let items=[],act=-1,timer=null,seq=0,jup=[],jupQ='';
+  const close=()=>{list.hidden=true;inp.setAttribute('aria-expanded','false')};
+  const draw=()=>{
+    const q=inp.value.trim(),loc=searchLocal(inp.dataset.picked===q?'':q);
+    items=[...loc.map(x=>({k:x.k})),...(jupQ===q?jup.map(t=>({tok:t})):[]),{k:'__new',q}];act=Math.min(act,items.length-1);
+    let h='',jh=false;
+    items.forEach((it,i)=>{
+      if(it.tok&&!jh){h+='<div class="ph">Στο Solana, μέσω Jupiter</div>';jh=true}
+      if(it.k==='__new'){h+=`<button type="button" class="pi new${i===act?' act':''}" data-i="${i}" role="option"><b>+ Άλλο, με δική σου τιμή</b><small>Ακίνητο, μετοχή ή ETF που δεν βρίσκεις, ό,τι άλλο</small></button>`;return}
+      const [n,sub]=it.tok?[`${it.tok.name} (${it.tok.sym})`,[it.tok.xs?'xStock':'Token','ζωντανή τιμή',it.tok.ver?'':'<span class="neg">μη επαληθευμένο</span>'].filter(Boolean).join(' · ')]:resultLine(it.k);
+      h+=`<button type="button" class="pi${i===act?' act':''}" data-i="${i}" role="option"><b>${esc(n)}</b><small>${sub}</small></button>`});
+    if(!loc.length&&q&&jupQ!==q)h='<div class="ph">Ψάχνω…</div>'+h;
+    list.innerHTML=h;list.hidden=false;inp.setAttribute('aria-expanded','true');
+  };
+  const query=()=>{draw();clearTimeout(timer);const q=inp.value.trim();
+    if(q.length<2||q===inp.dataset.picked){jup=[];jupQ=q;return}
+    timer=setTimeout(async()=>{const my=++seq;try{const r=await searchJup(q);if(my!==seq)return;jup=r}catch(e){jup=[]}jupQ=q;if(!list.hidden)draw()},350)};
+  const pick=i=>{const it=items[i];if(!it)return;close();onPick(it)};
+  inp.addEventListener('focus',()=>{inp.select();act=-1;query()});
+  inp.addEventListener('input',()=>{act=-1;query()});
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();if(list.hidden)query();act=(act+(e.key==='ArrowDown'?1:-1)+items.length)%items.length;draw();list.querySelector('.act')?.scrollIntoView({block:'nearest'})}
+    else if(e.key==='Enter'){e.preventDefault();pick(act>=0?act:0)}
+    else if(e.key==='Escape'&&!list.hidden){e.stopPropagation();close()}});
+  inp.addEventListener('blur',()=>setTimeout(close,150));
+  list.addEventListener('pointerdown',e=>e.preventDefault());
+  list.addEventListener('click',e=>{const b=e.target.closest('.pi');if(b)pick(+b.dataset.i)});
+}
+function tokCustom(t){const id='m_'+t.mint;if(!state.custom[id])state.custom[id]={name:t.name,sym:t.sym,cls:t.xs?'stock':'crypto',current:t.eur,unc:!t.ver,at:Date.now(),mint:t.mint};return id}
+let pendTok=null;
+function pickLabel(a){return a==='__new'?'Άλλο, με δική σου τιμή':a==='__tok'&&pendTok?`${pendTok.name} (${pendTok.sym})`:ASSETS[a]||state.custom[a]?meta(a).name:''}
+function syncPick(){const i=$('fAssetQ');if(i&&document.activeElement!==i){i.value=pickLabel($('fAsset').value);i.dataset.picked=i.value}}
+attachPicker($('fAssetQ'),$('fAssetL'),it=>{
+  const sel=$('fAsset');
+  if(it.tok){pendTok=it.tok;if(![...sel.options].some(o=>o.value==='__tok'))sel.add(new Option('','__tok'));sel.value='__tok'}
+  else{sel.value=it.k;if(it.k==='__new'&&it.q&&!$('fCName').value)$('fCName').value=it.q.slice(0,40)}
+  priceTouched=false;$('fAssetQ').blur();autoPrice();if(it.k==='__new')$('fCName').focus();else $('fQty').focus();
+});
 let priceTouched=false;
 const TYPE_HINT={buy:'',sell:'',div:'Μέρισμα ή τόκος που εισέπραξες σε μετρητά από αυτό το στοιχείο.',reward:'Ανταμοιβή staking ή άλλο εισόδημα σε τεμάχια. Προσθέτει ποσότητα χωρίς νέα χρήματα.'};
 function autoPrice(){
   const a=$('fAsset').value,isNew=a==='__new',type=$('fType').value;
+  syncPick();
   $('wrapCName').hidden=!isNew;$('wrapCNow').hidden=!isNew;$('wrapCCls').hidden=!isNew;
   $('lQty').textContent=type==='div'?'Ποσό €':'Ποσότητα';
   $('wrapPrice').hidden=type==='div'||type==='reward';$('wrapFee').hidden=type==='reward';$('wrapReason').hidden=type==='div'||type==='reward';
   $('typeHint').textContent=TYPE_HINT[type];$('typeHint').hidden=!TYPE_HINT[type];
   if(priceTouched)return;
   if(PRICES[a]&&$('fDate').value){const p=PRICES[a][toWeek($('fDate').value)];$('fPrice').value=+p.toPrecision(6)}
+  else if(a==='__tok'&&pendTok)$('fPrice').value=+pendTok.eur.toPrecision(6);
   else if(!isNew&&state.custom[a])$('fPrice').value=+(+state.custom[a].current||0).toPrecision(6);
   else $('fPrice').value='';
 }
@@ -569,6 +660,7 @@ $('txForm').addEventListener('submit',e=>{
   if(a==='__new'&&!$('fCName').value.trim()){msg.textContent='Δώσε όνομα στο νέο στοιχείο.';return}
   if(a==='__new'&&type!=='buy'){msg.textContent='Ένα νέο στοιχείο ξεκινά με αγορά.';return}
   if(state.sample)state={sample:false,onboarded:true,custom:{},mints:{},tx:[]};
+  if(a==='__tok'){if(!pendTok){msg.textContent='Διάλεξε περιουσιακό στοιχείο.';return}a=tokCustom(pendTok);pendTok=null}
   if(a==='__new'){const now=parseFloat($('fCNow').value);a='c_'+uid();state.custom[a]={name:$('fCName').value.trim(),cls:$('fCCls').value,current:now>0?now:pr}}
   if(type==='sell'||type==='div'){const held=heldOn(a,date);
     if(type==='sell'&&qty>held+1e-9){msg.textContent=`Μπορείς να πουλήσεις έως ${nf(6).format(Math.max(0,held))} μονάδες σε αυτή την ημερομηνία.`;return}

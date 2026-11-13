@@ -404,10 +404,12 @@ let onb={step:0,rows:[{a:'',v:'',name:''}],monthly:'',years:15,goal:'',tol:'30'}
 const TOLS=[['10','Έως −10%','Μια μικρή πτώση θα με αγχώσει.'],['20','Έως −20%','Αντέχω μια μέτρια διόρθωση.'],['30','Έως −30%','Αντέχω μια σοβαρή πτώση.'],['50','Έως −50%','Έχω περάσει μεγάλες πτώσεις χωρίς να πουλήσω.'],['70','Έως −70%','Αντέχω πτώσεις τύπου crypto.']];
 function openOnb(){arm();onb={step:0,rows:[{a:'',v:'',name:''}],monthly:plan.monthly!=null&&state.tx.length?String(plan.monthly):'',years:+plan.years||15,goal:plan.goal&&state.tx.length?String(plan.goal):'',tol:plan.tol||'30'};$('onb').hidden=false;renderOnb()}
 function onbAssetSelect(i,r){
-  const groups={crypto:[],etf:[],stock:[],cash:[]};
-  for(const [k,a] of Object.entries(ASSETS).sort((a,b)=>a[1].name.localeCompare(b[1].name,'el')))groups[a.cls]?.push(`<option value="${k}"${r.a===k?' selected':''}>${esc(a.name)}</option>`);
-  return `<select id="ob_a${i}" data-i="${i}" data-k="a" aria-label="Επένδυση ${i+1}"><option value="">Διάλεξε…</option>${['crypto','etf','stock','cash'].map(c=>`<optgroup label="${CLS[c]}">${groups[c].join('')}</optgroup>`).join('')}<option value="__new"${r.a==='__new'?' selected':''}>Ακίνητο ή κάτι άλλο</option></select>`;
+  const lbl=r.a==='__new'?'Άλλο, με δική σου τιμή':r.tok?`${r.tok.name} (${r.tok.sym})`:r.a?meta(r.a).name:'';
+  return `<div class="pick obpick"><input id="ob_a${i}" data-i="${i}" type="search" autocomplete="off" spellcheck="false" value="${esc(lbl)}" data-picked="${esc(lbl)}" placeholder="Αναζήτηση: π.χ. VWCE, Bitcoin, Πειραιώς" aria-label="Επένδυση ${i+1}" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="ob_l${i}"><div class="plist" id="ob_l${i}" role="listbox" hidden></div></div>`;
 }
+function bindOnbPickers(){onb.rows.forEach((r,i)=>{const inp=$('ob_a'+i);if(!inp)return;
+  attachPicker(inp,$('ob_l'+i),it=>{if(it.tok){r.a='__tok';r.tok=it.tok}else{r.a=it.k;r.tok=null;if(it.k==='__new'&&it.q&&!r.name)r.name=it.q.slice(0,40)}
+    renderOnb();($('ob_n'+i)||$('ob_v'+i))?.focus()})})}
 function renderOnb(){
   const box=$('onbBody'),s=onb.step,dots=[1,2,3,4].map(n=>`<i class="${n<=s?'on':''}"></i>`).join('');
   $('onbDots').innerHTML=s?dots:'';
@@ -427,7 +429,7 @@ function renderOnb(){
     <div class="obrows">${onb.rows.map((r,i)=>`<div class="obrow">${onbAssetSelect(i,r)}${r.a==='__new'?`<input id="ob_n${i}" data-i="${i}" data-k="name" placeholder="π.χ. Διαμέρισμα" value="${esc(r.name)}" aria-label="Όνομα">`:''}<input id="ob_v${i}" data-i="${i}" data-k="v" type="number" min="0" step="10" inputmode="decimal" placeholder="Αξία σήμερα €" value="${esc(r.v)}" aria-label="Αξία σήμερα σε ευρώ">${onb.rows.length>1?`<button class="x" type="button" data-o="rm" data-i="${i}" aria-label="Αφαίρεση">×</button>`:''}</div>`).join('')}</div>
     <button class="btn" type="button" data-o="add">+ Άλλη μία</button>
     <p class="neg small" id="obMsg" role="status"></p>
-    <div class="onbbtns"><button class="btn primary" type="button" data-o="next">Συνέχεια</button>${have?'':'<button class="btn ghost" type="button" data-o="skip">Δεν έχω ακόμα επενδύσεις</button>'}</div>`;return}
+    <div class="onbbtns"><button class="btn primary" type="button" data-o="next">Συνέχεια</button>${have?'':'<button class="btn ghost" type="button" data-o="skip">Δεν έχω ακόμα επενδύσεις</button>'}</div>`;bindOnbPickers();return}
   if(s===2){box.innerHTML=`<h2>Πόσα μπορείς να βάζεις τον μήνα;</h2><p class="muted">Το ποσό που μπορείς να επενδύεις σταθερά, χωρίς να πιεστείς. Μπορεί να είναι και 0.</p>
     <div class="f"><label for="ob_m">Μηνιαία καταβολή €</label><input id="ob_m" data-k="monthly" type="number" min="0" step="10" inputmode="numeric" value="${esc(onb.monthly)}" placeholder="π.χ. 150"></div>
     <div class="chips">${[50,100,200,300,500].map(v=>`<button type="button" data-o="setm" data-v="${v}">${v} €</button>`).join('')}</div>
@@ -447,7 +449,7 @@ $('onbBody').addEventListener('input',e=>{const el=e.target,k=el.dataset.k;if(!k
 $('onbBody').addEventListener('click',e=>{const b=e.target.closest('[data-o]');if(!b)return;const o=b.dataset.o;
   if(o==='sample'){state=sample();save();plan.target=null;targetBuilt=false;assetOptions('fAsset');$('onb').hidden=true;render();go('home');return}
   if(o==='restore'){$('onb').hidden=true;go('tx');$('rsDetails').open=true;setTimeout(()=>$('backupPanel').scrollIntoView({block:'start'}),50);return}
-  if(o==='add'){onb.rows.push({a:'',v:'',name:''});renderOnb();$('ob_a'+(onb.rows.length-1))?.focus();return}
+  if(o==='add'){onb.rows.push({a:'',v:'',name:'',tok:null});renderOnb();$('ob_a'+(onb.rows.length-1))?.focus();return}
   if(o==='rm'){onb.rows.splice(+b.dataset.i,1);renderOnb();return}
   if(o==='wallet'){if(!wallet)openSheet('pick');else if(isPro()){flow.imp=null;openSheet('import')}else openSheet('done');return}
   if(o==='eth'){openEth();return}
@@ -456,7 +458,7 @@ $('onbBody').addEventListener('click',e=>{const b=e.target.closest('[data-o]');i
   if(o==='back'){onb.step=Math.max(0,onb.step-1);renderOnb();return}
   if(o==='skip'){onb.rows=[];onb.step=2;renderOnb();return}
   if(o==='next'){
-    if(onb.step===1){const bad=onb.rows.find(r=>(r.a||r.v)&&(!r.a||!(+r.v>0)||r.a==='__new'&&!r.name.trim()));
+    if(onb.step===1){const bad=onb.rows.find(r=>(r.a||r.v)&&(!r.a||!(+r.v>0)||r.a==='__new'&&!r.name.trim()||r.a==='__tok'&&!r.tok));
       if(bad){$('obMsg').textContent='Συμπλήρωσε επένδυση και αξία σε κάθε γραμμή, ή αφαίρεσε τη γραμμή.';return}}
     onb.step++;renderOnb();$('onbBody').querySelector('input,button')?.focus();return}
   if(o==='finish')finishOnb();
@@ -467,6 +469,7 @@ function finishOnb(){
   const date=todayIso();
   for(const r of onb.rows){const v=+r.v;if(!r.a||!(v>0))continue;
     if(r.a==='__new'){const id='c_'+uid();state.custom[id]={name:r.name.trim(),cls:'other',current:v};state.tx.push({id:uid(),a:id,type:'buy',date,qty:1,price:v,fee:0,reason:''})}
+    else if(r.a==='__tok'&&r.tok){const id=tokCustom(r.tok),p=r.tok.eur;state.tx.push({id:uid(),a:id,type:'buy',date,qty:+(v/p).toPrecision(8),price:+p.toPrecision(8),fee:0,reason:''})}
     else{const p=nowPrice(r.a);if(!(p>0))continue;state.tx.push({id:uid(),a:r.a,type:'buy',date,qty:+(v/p).toPrecision(8),price:+p.toPrecision(8),fee:0,reason:''})}}
   state.onboarded=true;save();
   plan.monthly=+onb.monthly||0;plan.years=+onb.years||15;plan.goal=+onb.goal||plan.goal||50000;plan.tol=onb.tol;plan.target=null;plan.next=null;plan.b=null;targetBuilt=false;savePlan();
@@ -506,7 +509,7 @@ $('guide').addEventListener('click',e=>{const b=e.target.closest('[data-g]');if(
   if(g==='risk')return go('risk');
   if(g==='plan')return go('plan')});
 $('planHow').addEventListener('click',e=>{const b=e.target.closest('[data-h]');if(!b)return;
-  if(b.dataset.h==='tx'){go('tx');setTimeout(()=>$('fAsset').focus(),60)}
+  if(b.dataset.h==='tx'){go('tx');setTimeout(()=>$('fAssetQ').focus(),60)}
   else if(b.dataset.h==='next'){const m=$('planMore');m.open=true;$('nAmt').scrollIntoView({block:'center',behavior:'smooth'})}
   else if(b.dataset.h==='risk')go('risk')});
 
@@ -527,7 +530,7 @@ $('onbHome').addEventListener('click',goHome);
 $('btnHome').addEventListener('click',goHome);
 $('howLink').addEventListener('click',()=>go('how'));
 $('brandHome').addEventListener('click',goHome);$('brandHome').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();goHome()}});
-$('btnAdd').addEventListener('click',()=>{go('tx');setTimeout(()=>$('fAsset').focus(),60)});
+$('btnAdd').addEventListener('click',()=>{go('tx');setTimeout(()=>$('fAssetQ').focus(),60)});
 /* Android back button: close what is open, step back in the guide, return to Summary, and only then leave the app.
    One extra history entry acts as a guard; each handled back press re-arms it. */
 let armed=false,booted=false;
@@ -555,7 +558,7 @@ function countUp(prev,D){
 }
 function renderPriceNote(){
   if(!DATA)return;const u=new Date(DATA.updated),age=(Date.now()-u)/DAY;
-  $('priceNote').innerHTML=`Τιμές: κλείσιμο ${longDate(iso(u))}${liveAt?', ζωντανές για crypto και αμερικανικές μετοχές/ETF (μέσω xStocks, που διαπραγματεύονται 24/7· εκτός ωραρίου αγοράς ΗΠΑ μπορεί να διαφέρουν λίγο)':''}.${age>4?' <b class="neg">Οι τιμές δεν έχουν ενημερωθεί για μερικές μέρες.</b>':''}`;
+  $('priceNote').innerHTML=`Τιμές: κλείσιμο ${longDate(iso(u))}${liveAt?', ζωντανές για crypto και για όσες αμερικανικές μετοχές και ETF έχουν xStock με αξιόπιστη τιμή (διαπραγματεύονται 24/7· εκτός ωραρίου ΗΠΑ μπορεί να διαφέρουν λίγο). Οι υπόλοιπες μετοχές και ETF ενημερώνονται κάθε ώρα όσο είναι ανοιχτά τα χρηματιστήρια':''}.${age>4?' <b class="neg">Οι τιμές δεν έχουν ενημερωθεί για μερικές μέρες.</b>':''}`;
 }
 
 function render(){applyDep();if(!$('v-how').hidden)renderHowPage();renderWallet();const prev=D?D.end:null;D=compute();renderSummary(D);countUp(prev,D);renderChart(D);renderDD(D);renderStory(D);renderHoldings(D);renderInsights(D);renderPlan(D);renderGuide(D);renderStress(D);renderJournal();renderTx();renderBanner();renderPriceNote();renderBackupNote()}
@@ -570,12 +573,13 @@ async function boot(){
   catch(e){console.warn(e);$('loadMsg').textContent='Δεν ήταν δυνατή η φόρτωση των τιμών. Έλεγξε τη σύνδεση στο internet.';$('loadRetry').hidden=false;return}
   $('loading').hidden=true;$('app').hidden=false;
   $('fDate').max=todayIso();$('fDate').min=iso(wDate(0));$('fDate').value=todayIso();
+  await loadLatest();
   assetOptions('fAsset');autoPrice();render();
   show(VIEWS.includes(location.hash.slice(1))?location.hash.slice(1):'home');
   if(!state.onboarded&&!state.tx.length)openOnb();
   booted=true;arm();
   livePrices();if(wallet&&!PLAY)checkWallet(false);
-  setInterval(()=>{if(document.visibilityState==='visible')livePrices()},5*60e3);
+  setInterval(async()=>{if(document.visibilityState==='visible'){await loadLatest();livePrices()}},5*60e3);
 }
 $('loadRetry').addEventListener('click',boot);
 document.querySelectorAll('.markslot').forEach(el=>el.innerHTML=MARK);

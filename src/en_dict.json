@@ -466,7 +466,6 @@
 "Το πλάνο σου είναι έτοιμο. Μπορείς να αλλάξεις ό,τι θέλεις.": "Your plan is ready. You can change anything you like.",
 "Πάτα ξανά «πίσω» για έξοδο.": "Press back again to exit.",
 "Τιμές: κλείσιμο": "Prices: close of",
-", ζωντανές για crypto και αμερικανικές μετοχές/ETF (μέσω xStocks, που διαπραγματεύονται 24/7· εκτός ωραρίου αγοράς ΗΠΑ μπορεί να διαφέρουν λίγο)": ", live for crypto and US stocks/ETFs (via xStocks, which trade 24/7; outside US market hours they can differ slightly)",
 " <b class=\"neg\">Οι τιμές δεν έχουν ενημερωθεί για μερικές μέρες.</b>": " <b class=\"neg\">Prices have not been updated for a few days.</b>",
 "Φορτώνουν οι τιμές…": "Loading prices…",
 "Δεν ήταν δυνατή η φόρτωση των τιμών. Έλεγξε τη σύνδεση στο internet.": "Prices could not be loaded. Check your internet connection.",
@@ -606,7 +605,24 @@
 "Καλός": "Good",
 "Πολύ καλός": "Very good",
 " · πρόσθεσε μήκος ή γράψε 4–5 τυχαίες λέξεις": " · make it longer or use 4–5 random words",
-"Ο κωδικός είναι πολύ εύκολος να μαντευτεί. Πρόσθεσε μήκος, ή γράψε 4–5 τυχαίες λέξεις.": "This password is too easy to guess. Make it longer, or use 4–5 random words."
+"Ο κωδικός είναι πολύ εύκολος να μαντευτεί. Πρόσθεσε μήκος, ή γράψε 4–5 τυχαίες λέξεις.": "This password is too easy to guess. Make it longer, or use 4–5 random words.",
+"τιμή ": "price ",
+"σ": "σ",
+"ΧΑ": "Athens",
+"καταθεση προθεσμιακη τοκος deposit": "καταθεση προθεσμιακη τοκος deposit savings",
+"Καταθέσεις · σταθερό επιτόκιο": "Deposits · fixed rate",
+"Δικό σου": "Your own",
+"ζωντανή τιμή": "live price",
+"τιμή ανά ώρα": "hourly price",
+"κλείσιμο": "close",
+"<div class=\"ph\">Στο Solana, μέσω Jupiter</div>": "<div class=\"ph\">On Solana, via Jupiter</div>",
+"<span class=\"neg\">μη επαληθευμένο</span>": "<span class=\"neg\">not verified</span>",
+"<div class=\"ph\">Ψάχνω…</div>": "<div class=\"ph\">Searching…</div>",
+"Άλλο, με δική σου τιμή": "Something else, with your own price",
+"Διάλεξε περιουσιακό στοιχείο.": "Choose an asset.",
+"\" placeholder=\"Αναζήτηση: π.χ. VWCE, Bitcoin, Πειραιώς\" aria-label=\"Επένδυση": "\" placeholder=\"Search: e.g. VWCE, Bitcoin, Apple\" aria-label=\"Investment",
+"\" role=\"option\"><b>+ Άλλο, με δική σου τιμή</b><small>Ακίνητο, μετοχή ή ETF που δεν βρίσκεις, ό,τι άλλο</small></button>": "\" role=\"option\"><b>+ Something else, with your own price</b><small>Property, a stock or ETF you can't find, anything else</small></button>",
+", ζωντανές για crypto και για όσες αμερικανικές μετοχές και ETF έχουν xStock με αξιόπιστη τιμή (διαπραγματεύονται 24/7· εκτός ωραρίου ΗΠΑ μπορεί να διαφέρουν λίγο). Οι υπόλοιπες μετοχές και ETF ενημερώνονται κάθε ώρα όσο είναι ανοιχτά τα χρηματιστήρια": ", live for crypto and for the US stocks and ETFs that have an xStock with a reliable price (they trade 24/7; outside US hours they can differ slightly). Other stocks and ETFs update every hour while exchanges are open"
 },
 "html": {
 "Φορτώνουν οι τιμές…": "Loading prices…",
@@ -719,7 +735,6 @@
 "Φόρτωση παραδείγματος": "Load example",
 "Διαγραφή όλων των στοιχείων": "Delete all data",
 "Το wallet χρησιμοποιείται μόνο για τον έλεγχο SKR και, αν το ζητήσεις, για ανάγνωση των υπολοίπων. Η Vestora βλέπει μόνο τη δημόσια διεύθυνση, δεν ζητάει υπογραφές και δεν μπορεί να μετακινήσει τίποτα. Το SKR λειτουργεί ως κλειδί πρόσβασης για το Pro: δεν ξοδεύεται και δεν δεσμεύεται.": "The wallet is used only to check SKR and, if you ask, to read your balances. Vestora sees only the public address, asks for no signatures and cannot move anything. SKR works as an access key for Pro: it is not spent or locked.",
-"Η Vestora περιγράφει και εξηγεί την πορεία των επενδύσεών σου. Δεν αποτελεί επενδυτική συμβουλή και δεν προτείνει αγορές, πωλήσεις ή κατανομή. Οι προβολές βασίζονται σε εκτιμήσεις και δεν είναι προβλέψεις. Τιμές: Yahoo Finance (κλείσιμο ημέρας) και Jupiter (ζωντανές τιμές Solana), μετατροπή σε ευρώ με την ισοτιμία EUR/USD.": "Vestora describes and explains how your investments are doing. It is not investment advice and does not suggest buys, sales or allocations. Projections are based on assumptions and are not forecasts. Prices: Yahoo Finance (daily close) and Jupiter (live Solana prices), converted to euros at the EUR/USD rate.",
 "Απόρρητο": "Privacy",
 "Όροι χρήσης": "Terms of use",
 "Κώδικας": "Source code",
@@ -744,6 +759,8 @@
 "Πώς υπολογίζονται αυτά τα νούμερα;": "How are these numbers calculated?",
 "Πώς υπολογίζονται τα νούμερα": "How the numbers are calculated",
 "Κάθε νούμερο της εφαρμογής, εξηγημένο απλά, με τα δικά σου στοιχεία. Πάτα μια ερώτηση για να ανοίξει.": "Every number in the app, explained simply, with your own figures. Tap a question to open it.",
-"Εξηγήσεις": "Explained"
+"Εξηγήσεις": "Explained",
+"Αναζήτηση: όνομα, ticker ή ISIN": "Search: name, ticker or ISIN",
+"Η Vestora περιγράφει και εξηγεί την πορεία των επενδύσεών σου. Δεν αποτελεί επενδυτική συμβουλή και δεν προτείνει αγορές, πωλήσεις ή κατανομή. Οι προβολές βασίζονται σε εκτιμήσεις και δεν είναι προβλέψεις. Τιμές: Yahoo Finance (κλείσιμο ημέρας και τιμές ανά ώρα) και Jupiter (ζωντανές τιμές Solana), μετατροπή σε ευρώ με την ισοτιμία EUR/USD.": "Vestora describes and explains how your investments are doing. It is not investment advice and does not suggest buys, sales or allocations. Projections are based on assumptions and are not forecasts. Prices: Yahoo Finance (daily close and hourly prices) and Jupiter (live Solana prices), converted to euros at the EUR/USD rate."
 }
 }

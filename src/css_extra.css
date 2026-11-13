@@ -230,3 +230,13 @@ details.more[open]>summary{margin-bottom:16px}
 .pwstr[data-s="2"] span:nth-child(-n+2){background:var(--warn)}
 .pwstr[data-s="3"] span:nth-child(-n+3){background:var(--good)}
 .pwstr[data-s="4"] span{background:var(--good)}
+/* asset search */
+.pick{position:relative}
+.pick input[type=search]{-webkit-appearance:none;appearance:none}
+.plist{position:absolute;left:0;right:0;top:100%;margin-top:4px;z-index:30;max-height:min(60vh,360px);overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:4px;overscroll-behavior:contain}
+.pi{display:block;width:100%;text-align:left;border:0;background:none;padding:8px 10px;border-radius:8px;color:inherit;font:inherit;cursor:pointer}
+.pi b{display:block;font-weight:600;line-height:1.25}
+.pi small{display:block;color:var(--muted);font-size:.8em;margin-top:2px}
+.pi:hover,.pi.act{background:var(--accent-soft)}
+.pi.new b{color:var(--accent)}
+.ph{font-size:.72em;color:var(--muted);padding:8px 10px 4px;text-transform:uppercase;letter-spacing:.05em}

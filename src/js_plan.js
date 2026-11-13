@@ -10,7 +10,7 @@ const pcls=c=>c==='stock'||c==='etf'?'eq':c==='crypto'?'crypto':c==='cash'?'cash
 let plan={goal:null,monthly:null,years:15,fee:.3,ass:'0',real:'1',target:null,next:null,exp:'',res:'',inc:'',vr:'',debt:'',tol:'30',b:null,bShow:true};
 try{Object.assign(plan,JSON.parse(localStorage.getItem(PKEY))||{})}catch(e){}
 const savePlan=()=>{try{localStorage.setItem(PKEY,JSON.stringify(plan))}catch(e){}};
-function curAlloc(Dd){const a={eq:0,crypto:0,cash:0,other:0};if(Dd)Dd.hold.forEach(h=>a[pcls(meta(h.a).cls)]+=h.val);return a}
+function curAlloc(Dd){const a={eq:0,crypto:0,cash:0,other:0};if(Dd)Dd.hold.forEach(h=>{const k=ASSETS[h.a]?.k;a[k==='mm'?'cash':k==='bond'?'other':k==='btc'?'crypto':pcls(meta(h.a).cls)]+=h.val});return a}
 const toW=a=>{const t=Object.values(a).reduce((s,x)=>s+x,0)||1;return Object.fromEntries(PK.map(k=>[k,a[k]/t]))};
 function histMonthly(Dd){if(!Dd)return 200;let s=0;for(let w=Math.max(0,W-52);w<W;w++)s+=Dd.C[w];return Math.max(0,Math.round(s/12/10)*10)}
 const targetSum=()=>plan.target?PK.reduce((s,k)=>s+(+plan.target[k]||0),0):0;

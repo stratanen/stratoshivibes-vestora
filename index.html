@@ -2485,7 +2485,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceW
 /* ---------- "Πώς υπολογίζεται" / "How it works": every number in the app explained simply, with the user's own figures ----------
    This file is written in both languages side by side (T(greek, english)) and is NOT passed through the i18n extractor. */
 const T=(el,en)=>LANG==='en'?en:el;
-const HOW_IDS=['prices','value','capital','gain','avg','twr','mwr','bench','risk','fees','plan','left','ai'];
+const HOW_IDS=['prices','value','capital','gain','avg','twr','mwr','bench','risk','fees','plan','left','ai','backup'];
 function howMine(html){return `<div class="mine"><span class="mlbl">${T('Στο δικό σου χαρτοφυλάκιο','In your portfolio')}</span>${html}</div>`}
 function howEx(html){return `<div class="hex"><span class="mlbl">${T('Παράδειγμα','Example')}</span>${html}</div>`}
 function howFx(html){return `<p class="fx">${html}</p>`}
@@ -2679,6 +2679,33 @@ function renderHowPage(){
       <li>${T('<b>Δεν σου πουλάει τίποτα.</b> Αν ρωτήσεις ένα chatbot «τι να αγοράσω», θα σου απαντήσει, συχνά με σιγουριά που δεν δικαιολογείται. Το Vestora δεν προτείνει αγορές: σου δείχνει τι έκαναν πραγματικά τα χρήματά σου και εξηγεί κάθε νούμερο, για να αποφασίζεις εσύ.','<b>It does not sell you anything.</b> Ask a chatbot “what should I buy” and it will answer, often with confidence it has not earned. Vestora does not recommend purchases: it shows what your money really did and explains every number, so you decide.')}</li>
     </ul>
     ${howFx(T('Χρησιμοποίησε και τα δύο: το chatbot για ερωτήσεις, το Vestora για τον λογαριασμό.','Use both: the chatbot for questions, Vestora for the books.'))}`));
+
+  /* 14. backup, encryption and moving to another phone */
+  cards.push(howCard('backup',T('Πώς κρατάω αντίγραφο και πώς πάω σε άλλο κινητό;','How do I back up and move to another phone?'),T('Κρυπτογραφημένο αντίγραφο ασφαλείας, βήμα βήμα','Encrypted backup, step by step'),
+    `<p>${T('Τα στοιχεία σου υπάρχουν <b>μόνο στη συσκευή σου</b>. Δεν ανεβαίνουν πουθενά, οπότε αν χαθεί ή αλλάξεις κινητό, τα κρατάς μόνο με ένα αντίγραφο ασφαλείας. Το βρίσκεις στην καρτέλα <b>Συναλλαγές</b>, κάτω κάτω.','Your data exists <b>only on your device</b>. It is not uploaded anywhere, so if the phone is lost or you change phones, a backup is the only way to keep it. You find it in the <b>Transactions</b> tab, at the bottom.')}</p>
+    <h4>${T('Πώς προστατεύεται','How it is protected')}</h4>
+    <ul>
+      <li>${T('Το αρχείο κρυπτογραφείται <b>μέσα στο κινητό σου, πριν βγει από αυτό</b>, με <b>AES-256-GCM</b>, το πρότυπο που χρησιμοποιούν τράπεζες και το HTTPS.','The file is encrypted <b>on your phone, before it leaves it</b>, with <b>AES-256-GCM</b>, the standard used by banks and HTTPS.')}</li>
+      <li>${T('Το κλειδί βγαίνει από τον κωδικό σου με <b>PBKDF2-SHA256 και 600.000 επαναλήψεις</b>. Για σένα αυτό κρατά κλάσματα του δευτερολέπτου· για όποιον προσπαθεί να μαντέψει κωδικούς, κάνει κάθε δοκιμή 600.000 φορές πιο αργή.','The key is derived from your password with <b>PBKDF2-SHA256 and 600,000 iterations</b>. For you it takes a fraction of a second; for anyone guessing passwords, it makes every guess 600,000 times slower.')}</li>
+      <li>${T('Κάθε αντίγραφο έχει δικό του τυχαίο «αλάτι», οπότε ο ίδιος κωδικός δίνει άλλο κλειδί σε κάθε αρχείο. Αν αλλάξει έστω ένα γράμμα στο αρχείο, η επαναφορά απλώς αποτυγχάνει.','Every backup has its own random “salt”, so the same password gives a different key in each file. If even one character of the file is changed, the restore simply fails.')}</li>
+      <li>${T('Χωρίς τον κωδικό το αρχείο είναι ακατάληπτο, ακόμα κι αν το δει κάποιος στο email ή στο cloud σου.','Without the password the file is unreadable, even if someone sees it in your email or cloud.')}</li>
+    </ul>
+    ${howFx(T('Δεν υπάρχει «ξέχασα τον κωδικό». Ο κωδικός δεν αποθηκεύεται πουθενά, ούτε σε εμάς: αν χαθεί, το αντίγραφο δεν ανοίγει από κανέναν. Σημείωσέ τον κάπου ασφαλές.','There is no “forgot password”. The password is not stored anywhere, not even with us: if it is lost, nobody can open the backup. Write it down somewhere safe.'))}
+    <p>${T('Μια φράση από 4–5 τυχαίες λέξεις (π.χ. «σκύλος βροχή καφές ποδήλατο») είναι πολύ πιο δυνατή από ένα «Bitcoin2024!». Η μπάρα κάτω από τον κωδικό σού δείχνει πόσο δυνατός είναι, και οι πολύ αδύναμοι κωδικοί δεν γίνονται δεκτοί.','A phrase of 4–5 random words (e.g. “dog rain coffee bicycle”) is far stronger than “Bitcoin2024!”. The bar under the password shows how strong it is, and very weak passwords are refused.')}</p>
+    <h4>${T('Μεταφορά σε άλλο κινητό','Moving to another phone')}</h4>
+    <p><b>${T('Στο παλιό κινητό:','On the old phone:')}</b></p>
+    <ol>
+      <li>${T('<b>Συναλλαγές</b> → <b>Αντίγραφο ασφαλείας</b>.','<b>Transactions</b> → <b>Backup</b>.')}</li>
+      <li>${T('Γράψε έναν κωδικό και σημείωσέ τον.','Enter a password and write it down.')}</li>
+      <li>${T('Πάτα <b>«Αποθήκευση αρχείου»</b> και στείλ’ το εκεί που θα το βρεις από το νέο κινητό: email στον εαυτό σου, Google Drive, Viber ή WhatsApp. Ή πάτα <b>«Αντιγραφή ως κείμενο»</b> και επικόλλησέ το σε μια σημείωση ή ένα μήνυμα.','Tap <b>“Save file”</b> and send it somewhere you can reach from the new phone: email to yourself, Google Drive, Viber or WhatsApp. Or tap <b>“Copy as text”</b> and paste it into a note or a message.')}</li>
+    </ol>
+    <p><b>${T('Στο νέο κινητό:','On the new phone:')}</b></p>
+    <ol>
+      <li>${T('Εγκατέστησε το Vestora.','Install Vestora.')}</li>
+      <li>${T('Στην πρώτη οθόνη πάτα <b>«Έχω αντίγραφο ασφαλείας»</b>, ή πήγαινε <b>Συναλλαγές</b> → <b>Επαναφορά από αντίγραφο</b>.','On the first screen tap <b>“I have a backup”</b>, or go to <b>Transactions</b> → <b>Restore from a backup</b>.')}</li>
+      <li>${T('Διάλεξε το αρχείο (ή επικόλλησε το κείμενο), γράψε τον κωδικό και πάτα <b>Επαναφορά</b>. Επανέρχονται οι συναλλαγές, οι ρυθμίσεις και το πλάνο σου.','Pick the file (or paste the text), enter the password and tap <b>Restore</b>. Your transactions, settings and plan come back.')}</li>
+    </ol>
+    <p class="small muted">${T('Το wallet δεν μπαίνει στο αντίγραφο: στο νέο κινητό το συνδέεις ξανά. Καλό είναι να φτιάχνεις νέο αντίγραφο κάθε φορά που προσθέτεις πολλές συναλλαγές· η εφαρμογή σού το θυμίζει.','The wallet is not part of the backup: you connect it again on the new phone. It is a good idea to make a new backup whenever you add many transactions; the app reminds you.')}</p>`));
 
   box.innerHTML=`<div class="howtoc">${HOW_IDS.map((id,i)=>`<a href="#h-${id}" data-hid="${id}">${i+1}</a>`).join('')}</div>`+cards.join('');
 }

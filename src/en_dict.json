@@ -622,7 +622,17 @@
 "Διάλεξε περιουσιακό στοιχείο.": "Choose an asset.",
 "\" placeholder=\"Αναζήτηση: π.χ. VWCE, Bitcoin, Πειραιώς\" aria-label=\"Επένδυση": "\" placeholder=\"Search: e.g. VWCE, Bitcoin, Apple\" aria-label=\"Investment",
 "\" role=\"option\"><b>+ Άλλο, με δική σου τιμή</b><small>Ακίνητο, μετοχή ή ETF που δεν βρίσκεις, ό,τι άλλο</small></button>": "\" role=\"option\"><b>+ Something else, with your own price</b><small>Property, a stock or ETF you can't find, anything else</small></button>",
-", ζωντανές για crypto και για όσες αμερικανικές μετοχές και ETF έχουν xStock με αξιόπιστη τιμή (διαπραγματεύονται 24/7· εκτός ωραρίου ΗΠΑ μπορεί να διαφέρουν λίγο). Οι υπόλοιπες μετοχές και ETF ενημερώνονται κάθε ώρα όσο είναι ανοιχτά τα χρηματιστήρια": ", live for crypto and for the US stocks and ETFs that have an xStock with a reliable price (they trade 24/7; outside US hours they can differ slightly). Other stocks and ETFs update every hour while exchanges are open"
+", ζωντανές για crypto και για όσες αμερικανικές μετοχές και ETF έχουν xStock με αξιόπιστη τιμή (διαπραγματεύονται 24/7· εκτός ωραρίου ΗΠΑ μπορεί να διαφέρουν λίγο). Οι υπόλοιπες μετοχές και ETF ενημερώνονται κάθε ώρα όσο είναι ανοιχτά τα χρηματιστήρια": ", live for crypto and for the US stocks and ETFs that have an xStock with a reliable price (they trade 24/7; outside US hours they can differ slightly). Other stocks and ETFs update every hour while exchanges are open",
+"<p class=\"muted small\">Οι θέσεις DeFi μπαίνουν με την καθαρή τους αξία: καταθέσεις μείον δάνεια. Η αξία ενημερώνεται μόνη της. Αν προσθέσεις ή αποσύρεις χρήματα από τη θέση, η αλλαγή θα φανεί ως κέρδος ή ζημιά.</p>": "<p class=\"muted small\">DeFi positions are added at their net value: deposits minus loans. The value updates by itself. If you add money to the position or withdraw from it, the change will show as a gain or loss.</p>",
+"θέση": "position",
+"· δάνειο": "· loan",
+", ρευστοποίηση στο": ", liquidation at",
+" · δάνειο ": " · loan ",
+"Δεν απάντησαν": "No answer from",
+"από τις": "of the",
+"αγορές του Kamino. Δοκίμασε ξανά αργότερα για να εμφανιστούν όλες οι θέσεις.": "Kamino markets. Try again later to see all positions.",
+"Δεν ήταν δυνατή η ανάγνωση θέσεων από το Kamino αυτή τη φορά.": "Could not read positions from Kamino this time.",
+"δάνειο ": "loan "
 },
 "html": {
 "Φορτώνουν οι τιμές…": "Loading prices…",

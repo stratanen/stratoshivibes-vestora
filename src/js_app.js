@@ -214,7 +214,7 @@ function drawSheet(){
       const dup=state.tx.some(t=>t.src===(E?'eth':'wallet'));
       s.innerHTML=head(E?'Εισαγωγή από Ethereum':'Εισαγωγή από wallet')+(E?`<p class="muted small num">${shortE(I.addr)}</p>`:'')+`<p class="muted">Βρέθηκαν αυτά τα assets αξίας πάνω από 1 €. Διάλεξε ποια θα προστεθούν. Μπαίνουν σαν αγορά σήμερα, με τη σημερινή τιμή. Αν τα αγόρασες παλιότερα, άλλαξε μετά ημερομηνία και τιμή στις συναλλαγές για σωστή απόδοση.</p>`+
       (dup?`<div class="verdict short">${E?'Έχεις ήδη κάνει εισαγωγή από Ethereum.':'Έχεις ήδη κάνει εισαγωγή από wallet.'} Δεν θα διπλασιαστεί τίποτα: οι ποσότητες θα ενημερωθούν ώστε να ταιριάζουν με το wallet.</div>`:'')+
-      (I.list.length?`<div class="imp">${I.list.map((t,i)=>`<label><input type="checkbox" id="imp${i}" data-i="${i}"${t.unc?'':' checked'}> <span>${esc(t.id?ASSETS[t.id].name:t.name)} <small class="muted">${esc(t.sym)}${t.xstock?' · xStock':''}${t.tag?' · '+t.tag:''}${t.staked?' · staking':''}${t.id?'':' · χωρίς ιστορικό τιμών'}${t.unc?' · <span class="neg">αβέβαιη τιμή</span>':''}</small></span><span class="num">${nf(t.qty<1?6:2).format(t.qty)} · ${eur.format(t.qty*t.eur)}</span></label>`).join('')}</div>${I.list.some(t=>t.unc)?'<p class="muted small">Όσα γράφουν «αβέβαιη τιμή» έχουν πολύ μικρή αγορά, οπότε η τιμή τους μπορεί να μην ισχύει στην πράξη. Γι\' αυτό δεν είναι επιλεγμένα. Πολλά τέτοια tokens είναι spam που στάλθηκε χωρίς να το ζητήσεις.</p>':''}`:'<p>Δεν βρέθηκαν assets με αξία πάνω από 1 €.</p>')+
+      (I.list.length?`<div class="imp">${I.list.map((t,i)=>`<label><input type="checkbox" id="imp${i}" data-i="${i}"${t.unc?'':' checked'}> <span>${esc(t.id?ASSETS[t.id].name:t.name)} <small class="muted">${t.kmn?'DeFi':esc(t.sym)}${t.xstock?' · xStock':''}${t.tag?' · '+t.tag:''}${t.staked?' · staking':''}${t.id||t.kmn?'':' · χωρίς ιστορικό τιμών'}${t.unc?' · <span class="neg">αβέβαιη τιμή</span>':''}</small></span><span class="num">${t.kmn?'':nf(t.qty<1?6:2).format(t.qty)+' · '}${eur.format(t.qty*t.eur)}</span></label>`).join('')}</div>${I.defiMsg?`<p class="muted small">${esc(I.defiMsg)}</p>`:''}${I.list.some(t=>t.kmn)?'<p class="muted small">Οι θέσεις DeFi μπαίνουν με την καθαρή τους αξία: καταθέσεις μείον δάνεια. Η αξία ενημερώνεται μόνη της. Αν προσθέσεις ή αποσύρεις χρήματα από τη θέση, η αλλαγή θα φανεί ως κέρδος ή ζημιά.</p>':''}${I.list.some(t=>t.unc)?'<p class="muted small">Όσα γράφουν «αβέβαιη τιμή» έχουν πολύ μικρή αγορά, οπότε η τιμή τους μπορεί να μην ισχύει στην πράξη. Γι\' αυτό δεν είναι επιλεγμένα. Πολλά τέτοια tokens είναι spam που στάλθηκε χωρίς να το ζητήσεις.</p>':''}`:'<p>Δεν βρέθηκαν assets με αξία πάνω από 1 €.</p>')+
       (E?`<p class="muted">Η ανάγνωση είναι μόνο για προβολή. Φαίνονται το ETH και τα tokens του Ethereum mainnet που έχουν τιμή αγοράς, και στο Hyperliquid τα spot υπόλοιπα, το HYPE σε staking, η αξία του λογαριασμού perps και τα vaults. Τα perps και τα vaults μπαίνουν με την αξία τους σε δολάρια σήμερα και δεν ενημερώνονται μόνα τους. Ό,τι έχεις σε άλλα δίκτυα (Arbitrum, Base κ.ά.) ή μέσα σε άλλα πρωτόκολλα δεν φαίνεται εδώ: πρόσθεσέ το χειροκίνητα.</p>${flow.hlErr?'<p class="neg small">Το Hyperliquid δεν απάντησε αυτή τη φορά.</p>':flow.hlNone?'<p class="muted small">Στο Hyperliquid δεν βρέθηκαν υπόλοιπα για αυτή τη διεύθυνση.</p>':''}`
         :`<p class="muted">Η ανάγνωση είναι μόνο για προβολή. Το SOL που έχεις σε native stake δεν φαίνεται εδώ: πρόσθεσέ το χειροκίνητα. Liquid staking tokens (π.χ. JitoSOL) εμφανίζονται κανονικά.</p>`)+
       `<div class="row"><button class="btn" type="button" data-act="${E?'eth':'done'}">Πίσω</button>${I.list.length?`<button class="btn primary" type="button" data-act="doimport">Προσθήκη επιλεγμένων</button>`:''}</div>`;
@@ -234,6 +234,43 @@ function drawSheet(){
       <p class="muted" id="pxMsg" role="status"></p><div class="row"><button class="btn" type="button" data-act="close">Άκυρο</button><button class="btn primary" type="button" data-act="setprice">Αποθήκευση</button></div>`;
   }
   (s.querySelector('[data-act="pick"],.btn.primary,input')||s.querySelector('.x')).focus();
+}
+/* ---------- Kamino lending positions ----------
+   Public Kamino API, no key. Only the public wallet address is sent. Each obligation (deposits and loans in one market)
+   becomes one holding valued at its net value (deposits minus loans); the loan and LTV are shown under it. */
+const KAMINO='https://api.kamino.finance',KLEND='KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD';
+const STABLE_SYM=/^(USDC|USDT|PYUSD|USDS|USDG|FDUSD|USD1|USDE|AUSD|EURC|USX|CASH|USDU|USDH)$/i;
+async function pool(items,n,fn){const out=[];let i=0;await Promise.all(Array.from({length:Math.min(n,items.length)},async()=>{while(i<items.length){const k=i++;try{out[k]=await fn(items[k])}catch(e){out[k]=null}}}));return out}
+async function kaminoPositions(addr,only){
+  const names={};let mk=only;
+  if(!mk){const r=await fetch(KAMINO+'/v2/kamino-market?programId='+KLEND);if(!r.ok)throw new Error('kamino '+r.status);
+    mk=(await r.json()).filter(m=>m.isVisibleInUi!==false).map(m=>{names[m.lendingMarket]=m.name;return m.lendingMarket})}
+  let failed=0;
+  const res=await pool(mk,6,async m=>{const r=await fetch(`${KAMINO}/kamino-market/${m}/users/${addr}/obligations`);if(!r.ok){failed++;return[]}return(await r.json()).map(o=>({m,o}))});
+  const obs=res.flat().filter(x=>x&&+x.o.refreshedStats?.userTotalDeposit>0.5),syms={};
+  await pool([...new Set(obs.map(x=>x.m))],4,async m=>{const r=await fetch(`${KAMINO}/kamino-market/${m}/reserves/metrics`);if(r.ok)for(const x of await r.json())syms[x.reserve]=x.liquidityToken});
+  const list=obs.map(({m,o})=>{const s=o.refreshedStats,st=o.state||{};
+    const dep=[...new Set((st.deposits||[]).filter(d=>+d.depositedAmount>0).map(d=>syms[d.depositReserve]).filter(Boolean))];
+    const bor=[...new Set((st.borrows||[]).filter(b=>+b.borrowedAmountSf>0).map(b=>syms[b.borrowReserve]).filter(Boolean))];
+    return{kmn:{m,o:o.obligationAddress},market:names[m]||'',mode:o.humanTag&&o.humanTag!=='Vanilla'?o.humanTag:'',depS:dep,borS:bor,
+      dep:+s.userTotalDeposit/FXL,bor:+s.userTotalBorrow/FXL,eur:+s.netAccountValue/FXL,ltv:+s.loanToValue||0,liq:+s.liquidationLtv||0}});
+  return{list,failed,checked:mk.length};
+}
+const kmnName=p=>`Kamino · ${p.depS.join(', ')||p.market||'θέση'}${p.borS.length?' → '+p.borS.join(', '):''}`.slice(0,60);
+const kmnCls=p=>p.depS.length&&p.depS.every(x=>STABLE_SYM.test(x))&&!p.bor?'cash':'crypto';
+function defiNote(c){if(!c||!c.kmn)return'';const pc=x=>nf(0).format(x*100)+'%';
+  return (c.mode?' · '+esc(c.mode):'')+(c.bor>0?` · δάνειο ${eur.format(c.bor)} · LTV ${pc(c.ltv)}, ρευστοποίηση στο ${pc(c.liq)}`:'')}
+let defiAt=0;
+async function refreshDefi(){
+  const km=Object.entries(state.custom).filter(([,c])=>c.kmn&&c.w);if(!km.length||Date.now()-defiAt<15*60e3)return;defiAt=Date.now();
+  let ch=false;
+  for(const w of new Set(km.map(([,c])=>c.w))){
+    const mine=km.filter(([,c])=>c.w===w);
+    try{const {list,failed}=await kaminoPositions(w,[...new Set(mine.map(([,c])=>c.kmn.m))]);if(failed)continue;
+      for(const [,c] of mine){const p=list.find(x=>x.kmn.o===c.kmn.o);
+        Object.assign(c,p?{current:p.eur,dep:p.dep,bor:p.bor,ltv:p.ltv,liq:p.liq}:{current:0,dep:0,bor:0});c.at=Date.now();delete c.man;ch=true}}
+    catch(e){console.warn('kamino',e)}}
+  if(ch){save();render()}
 }
 async function loadImport(){
   flow.imp={loading:true};
@@ -255,8 +292,12 @@ async function loadImport(){
     try{const st=await skrStaked(wallet.addr);if(st>0)list.push({mint:MINT.SKR,id:null,name:'Seeker (staked)',sym:'SKR',qty:st,staked:true})}catch(e){console.warn('skr stake',e)}
     const mints=[...new Set(list.map(t=>t.mint))],pr={};
     for(let i=0;i<mints.length;i+=50){const r=await fetch(JUP+mints.slice(i,i+50).join(','));if(r.ok)Object.assign(pr,await r.json())}
+    let defi=[],defiMsg='';
+    try{const k=await kaminoPositions(wallet.addr);defi=k.list.filter(p=>p.eur>=1).map(p=>({...p,id:null,name:kmnName(p),sym:'',qty:1,tag:(p.mode?p.mode+' · ':'')+(p.bor>0?'δάνειο '+eur.format(p.bor):'').replace(/ · $/,'')||''}));
+      if(k.failed)defiMsg=`Δεν απάντησαν ${k.failed} από τις ${k.checked} αγορές του Kamino. Δοκίμασε ξανά αργότερα για να εμφανιστούν όλες οι θέσεις.`}
+    catch(e){console.warn('kamino',e);defiMsg='Δεν ήταν δυνατή η ανάγνωση θέσεων από το Kamino αυτή τη φορά.'}
     const out=list.map(t=>{const q=pr[t.mint];return{...t,eur:(q?.usdPrice||0)/FXL,unc:!t.id&&!STABLE.has(t.mint)&&q?.liquidity!=null&&+q.liquidity<MIN_LIQ}}).filter(t=>t.eur>0&&t.qty*t.eur>=1).sort((a,b)=>b.qty*b.eur-a.qty*a.eur);
-    flow.imp={list:out};
+    flow.imp={list:[...out,...defi].sort((a,b)=>b.qty*b.eur-a.qty*a.eur),defiMsg};
   }catch(e){console.warn(e);flow.imp={error:'Έλεγξε τη σύνδεση στο internet.'}}
   if(!$('overlay').hidden&&flow.step==='import')drawSheet();
 }
@@ -284,6 +325,7 @@ $('sheet').addEventListener('click',async e=>{
     const E=flow.imp.src==='eth';
     $('sheet').querySelectorAll('.imp input:checked').forEach(c=>{const t=flow.imp.list[+c.dataset.i];let id=t.id,px=t.eur;
       if(E){if(id)px=nowPrice(id)||t.eur;else if(t.hlKey){id='h_'+t.hlKey;state.custom[id]={name:t.name,sym:t.sym,cls:t.cls,current:t.eur,unc:!!t.unc,at:Date.now(),...(t.hl?{hl:t.hl}:{usdv:1})}}else{id='e_'+t.contract;state.custom[id]={name:t.name,sym:t.sym,cls:t.cls,current:t.eur,unc:!!t.unc,at:Date.now(),evm:t.contract}}}
+      else if(t.kmn){id='k_'+t.kmn.o;state.custom[id]={name:t.name,sym:'',cls:kmnCls(t),current:t.eur,at:Date.now(),kmn:t.kmn,w:wallet.addr,mode:t.mode,dep:t.dep,bor:t.bor,ltv:t.ltv,liq:t.liq}}
       else if(id){if(t.xstock)state.mints[id]=t.mint;if(PRICES[id])PRICES[id][W-1]=t.eur}
       else{id='m_'+t.mint+(t.staked?'_st':'');state.custom[id]={name:t.name,sym:t.sym,cls:STABLE.has(t.mint)?'cash':'crypto',current:t.eur,unc:!!t.unc,at:Date.now(),mint:t.mint}}
       /* a repeat import only brings the quantity in line with the wallet: it adds (or sells) the difference from what earlier imports from this source added */

@@ -134,18 +134,26 @@ def openfigi(isins):
     return out
 
 
+def jget(url):
+    """Jupiter: old lite-api address first, then the new keyless api.jup.ag (Jupiter has announced lite-api will close)."""
+    try:
+        return get(url)
+    except Exception:  # noqa: BLE001
+        return get(url.replace('https://lite-api.jup.ag/', 'https://api.jup.ag/'))
+
+
 def resolve_xstock(aid, last_usd):
     """xStock mint for a US ticker, or None. Accepted only if: exact symbol <TICKER>x, address starts with 'Xs',
     Jupiter marks it verified, its price is within 5% of the stock's last close and its market is not thin."""
     want = (aid + 'x').lower()
-    res = json.loads(get(JUP_SEARCH + urllib.parse.quote(aid + 'x')))
+    res = json.loads(jget(JUP_SEARCH + urllib.parse.quote(aid + 'x')))
     cands = [t for t in res if str(t.get('symbol', '')).lower() == want and str(t.get('id', '')).startswith('Xs')
              and (t.get('isVerified') or 'verified' in (t.get('tags') or []))]
     if len(cands) != 1:
         print(f'  {aid}x: {len(cands)} verified candidates; no xStock', file=sys.stderr)
         return None
     mint = cands[0]['id']
-    q = json.loads(get(JUP_PRICE + mint)).get(mint) or {}
+    q = json.loads(jget(JUP_PRICE + mint)).get(mint) or {}
     p = q.get('usdPrice')
     liq = q.get('liquidity')
     if not p or not last_usd or abs(p / last_usd - 1) > 0.05:

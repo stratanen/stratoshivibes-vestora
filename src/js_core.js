@@ -12,6 +12,8 @@ const NAME_EN={GLD:'Gold (GLD)',ETE:'National Bank of Greece',TPEIR:'Piraeus Ban
 const MINT={SOL:'So11111111111111111111111111111111111111112',SKR:'SKRbvo6Gf7GondiT3BbTfuRDPqLWei4j2Qy2NPGZhW3',
   BTC:'cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij',ETH:'7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs'};
 const JUP='https://lite-api.jup.ag/price/v3?ids=';
+/* Jupiter: the old lite-api address first; if it stops answering (Jupiter has announced it will close), the new keyless api.jup.ag */
+async function jfetch(url){try{const r=await fetch(url);if(r.ok)return r;throw new Error('jup '+r.status)}catch(e){return fetch(url.replace('https://lite-api.jup.ag/','https://api.jup.ag/'))}}
 /* Ethereum tokens added from a pasted address: prices by contract address from DefiLlama (no wallet address is sent) */
 const LLAMA='https://coins.llama.fi/prices/current/';
 /* Hyperliquid, public read-only info API (no key, no signature). Spot token prices: the token's /USDC pair mark price. */
@@ -76,7 +78,7 @@ function priceSrc(a){
   const A=ASSETS[a],c=state.custom[a];
   if(A){if(a==='DEP')return '';if(A.live&&A.at)return 'Jupiter · '+when(A.at);const t=DATA?.assets?.[a]?.lastTime;return (A.hourly?'τιμή ':'κλείσιμο ')+(t?when(t*1000):'')}
   if(!c)return '';
-  const src=c.man?'δική σου τιμή':c.usdv?'αξία εισαγωγής':c.hl?'Hyperliquid':c.evm?'DefiLlama':c.mint?'Jupiter':'δική σου τιμή';
+  const src=c.man?'δική σου τιμή':c.kmn?'Kamino':c.usdv?'αξία εισαγωγής':c.hl?'Hyperliquid':c.evm?'DefiLlama':c.mint?'Jupiter':'δική σου τιμή';
   return src+(c.at?' · '+when(c.at):'');
 }
 function okLive(k,e){const b=DATA?.assets?.[k]?.last;if(!(b>0))return true;const lim=ASSETS[k]?.cls==='crypto'?1.35:1.25;return Math.max(e/b,b/e)<=lim}
@@ -90,7 +92,7 @@ async function livePrices(){
   const mints=[...new Set(Object.values(ids))];
   try{
     const out={};
-    for(let i=0;i<mints.length;i+=50){const r=await fetch(JUP+mints.slice(i,i+50).join(','));if(!r.ok)throw new Error('jup '+r.status);Object.assign(out,await r.json())}
+    for(let i=0;i<mints.length;i+=50){const r=await jfetch(JUP+mints.slice(i,i+50).join(','));if(!r.ok)throw new Error('jup '+r.status);Object.assign(out,await r.json())}
     let changed=false;
     for(const [k,m] of Object.entries(ids)){
       const q=out[m],p=q?.usdPrice;if(!(p>0))continue;const e=p/FXL,thin=q.liquidity!=null&&+q.liquidity<MIN_LIQ;
@@ -102,6 +104,7 @@ async function livePrices(){
   }catch(e){console.warn('live prices',e);renderPriceNote()}
   const hl=Object.entries(state.custom).filter(([,c])=>c.hl);
   if(hl.length)try{const px=await hlSpotPx();let ch=false;for(const [k,c] of hl){const p=px[c.hl];if(p>0&&setCustom(k,p/FXL,c.hl!=='USDC'&&(px[' vol'][c.hl]||0)<MIN_VOL))ch=true}if(ch){save();render()}}catch(e){console.warn('hl prices',e)}
+  refreshDefi();
   const ev=Object.entries(state.custom).filter(([,c])=>c.evm);
   if(ev.length)try{
     let changed=false;
@@ -164,7 +167,7 @@ function series(a){
   const c=state.custom[a];const txs=state.tx.filter(t=>t.a===a&&t.type!=='div').sort((x,y)=>x.date.localeCompare(y.date));
   if(!c||!txs.length)return new Array(W).fill(0);
   const w0=toWeek(txs[0].date),p0=txs[0].price||c.current||0,p1=c.current??p0;
-  return Array.from({length:W},(_,t)=>t<=w0?p0:p0+(p1-p0)*(t-w0)/Math.max(1,W-1-w0));
+  return Array.from({length:W},(_,t)=>t===W-1?p1:t<=w0?p0:p0+(p1-p0)*(t-w0)/Math.max(1,W-1-w0));
 }
 const nowPrice=a=>{const s=series(a);return s[W-1]||0};
 
@@ -477,7 +480,7 @@ function renderHoldings(D){
     `<text x="80" y="76" text-anchor="middle" class="dv num">${eurShort(D.end)}</text><text x="80" y="96" text-anchor="middle" class="dl">${cls.length===1?'1 κατηγορία':cls.length+' κατηγορίες'}</text>`;
   $('alegend').innerHTML=cls.map(([c,w])=>`<button type="button" class="arow" data-c="${c}"><i class="dot" style="background:var(--c-${c})"></i><span class="an">${CLS[c]}</span><b class="num">${nf(0).format(w*100)}%</b><small class="num">${eur.format(val[c])}</small></button>`).join('');
   $('holdings').innerHTML=`<thead><tr><th>Στοιχείο</th><th>Ποσότητα</th><th>Μέση τιμή</th><th>Τρέχουσα</th><th>Αξία</th><th>Κέρδος</th><th>Βάρος</th></tr></thead><tbody>`+
-  D.hold.map(h=>{const m=meta(h.a),manual=m.custom&&!state.custom[h.a]?.mint;return `<tr><td class="c-n"><div class="an">${esc(m.name)}</div><div class="ac">${m.sym&&!m.custom?esc(m.sym)+' · ':''}${CLS[m.cls]}${(x=>x?' · '+x:'')(priceSrc(h.a))}${state.custom[h.a]?.unc?' · <span class="neg">αβέβαιη τιμή</span>':''}</div></td>
+  D.hold.map(h=>{const m=meta(h.a),manual=m.custom&&!state.custom[h.a]?.mint;return `<tr><td class="c-n"><div class="an">${esc(m.name)}</div><div class="ac">${m.sym&&!m.custom?esc(m.sym)+' · ':''}${CLS[m.cls]}${(x=>x?' · '+x:'')(priceSrc(h.a))}${defiNote(state.custom[h.a])}${state.custom[h.a]?.unc?' · <span class="neg">αβέβαιη τιμή</span>':''}</div></td>
   <td class="num c-q" data-l="${'Ποσότητα'}">${nf(h.qty<1?4:2).format(h.qty)}</td><td class="num c-a" data-l="${'Μέση τιμή'}">${price(h.avg)}</td><td class="num c-p" data-l="${'Τρέχουσα'}">${price(h.now)}${manual?`<div><button class="del edit" type="button" data-price="${esc(h.a)}">Αλλαγή τιμής</button></div>`:''}</td><td class="num c-v">${eur.format(h.val)}</td>
   <td class="num c-g ${sgn(h.pl)}">${(h.pl>0?'+':'')+eur.format(h.pl)}<div class="ac ${sgn(h.pl)}">${pct(h.plp)}</div></td>
   <td class="num c-w">${nf(0).format(h.wt*100)}%<span class="wbar"><b style="width:${h.wt*100}%"></b></span></td></tr>`}).join('')+'</tbody>';
@@ -572,7 +575,7 @@ function searchLocal(q){
 }
 function knownMints(){const m=new Set(Object.values(MINT));for(const a of Object.values(ASSETS))if(a.mint)m.add(a.mint);return m}
 async function searchJup(q){
-  const r=await fetch(JUPS+encodeURIComponent(q));if(!r.ok)throw new Error('jup '+r.status);
+  const r=await jfetch(JUPS+encodeURIComponent(q));if(!r.ok)throw new Error('jup '+r.status);
   const known=knownMints();
   return (await r.json()).filter(t=>t.id&&!known.has(t.id)&&t.usdPrice>0)
     .map(t=>{const xs=/^Xs/.test(t.id)&&/x$/.test(t.symbol||'')&&!!t.isVerified;return{mint:t.id,sym:t.symbol||'',name:t.name||t.symbol,ver:!!t.isVerified,xs,eur:t.usdPrice/FXL,liq:+t.liquidity||0}})

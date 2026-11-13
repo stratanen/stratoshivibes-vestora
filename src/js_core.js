@@ -78,7 +78,7 @@ function priceSrc(a){
   const A=ASSETS[a],c=state.custom[a];
   if(A){if(a==='DEP')return '';if(A.live&&A.at)return 'Jupiter · '+when(A.at);const t=DATA?.assets?.[a]?.lastTime;return (A.hourly?'τιμή ':'κλείσιμο ')+(t?when(t*1000):'')}
   if(!c)return '';
-  const src=c.man?'δική σου τιμή':c.kmn?'Kamino':c.usdv?'αξία εισαγωγής':c.hl?'Hyperliquid':c.evm?'DefiLlama':c.mint?'Jupiter':'δική σου τιμή';
+  const src=c.man?'δική σου τιμή':c.kmn?'Kamino':c.lend?(LEND.find(m=>m.k===c.lend.k)?.n||'DeFi'):c.hlv?'Hyperliquid':c.usdv?'αξία εισαγωγής':c.hl?'Hyperliquid':c.evm?'DefiLlama':c.mint?'Jupiter':'δική σου τιμή';
   return src+(c.at?' · '+when(c.at):'');
 }
 function okLive(k,e){const b=DATA?.assets?.[k]?.last;if(!(b>0))return true;const lim=ASSETS[k]?.cls==='crypto'?1.35:1.25;return Math.max(e/b,b/e)<=lim}

@@ -679,7 +679,7 @@ function renderTx(){
   if(!state.tx.length){t.innerHTML='';return}
   const rows=[...state.tx].sort((x,y)=>y.date.localeCompare(x.date));
   t.innerHTML=`<thead><tr><th>Ημερομηνία</th><th>Στοιχείο</th><th>Κίνηση</th><th>Λόγος</th><th>Ποσότητα</th><th>Τιμή</th><th>Προμήθεια</th><th>Σύνολο</th><th></th></tr></thead><tbody>`+
-  rows.map(r=>`<tr><td class="num t-d">${longDate(r.date)}</td><td class="t-a">${esc(meta(r.a).name)}</td><td class="t-k"><span class="typechip ${r.type}">${TYPE_N[r.type]}</span>${r.src==='wallet'?' <span class="muted small">από wallet</span>':r.src==='eth'?' <span class="muted small">από εισαγωγή</span>':''}</td><td class="t-r${r.reason?'':' none'}">${r.reason?`<span class="rtag">${REASONS[r.reason]}</span>`:'<span class="muted">—</span>'}</td>
+  rows.map(r=>`<tr><td class="num t-d">${longDate(r.date)}</td><td class="t-a">${esc(meta(r.a).name)}</td><td class="t-k"><span class="typechip ${r.type}">${TYPE_N[r.type]}</span>${r.src==='wallet'?' <span class="muted small">από wallet</span>':r.src?' <span class="muted small">από εισαγωγή</span>':''}</td><td class="t-r${r.reason?'':' none'}">${r.reason?`<span class="rtag">${REASONS[r.reason]}</span>`:'<span class="muted">—</span>'}</td>
   <td class="num t-q" data-l="${'Ποσότητα'}">${r.type==='div'?'—':nf(6).format(r.qty)}</td><td class="num t-p" data-l="${'Τιμή'}">${r.type==='div'?'—':price(r.price)}</td><td class="num t-f" data-l="${'Προμήθεια'}">${eur2.format(r.fee||0)}</td><td class="num t-s">${eur.format(r.type==='div'?r.qty:r.qty*r.price)}</td>
   <td class="t-x"><button class="del" type="button" data-id="${r.id}">Διαγραφή</button></td></tr>`).join('')+'</tbody>';
 }

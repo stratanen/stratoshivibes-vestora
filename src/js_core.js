@@ -78,7 +78,7 @@ function priceSrc(a){
   const A=ASSETS[a],c=state.custom[a];
   if(A){if(a==='DEP')return '';if(A.live&&A.at)return 'Jupiter · '+when(A.at);const t=DATA?.assets?.[a]?.lastTime;return (A.hourly?'τιμή ':'κλείσιμο ')+(t?when(t*1000):'')}
   if(!c)return '';
-  const src=c.man?'δική σου τιμή':c.kmn?'Kamino':c.lend?(LEND.find(m=>m.k===c.lend.k)?.n||'DeFi'):c.hlv?'Hyperliquid':c.usdv?'αξία εισαγωγής':c.hl?'Hyperliquid':c.evm?'DefiLlama':c.mint?'Jupiter':'δική σου τιμή';
+  const src=c.man?'δική σου τιμή':c.kmn?'Kamino':c.mph?'Morpho':c.lend?(LEND.find(m=>m.k===c.lend.k)?.n||'DeFi'):c.hlv?'Hyperliquid':c.usdv?'αξία εισαγωγής':c.hl?'Hyperliquid':c.evm?'DefiLlama':c.mint?'Jupiter':'δική σου τιμή';
   return src+(c.at?' · '+when(c.at):'');
 }
 function okLive(k,e){const b=DATA?.assets?.[k]?.last;if(!(b>0))return true;const lim=ASSETS[k]?.cls==='crypto'?1.35:1.25;return Math.max(e/b,b/e)<=lim}
@@ -109,9 +109,9 @@ async function livePrices(){
   if(ev.length)try{
     let changed=false;
     for(let i=0;i<ev.length;i+=40){
-      const part=ev.slice(i,i+40),r=await fetch(LLAMA+part.map(([,c])=>'ethereum:'+c.evm).join(','));if(!r.ok)throw new Error('llama '+r.status);
+      const part=ev.slice(i,i+40),r=await fetch(LLAMA+part.map(([,c])=>(c.ch||'ethereum')+':'+c.evm).join(','));if(!r.ok)throw new Error('llama '+r.status);
       const j=(await r.json()).coins||{};
-      for(const [k,c] of part){const q=j['ethereum:'+c.evm],p=q?.price;if(p>0&&setCustom(k,p/FXL,q.confidence!=null&&q.confidence<.9))changed=true}
+      for(const [k,c] of part){const q=j[(c.ch||'ethereum')+':'+c.evm],p=q?.price;if(p>0&&setCustom(k,p/FXL,q.confidence!=null&&q.confidence<.9))changed=true}
     }
     if(changed){save();render()}
   }catch(e){console.warn('eth prices',e)}

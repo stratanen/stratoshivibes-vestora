@@ -158,12 +158,17 @@ async function hlRead(addr){
 }
 async function loadEth(addr){
   flow.eth={addr,loading:true};drawSheet();
-  try{const [l1,l2,l3]=await Promise.all([ethRead(addr).catch(e=>{console.warn('eth',e);return null}),hlRead(addr).catch(e=>{console.warn('hl',e);return null}),lendRead(addr).catch(e=>{console.warn('lend',e);return null})]);if(!l1&&!l2)throw new Error('both failed');
-    const lend=(l3?.list||[]).filter(p=>p.eur>=1).map(p=>({...p,id:null,name:lendName(p),sym:'',qty:1,tag:p.bor>0?'δάνειο '+eur.format(p.bor):''}));
+  try{const [l1,l2,l3,l4,l5]=await Promise.all([ethRead(addr).catch(e=>{console.warn('eth',e);return null}),hlRead(addr).catch(e=>{console.warn('hl',e);return null}),lendRead(addr).catch(e=>{console.warn('lend',e);return null}),
+      baseRead(addr).catch(e=>{console.warn('base',e);return null}),morphoRead(addr).catch(e=>{console.warn('morpho',e);return null})]);if(!l1&&!l2&&!l4)throw new Error('all failed');
+    const lend=[...(l3?.list||[]).filter(p=>p.eur>=1).map(p=>({...p,id:null,name:lendName(p),sym:'',qty:1,tag:p.bor>0?'δάνειο '+eur.format(p.bor):''})),
+      ...(l5?.list||[]).map(p=>({...p,id:null,sym:'',qty:1,tag:p.chain+(p.bor>0?' · δάνειο '+eur.format(p.bor):'')}))];
+    const vaults=new Set(lend.filter(p=>p.vault).map(p=>p.vault));
     /* receipt tokens (aEthUSDC, spWETH…) of a market read as a whole are left out so nothing is counted twice; debt tokens are never a holding */
-    const skip=LEND.filter(m=>m.tok&&lend.some(p=>p.lend.k===m.k)).map(m=>m.tok);
-    const toks=(l1||[]).filter(t=>!/^(variable|stable)Debt/i.test(t.sym)&&!skip.some(r=>r.test(t.sym)));
-    const list=[...toks,...(l2||[]),...lend].sort((a,b)=>b.qty*b.eur-a.qty*a.eur);flow.lendErr=!!l3?.failed;flow.hlErr=!l2;flow.hlNone=!!l2&&!l2.length;LS.set(EKEY,addr);flow.imp={list,src:'eth',addr};flow.eth={addr};flow.step='import'}
+    const skip=LEND.filter(m=>m.tok&&lend.some(p=>p.lend&&p.lend.k===m.k)).map(m=>m.tok);
+    const toks=[...(l1||[]),...(l4||[])].filter(t=>!/^(variable|stable)Debt/i.test(t.sym)&&!skip.some(r=>r.test(t.sym))&&!vaults.has(t.contract));
+    /* the same asset on two networks (ETH on Ethereum and on Base) becomes one line, so the quantity check on a repeat import stays right */
+    const merged=[];for(const t of toks){const o=t.id&&merged.find(x=>x.id===t.id);if(o){o.qty+=t.qty;o.tag=[o.tag||'Ethereum',t.tag||'Ethereum'].filter((v,i,a)=>a.indexOf(v)===i).join(' + ')}else merged.push({...t})}
+    const list=[...merged,...(l2||[]),...lend].sort((a,b)=>b.qty*b.eur-a.qty*a.eur);flow.lendErr=!!l3?.failed||!l5||l5.failed;flow.baseErr=!l4;flow.hlErr=!l2;flow.hlNone=!!l2&&!l2.length;LS.set(EKEY,addr);flow.imp={list,src:'eth',addr};flow.eth={addr};flow.step='import'}
   catch(e){console.warn(e);flow.eth={addr,error:true}}
   if(!$('overlay').hidden&&(flow.step==='eth'||flow.step==='import'))drawSheet();
 }
@@ -218,8 +223,8 @@ function drawSheet(){
       const dup=state.tx.some(t=>t.src===(E?'eth':S?'sol':'wallet'));
       s.innerHTML=head(E?'Εισαγωγή από Ethereum':S?'Εισαγωγή από Solana':'Εισαγωγή από wallet')+(E?`<p class="muted small num">${shortE(I.addr)}</p>`:S?`<p class="muted small num">${short(I.addr)}</p>`:'')+`<p class="muted">Βρέθηκαν αυτά τα assets αξίας πάνω από 1 €. Διάλεξε ποια θα προστεθούν. Μπαίνουν σαν αγορά σήμερα, με τη σημερινή τιμή. Αν τα αγόρασες παλιότερα, άλλαξε μετά ημερομηνία και τιμή στις συναλλαγές για σωστή απόδοση.</p>`+
       (dup?`<div class="verdict short">${E?'Έχεις ήδη κάνει εισαγωγή από Ethereum.':S?'Έχεις ήδη κάνει εισαγωγή από διεύθυνση Solana.':'Έχεις ήδη κάνει εισαγωγή από wallet.'} Δεν θα διπλασιαστεί τίποτα: οι ποσότητες θα ενημερωθούν ώστε να ταιριάζουν με το wallet.</div>`:'')+
-      (I.list.length?`<div class="imp">${I.list.map((t,i)=>`<label><input type="checkbox" id="imp${i}" data-i="${i}"${t.unc?'':' checked'}> <span>${esc(t.id?ASSETS[t.id].name:t.name)} <small class="muted">${t.kmn||t.lend?'DeFi':esc(t.sym)}${t.xstock?' · xStock':''}${t.tag?' · '+t.tag:''}${t.staked?' · staking':''}${t.id||t.kmn||t.lend?'':' · χωρίς ιστορικό τιμών'}${t.unc?' · <span class="neg">αβέβαιη τιμή</span>':''}</small></span><span class="num">${t.kmn||t.lend?'':nf(t.qty<1?6:2).format(t.qty)+' · '}${eur.format(t.qty*t.eur)}</span></label>`).join('')}</div>${I.defiMsg?`<p class="muted small">${esc(I.defiMsg)}</p>`:''}${I.list.some(t=>t.lend)?'<p class="muted small">Στα Aave, Spark και HyperLend μετράνε οι καταθέσεις που χρησιμοποιούνται ως εγγύηση. Μια κατάθεση που έχεις ορίσει να μην είναι εγγύηση δεν μετράει εδώ: πρόσθεσέ τη χειροκίνητα.</p>':''}${flow.lendErr&&E?'<p class="muted small">Κάποια από τα Aave, Spark και HyperLend δεν απάντησαν αυτή τη φορά.</p>':''}${I.list.some(t=>t.kmn||t.lend)?'<p class="muted small">Οι θέσεις DeFi μπαίνουν με την καθαρή τους αξία: καταθέσεις μείον δάνεια. Η αξία ενημερώνεται μόνη της. Αν προσθέσεις ή αποσύρεις χρήματα από τη θέση, η αλλαγή θα φανεί ως κέρδος ή ζημιά.</p>':''}${I.list.some(t=>t.unc)?'<p class="muted small">Όσα γράφουν «αβέβαιη τιμή» έχουν πολύ μικρή αγορά, οπότε η τιμή τους μπορεί να μην ισχύει στην πράξη. Γι\' αυτό δεν είναι επιλεγμένα. Πολλά τέτοια tokens είναι spam που στάλθηκε χωρίς να το ζητήσεις.</p>':''}`:'<p>Δεν βρέθηκαν assets με αξία πάνω από 1 €.</p>')+
-      (E?`<p class="muted">Η ανάγνωση είναι μόνο για προβολή. Φαίνονται το ETH και τα tokens του Ethereum mainnet που έχουν τιμή αγοράς, και στο Hyperliquid τα spot υπόλοιπα, το HYPE σε staking, η αξία του λογαριασμού perps και τα vaults. Η αξία των perps και των vaults ενημερώνεται μόνη της. Φαίνονται επίσης οι θέσεις σε Aave, Spark (Ethereum) και HyperLend (HyperEVM), με την καθαρή τους αξία. Ό,τι έχεις σε άλλα δίκτυα (Arbitrum, Base κ.ά.) ή σε άλλα πρωτόκολλα δεν φαίνεται εδώ: πρόσθεσέ το χειροκίνητα.</p>${flow.hlErr?'<p class="neg small">Το Hyperliquid δεν απάντησε αυτή τη φορά.</p>':flow.hlNone?'<p class="muted small">Στο Hyperliquid δεν βρέθηκαν υπόλοιπα για αυτή τη διεύθυνση.</p>':''}`
+      (I.list.length?`<div class="imp">${I.list.map((t,i)=>`<label><input type="checkbox" id="imp${i}" data-i="${i}"${t.unc?'':' checked'}> <span>${esc(t.id?ASSETS[t.id].name:t.name)} <small class="muted">${t.kmn||t.lend||t.mph?'DeFi':esc(t.sym)}${t.xstock?' · xStock':''}${t.tag?' · '+t.tag:''}${t.staked?' · staking':''}${t.id||t.kmn||t.lend||t.mph?'':' · χωρίς ιστορικό τιμών'}${t.unc?' · <span class="neg">αβέβαιη τιμή</span>':''}</small></span><span class="num">${t.kmn||t.lend||t.mph?'':nf(t.qty<1?6:2).format(t.qty)+' · '}${eur.format(t.qty*t.eur)}</span></label>`).join('')}</div>${I.defiMsg?`<p class="muted small">${esc(I.defiMsg)}</p>`:''}${I.list.some(t=>t.lend)?'<p class="muted small">Στα Aave, Spark και HyperLend μετράνε οι καταθέσεις που χρησιμοποιούνται ως εγγύηση. Μια κατάθεση που έχεις ορίσει να μην είναι εγγύηση δεν μετράει εδώ: πρόσθεσέ τη χειροκίνητα.</p>':''}${flow.lendErr&&E?'<p class="muted small">Κάποια από τα Aave, Spark, HyperLend και Morpho δεν απάντησαν αυτή τη φορά.</p>':''}${flow.baseErr&&E?'<p class="muted small">Το Base δεν απάντησε αυτή τη φορά.</p>':''}${I.list.some(t=>t.kmn||t.lend||t.mph)?'<p class="muted small">Οι θέσεις DeFi μπαίνουν με την καθαρή τους αξία: καταθέσεις μείον δάνεια. Η αξία ενημερώνεται μόνη της. Αν προσθέσεις ή αποσύρεις χρήματα από τη θέση, η αλλαγή θα φανεί ως κέρδος ή ζημιά.</p>':''}${I.list.some(t=>t.unc)?'<p class="muted small">Όσα γράφουν «αβέβαιη τιμή» έχουν πολύ μικρή αγορά, οπότε η τιμή τους μπορεί να μην ισχύει στην πράξη. Γι\' αυτό δεν είναι επιλεγμένα. Πολλά τέτοια tokens είναι spam που στάλθηκε χωρίς να το ζητήσεις.</p>':''}`:'<p>Δεν βρέθηκαν assets με αξία πάνω από 1 €.</p>')+
+      (E?`<p class="muted">Η ανάγνωση είναι μόνο για προβολή. Φαίνονται το ETH και τα tokens του Ethereum mainnet που έχουν τιμή αγοράς, και στο Hyperliquid τα spot υπόλοιπα, το HYPE σε staking, η αξία του λογαριασμού perps και τα vaults. Η αξία των perps και των vaults ενημερώνεται μόνη της. Από το Base φαίνονται το ETH και τα κύρια tokens (USDC, cbBTC, AERO κ.ά.). Φαίνονται επίσης οι θέσεις σε Aave (Ethereum, Base), Spark, HyperLend και Morpho (Ethereum, Base, HyperEVM), με την καθαρή τους αξία. Ό,τι έχεις σε άλλα δίκτυα (Arbitrum, Optimism κ.ά.), σε άλλα tokens του Base ή σε άλλα πρωτόκολλα δεν φαίνεται εδώ: πρόσθεσέ το χειροκίνητα.</p>${flow.hlErr?'<p class="neg small">Το Hyperliquid δεν απάντησε αυτή τη φορά.</p>':flow.hlNone?'<p class="muted small">Στο Hyperliquid δεν βρέθηκαν υπόλοιπα για αυτή τη διεύθυνση.</p>':''}`
         :`<p class="muted">Η ανάγνωση είναι μόνο για προβολή. Το SOL που έχεις σε native stake δεν φαίνεται εδώ: πρόσθεσέ το χειροκίνητα. Liquid staking tokens (π.χ. JitoSOL) εμφανίζονται κανονικά.</p>`)+
       `<div class="row"><button class="btn" type="button" data-act="${E?'eth':S?'sol':'done'}">Πίσω</button>${I.list.length?`<button class="btn primary" type="button" data-act="doimport">Προσθήκη επιλεγμένων</button>`:''}</div>`;
     }
@@ -253,8 +258,9 @@ function drawSheet(){
 const LEND=[{k:'aave',n:'Aave',ch:'Ethereum',pool:'0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2',net:'eth',tok:/^aEth(?!Lido)[A-Za-z0-9]/},
   {k:'aavep',n:'Aave Prime',ch:'Ethereum',pool:'0x4e033931ad43597d96D6bcc25c280717730B58B1',net:'eth',tok:/^aEthLido[A-Za-z0-9]/},
   {k:'spark',n:'Spark',ch:'Ethereum',pool:'0xC13e21B648A5Ee794902342038FF3aDAB66BE987',net:'eth',tok:/^sp[A-Z][A-Za-z0-9]*$/},
+  {k:'aavebase',n:'Aave',ch:'Base',pool:'0xA238Dd80C259a72e81d7e4664a9801593F98d1c5',net:'base',tok:/^aBas[A-Za-z0-9]/},
   {k:'hyperlend',n:'HyperLend',ch:'HyperEVM',pool:'0x00A89d7a5A02160f20150EbEA7a2b5E4879A1A8b',net:'hyper',tok:null}];
-const EVM_RPC={eth:['https://ethereum-rpc.publicnode.com','https://eth.drpc.org'],hyper:['https://rpc.hyperliquid.xyz/evm']};
+const EVM_RPC={eth:['https://ethereum-rpc.publicnode.com','https://eth.drpc.org'],base:['https://base-rpc.publicnode.com','https://mainnet.base.org'],hyper:['https://rpc.hyperliquid.xyz/evm']};
 async function evmCall(net,to,data){let err;for(const u of EVM_RPC[net]){try{return await rpcAt(u,'eth_call',[{to,data},'latest'],12000)}catch(e){err=e;console.warn('evm',u,e)}}throw err||new Error('evm')}
 async function lendRead(addr){
   const w=addr.toLowerCase(),arg=w.slice(2).padStart(64,'0');let failed=0;
@@ -271,6 +277,49 @@ const lendName=p=>{const m=LEND.find(x=>x.k===p.lend.k);return m?`${m.n} · ${m.
 async function hlValues(addr){const u=addr.toLowerCase();
   const [pe,vt]=await Promise.all([hlPost({type:'clearinghouseState',user:u}),hlPost({type:'userVaultEquities',user:u})]);
   return{perps:+pe?.marginSummary?.accountValue||0,vaults:(Array.isArray(vt)?vt:[]).reduce((s,v)=>s+(+v.equity||0),0)}}
+/* ---------- Base: native ETH and the main tokens, read straight from the chain ----------
+   Base's block explorer refuses automated requests, so balances are read with balanceOf for a fixed list of tokens.
+   Every address below was checked on-chain on 13 Nov 2026 (symbol and decimals). Prices: DefiLlama by token address. */
+const BASE_TOKENS=[['USDC','0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',6,'cash'],['USDbC','0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA',6,'cash'],
+  ['WETH','0x4200000000000000000000000000000000000006',18,'ETH'],['cbBTC','0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf',8,'BTC'],
+  ['cbETH','0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22',18],['wstETH','0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452',18],['weETH','0x04C0599Ae5A44757c0af6F9eC3b93da8976c150A',18],
+  ['AERO','0x940181a94A35A4569E4529A3CDfB74e38FD98631',18],['DEGEN','0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed',18],['BRETT','0x532f27101965dd16442E59d40670FaF5eBB142E4',18],
+  ['VIRTUAL','0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b',18],['EURC','0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42',6,'cash'],['DAI','0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb',18,'cash'],
+  ['USDS','0x820C137fa70C8691f0e44Dc420a5e53c168921Dc',18,'cash'],['TOSHI','0xAC1Bd2486aAf3B5C0fc3Fd868558b082a531B2B4',18],['USDT','0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2',6,'cash']];
+async function evmBatch(net,calls){let err;for(const u of EVM_RPC[net]){try{const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),15000);
+    const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(calls.map((c,i)=>({jsonrpc:'2.0',id:i,...c}))),signal:ctl.signal}).finally(()=>clearTimeout(to));
+    const j=await r.json();if(!Array.isArray(j))throw new Error('batch');const out=[];for(const x of j)out[x.id]=x.result;return out}catch(e){err=e;console.warn('evm batch',u,e)}}throw err||new Error('evm')}
+async function baseRead(addr){
+  const arg=addr.toLowerCase().slice(2).padStart(64,'0');
+  const res=await evmBatch('base',[{method:'eth_getBalance',params:[addr,'latest']},...BASE_TOKENS.map(t=>({method:'eth_call',params:[{to:t[1],data:'0x70a08231'+arg},'latest']}))]);
+  const list=[],eth=Number(BigInt(res[0]||'0x0'))/1e18;
+  if(eth>0)list.push({id:'ETH',name:'Ethereum',sym:'ETH',qty:eth,eur:nowPrice('ETH'),cls:'crypto',tag:'Base'});
+  const found=[];BASE_TOKENS.forEach((t,i)=>{const h=res[i+1];if(typeof h!=='string'||h.length<3)return;const q=Number(BigInt(h.slice(0,66)))/10**t[2];if(q>0)found.push([t,q])});
+  let px={};const need=found.filter(([t])=>t[3]!=='ETH'&&t[3]!=='BTC');
+  if(need.length)try{const r=await fetch(LLAMA+need.map(([t])=>'base:'+t[1]).join(','));if(r.ok)px=(await r.json()).coins||{}}catch(e){console.warn('llama base',e)}
+  for(const [t,q] of found){
+    if(t[3]==='ETH'||t[3]==='BTC'){list.push({id:t[3],name:ASSETS[t[3]].name,sym:t[0],qty:q,eur:nowPrice(t[3]),cls:'crypto',tag:'Base'});continue}
+    const p=px['base:'+t[1]],usd=+p?.price||(t[3]==='cash'&&t[0]!=='EURC'?1:0);if(!(usd>0))continue;
+    list.push({contract:t[1].toLowerCase(),ch:'base',id:null,name:t[0],sym:t[0],qty:q,eur:usd/FXL,cls:t[3]==='cash'?'cash':'crypto',tag:'Base',unc:p&&p.confidence!=null&&p.confidence<.9})}
+  return list.filter(t=>t.qty*t.eur>=1);
+}
+/* ---------- Morpho (Ethereum, Base, HyperEVM): public API, no key; only the public address is sent ---------- */
+const MORPHO='https://api.morpho.org/graphql',MCH={1:'Ethereum',8453:'Base',999:'HyperEVM'};
+async function morphoRead(addr){
+  const sel='vaultPositions{vault{address name asset{symbol}} state{assetsUsd}} marketPositions{market{marketId lltv loanAsset{symbol} collateralAsset{symbol}} state{supplyAssetsUsd borrowAssetsUsd collateralUsd}}';
+  const q='query($a:String!){'+Object.keys(MCH).map(c=>`c${c}:userByAddress(address:$a,chainId:${c}){${sel}}`).join(' ')+'}';
+  const r=await fetch(MORPHO,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q,variables:{a:addr}})});
+  if(!r.ok&&r.status!==400)throw new Error('morpho '+r.status);const j=await r.json(),d=j.data||{},w=addr.toLowerCase(),list=[];let failed=!j.data;
+  for(const c of Object.keys(MCH)){const u=d['c'+c];if(!u)continue;
+    for(const v of u.vaultPositions||[]){const usd=+v.state?.assetsUsd;if(!(usd>=1))continue;
+      list.push({mph:{t:'v',k:v.vault.address.toLowerCase(),c:+c,w},vault:v.vault.address.toLowerCase(),name:`Morpho · ${v.vault.name}`.slice(0,60),chain:MCH[c],cls:STABLE_SYM.test(v.vault.asset?.symbol||'')?'cash':'crypto',dep:usd/FXL,bor:0,eur:usd/FXL,ltv:0,liq:0})}
+    for(const m of u.marketPositions||[]){const s=m.state||{},sup=+s.supplyAssetsUsd||0,col=+s.collateralUsd||0,bor=+s.borrowAssetsUsd||0;
+      if(s.collateralUsd==null&&s.supplyAssetsUsd==null)continue;const dep=sup+col;if(!(dep-bor>=1))continue;
+      const L=m.market.loanAsset?.symbol||'',C=m.market.collateralAsset?.symbol||'';
+      list.push({mph:{t:'m',k:m.market.marketId,c:+c,w},name:(col>0?`Morpho · ${C} → ${L}`:`Morpho · ${L}`).slice(0,60),chain:MCH[c],cls:!col&&STABLE_SYM.test(L)?'cash':'crypto',
+        dep:dep/FXL,bor:bor/FXL,eur:(dep-bor)/FXL,ltv:col>0?bor/col:0,liq:m.market.lltv?Number(m.market.lltv)/1e18:0})}}
+  return{list,failed};
+}
 /* ---------- Kamino lending positions ----------
    Public Kamino API, no key. Only the public wallet address is sent. Each obligation (deposits and loans in one market)
    becomes one holding valued at its net value (deposits minus loans); the loan and LTV are shown under it. */
@@ -294,14 +343,14 @@ async function kaminoPositions(addr,only){
 }
 const kmnName=p=>`Kamino · ${p.depS.join(', ')||p.market||'θέση'}${p.borS.length?' → '+p.borS.join(', '):''}`.slice(0,60);
 const kmnCls=p=>p.depS.length&&p.depS.every(x=>STABLE_SYM.test(x))&&!p.bor?'cash':'crypto';
-function defiNote(c){if(!c||!(c.kmn||c.lend))return'';const pc=x=>nf(0).format(x*100)+'%';
+function defiNote(c){if(!c||!(c.kmn||c.lend||c.mph))return'';const pc=x=>nf(0).format(x*100)+'%';
   return (c.mode?' · '+esc(c.mode):'')+(c.bor>0?` · δάνειο ${eur.format(c.bor)} · LTV ${pc(c.ltv)}, ρευστοποίηση στο ${pc(c.liq)}`:'')}
 let defiAt=0;
 async function refreshDefi(){
   if(Date.now()-defiAt<15*60e3)return;
   const all=Object.entries(state.custom),km=all.filter(([,c])=>c.kmn&&c.w),ld=all.filter(([,c])=>c.lend),
     hl=all.filter(([k,c])=>(k==='h_perps'||k==='h_vaults')&&(c.w||LS.get(EKEY)));
-  if(!km.length&&!ld.length&&!hl.length)return;defiAt=Date.now();
+  if(!km.length&&!ld.length&&!hl.length&&!all.some(([,c])=>c.mph))return;defiAt=Date.now();
   let ch=false;
   for(const w of new Set(km.map(([,c])=>c.w))){
     const mine=km.filter(([,c])=>c.w===w);
@@ -314,6 +363,12 @@ async function refreshDefi(){
       for(const [,c] of ld.filter(([,c])=>c.lend.w===w)){const p=list.find(x=>x.lend.k===c.lend.k);if(!p&&failed)continue;
         Object.assign(c,p?{current:p.eur,dep:p.dep,bor:p.bor,ltv:p.ltv,liq:p.liq}:{current:0,dep:0,bor:0});c.at=Date.now();delete c.man;ch=true}}
     catch(e){console.warn('lend',e)}}
+  const mp=all.filter(([,c])=>c.mph);
+  for(const w of new Set(mp.map(([,c])=>c.mph.w))){
+    try{const {list,failed}=await morphoRead(w);if(failed)continue;
+      for(const [,c] of mp.filter(([,c])=>c.mph.w===w)){const p=list.find(x=>x.mph.t===c.mph.t&&x.mph.k===c.mph.k&&x.mph.c===c.mph.c);
+        Object.assign(c,p?{current:p.eur,dep:p.dep,bor:p.bor,ltv:p.ltv,liq:p.liq}:{current:0,dep:0,bor:0});c.at=Date.now();delete c.man;ch=true}}
+    catch(e){console.warn('morpho',e)}}
   for(const w of new Set(hl.map(([,c])=>c.w||LS.get(EKEY)))){
     try{const v=await hlValues(w);
       for(const [k,c] of hl.filter(([,c])=>(c.w||LS.get(EKEY))===w)){
@@ -411,8 +466,9 @@ $('sheet').addEventListener('click',async e=>{
     if(state.sample)state={sample:false,onboarded:true,custom:{},mints:{},tx:[]};
     const E=flow.imp.src==='eth',S=flow.imp.src==='sol',owner=S?flow.imp.addr:wallet?.addr;
     $('sheet').querySelectorAll('.imp input:checked').forEach(c=>{const t=flow.imp.list[+c.dataset.i];let id=t.id,px=t.eur;
-      if(E){if(id)px=nowPrice(id)||t.eur;else if(t.lend){id='l_'+t.lend.k+'_'+t.lend.w;state.custom[id]={name:t.name,sym:'',cls:'crypto',current:t.eur,at:Date.now(),lend:t.lend,dep:t.dep,bor:t.bor,ltv:t.ltv,liq:t.liq}}
-        else if(t.hlKey){id='h_'+t.hlKey;state.custom[id]={name:t.name,sym:t.sym,cls:t.cls,current:t.eur,unc:!!t.unc,at:Date.now(),...(t.hl?{hl:t.hl}:{hlv:1,w:flow.imp.addr})}}else{id='e_'+t.contract;state.custom[id]={name:t.name,sym:t.sym,cls:t.cls,current:t.eur,unc:!!t.unc,at:Date.now(),evm:t.contract}}}
+      if(E){if(id)px=nowPrice(id)||t.eur;else if(t.mph){id='mo_'+t.mph.t+'_'+t.mph.c+'_'+t.mph.k+'_'+t.mph.w;state.custom[id]={name:t.name,sym:'',cls:t.cls,current:t.eur,at:Date.now(),mph:t.mph,dep:t.dep,bor:t.bor,ltv:t.ltv,liq:t.liq}}
+        else if(t.lend){id='l_'+t.lend.k+'_'+t.lend.w;state.custom[id]={name:t.name,sym:'',cls:'crypto',current:t.eur,at:Date.now(),lend:t.lend,dep:t.dep,bor:t.bor,ltv:t.ltv,liq:t.liq}}
+        else if(t.hlKey){id='h_'+t.hlKey;state.custom[id]={name:t.name,sym:t.sym,cls:t.cls,current:t.eur,unc:!!t.unc,at:Date.now(),...(t.hl?{hl:t.hl}:{hlv:1,w:flow.imp.addr})}}else{id='e_'+(t.ch?t.ch+'_':'')+t.contract;state.custom[id]={name:t.name,sym:t.sym,cls:t.cls,current:t.eur,unc:!!t.unc,at:Date.now(),evm:t.contract,...(t.ch?{ch:t.ch}:{})}}}
       else if(t.kmn){id='k_'+t.kmn.o;state.custom[id]={name:t.name,sym:'',cls:kmnCls(t),current:t.eur,at:Date.now(),kmn:t.kmn,w:owner,mode:t.mode,dep:t.dep,bor:t.bor,ltv:t.ltv,liq:t.liq}}
       else if(id){if(t.xstock)state.mints[id]=t.mint;if(PRICES[id])PRICES[id][W-1]=t.eur}
       else{id='m_'+t.mint+(t.staked?'_st':'');state.custom[id]={name:t.name,sym:t.sym,cls:STABLE.has(t.mint)?'cash':'crypto',current:t.eur,unc:!!t.unc,at:Date.now(),mint:t.mint}}

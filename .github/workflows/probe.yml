@@ -1,12 +1,13 @@
 name: Probe API
 
-# Diagnostic: fetches a URL the way the app would (with the site's Origin header) and prints status, CORS headers and the start of the body.
+# Diagnostic: fetches one or more URLs (space-separated) the way the app would, with the site's Origin header,
+# and prints status, CORS header and the start of each body.
 
 on:
   workflow_dispatch:
     inputs:
       url:
-        description: URL to fetch
+        description: URLs to fetch, separated by spaces
         required: true
 
 jobs:
@@ -15,9 +16,11 @@ jobs:
     steps:
       - name: Fetch
         env:
-          URL: ${{ inputs.url }}
+          URLS: ${{ inputs.url }}
         run: |
-          curl -sS -D headers.txt -o body.txt -H "Origin: https://vestora.stratoshivibes.com" "$URL" || true
-          echo "--- headers"; cat headers.txt
-          echo "--- body ($(wc -c < body.txt) bytes)"; head -c 12000 body.txt; echo
-          echo "--- preflight"; curl -sS -o /dev/null -D - -X OPTIONS -H "Origin: https://vestora.stratoshivibes.com" -H "Access-Control-Request-Method: GET" "$URL" | grep -i "^HTTP\|access-control" || true
+          for URL in $URLS; do
+            echo "=== $URL"
+            curl -sS -D h.txt -o b.txt -H "Origin: https://vestora.stratoshivibes.com" "$URL" || true
+            grep -i "^HTTP\|^access-control-allow-origin" h.txt || true
+            echo "--- body ($(wc -c < b.txt) bytes)"; head -c 6000 b.txt; echo
+          done

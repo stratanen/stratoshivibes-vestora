@@ -1,0 +1,23 @@
+name: Probe API
+
+# Diagnostic: fetches a URL the way the app would (with the site's Origin header) and prints status, CORS headers and the start of the body.
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: URL to fetch
+        required: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Fetch
+        env:
+          URL: ${{ inputs.url }}
+        run: |
+          curl -sS -D headers.txt -o body.txt -H "Origin: https://vestora.stratoshivibes.com" "$URL" || true
+          echo "--- headers"; cat headers.txt
+          echo "--- body ($(wc -c < body.txt) bytes)"; head -c 12000 body.txt; echo
+          echo "--- preflight"; curl -sS -o /dev/null -D - -X OPTIONS -H "Origin: https://vestora.stratoshivibes.com" -H "Access-Control-Request-Method: GET" "$URL" | grep -i "^HTTP\|access-control" || true

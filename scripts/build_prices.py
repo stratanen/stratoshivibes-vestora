@@ -3,7 +3,7 @@
 
   python3 scripts/build_prices.py           full run, once a day after the US close:
       builds data/history.json (weekly closing prices in EUR, 10 years) for every asset in scripts/catalog.py,
-      checks each ISIN against Yahoo, and looks up the xStock token address (mint) of US assets on Jupiter.
+      checks each ISIN against OpenFIGI, and looks up the xStock token address (mint) of US assets on Jupiter.
   python3 scripts/build_prices.py --latest  quick run, every hour while markets are open:
       writes data/latest.json with only the current price of each non-crypto asset (crypto is live in the app).
 
@@ -119,17 +119,24 @@ def plausible(new, old, crypto):
     return max(new / old, old / new) <= (1.6 if crypto else 1.35)
 
 
-def isin_ok(isin, ticker):
-    """True if Yahoo's search for the ISIN returns this ticker (or the same fund on another exchange with the same base symbol)."""
-    raw = get('https://query2.finance.yahoo.com/v1/finance/search?quotesCount=20&newsCount=0&q=' + isin)
-    syms = {q.get('symbol', '') for q in json.loads(raw).get('quotes', [])}
-    base = ticker.split('.')[0]
-    return ticker in syms or any(s.split('.')[0] == base for s in syms)
+def openfigi(isins):
+    """ISIN -> set of exchange tickers, from OpenFIGI (free, no key: 10 ISINs per request, 25 requests a minute)."""
+    out = {}
+    for i in range(0, len(isins), 10):
+        part = isins[i:i + 10]
+        body = json.dumps([{'idType': 'ID_ISIN', 'idValue': x} for x in part]).encode()
+        req = urllib.request.Request('https://api.openfigi.com/v3/mapping', data=body, headers={**UA, 'Content-Type': 'application/json'})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            res = json.loads(r.read().decode('utf-8'))
+        for x, j in zip(part, res):
+            out[x] = {str(d.get('ticker', '')).upper() for d in j.get('data') or []}
+        time.sleep(3)
+    return out
 
 
 def resolve_xstock(aid, last_usd):
     """xStock mint for a US ticker, or None. Accepted only if: exact symbol <TICKER>x, address starts with 'Xs',
-    Jupiter marks it verified, and its price is within 15% of the stock's last close."""
+    Jupiter marks it verified, its price is within 5% of the stock's last close and its market is not thin."""
     want = (aid + 'x').lower()
     res = json.loads(get(JUP_SEARCH + urllib.parse.quote(aid + 'x')))
     cands = [t for t in res if str(t.get('symbol', '')).lower() == want and str(t.get('id', '')).startswith('Xs')
@@ -140,10 +147,14 @@ def resolve_xstock(aid, last_usd):
     mint = cands[0]['id']
     q = json.loads(get(JUP_PRICE + mint)).get(mint) or {}
     p = q.get('usdPrice')
-    if not p or not last_usd or abs(p / last_usd - 1) > 0.15:
+    liq = q.get('liquidity')
+    if not p or not last_usd or abs(p / last_usd - 1) > 0.05:
         print(f'  {aid}x {mint}: price {p} vs close {last_usd} too far; skipped', file=sys.stderr)
         return None
-    print(f'  {aid}x -> {mint} (price {p:.2f} vs close {last_usd:.2f})')
+    if liq is not None and float(liq) < 25000:
+        print(f'  {aid}x {mint}: liquidity {liq} too thin; skipped', file=sys.stderr)
+        return None
+    print(f'  {aid}x -> {mint} (price {p:.2f} vs close {last_usd:.2f}, liquidity {liq})')
     return mint
 
 
@@ -266,21 +277,25 @@ def full():
                 assets[aid] = {**old, 'w': realign(prev, weeks, None, old['w'])}
                 print('  kept previous data for', aid, file=sys.stderr)
 
-    # ISIN: written only if Yahoo confirms it belongs to this ticker
+    # ISIN: written only if OpenFIGI lists this ticker for it
+    isins = [a['isin'] for a in CATALOG if a.get('isin') and a['id'] in assets]
+    try:
+        figi = openfigi(isins)
+    except Exception as e:  # noqa: BLE001
+        print('OpenFIGI failed; keeping yesterday\'s confirmed ISINs:', e, file=sys.stderr)
+        figi = None
     for a in CATALOG:
         aid = a['id']
         if aid not in assets or not a.get('isin'):
             continue
         assets[aid].pop('isin', None)
-        time.sleep(0.5)
-        try:
-            ok = isin_ok(a['isin'], assets[aid].get('y') or a['yahoo'].split('|')[0])
-        except Exception as e:  # noqa: BLE001
+        if figi is None:
             ok = (prev_assets.get(aid) or {}).get('isin') == a['isin']
-            print(f'  {aid} ISIN lookup failed ({e}); {"keeping" if ok else "leaving out"}', file=sys.stderr)
         else:
+            base = (assets[aid].get('y') or a['yahoo'].split('|')[0]).split('.')[0].upper()
+            ok = base in figi.get(a['isin'], set())
             if not ok:
-                print(f'  {aid}: ISIN {a["isin"]} not confirmed by Yahoo; left out', file=sys.stderr)
+                print(f'  {aid}: ISIN {a["isin"]} not confirmed (OpenFIGI tickers: {sorted(figi.get(a["isin"], set()))[:8]}); left out', file=sys.stderr)
         if ok:
             assets[aid]['isin'] = a['isin']
 

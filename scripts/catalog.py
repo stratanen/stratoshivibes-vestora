@@ -3,7 +3,7 @@
 Each entry: id (used inside the app, never change it once published), Yahoo ticker (alternatives separated by |),
 name shown in the app (Greek), class, USD exposure (0..1, for the "euro +10%" scenario), and optional extras:
   stooq: fallback ticker for US listings
-  isin:  checked against Yahoo every day; dropped from the file if Yahoo does not confirm it
+  isin:  checked against OpenFIGI every day; left out of the file if it does not confirm it
   k:     kind, used by the stress test and the plan: ndq, tech, gold, bond, mm (money market), btc
   en:    English name, when the Greek name differs
   q:     extra search words (Greek or English)
@@ -31,7 +31,6 @@ CATALOG = [
     A('VGWL', 'VGWL.DE', 'Vanguard FTSE All-World, διανομή (VGWL)', 'etf', 0.7, isin='IE00B3RBWM25', en='Vanguard FTSE All-World, distributing (VGWL)', q='παγκόσμιο world vwrl'),
     A('EUNL', 'EUNL.DE', 'iShares Core MSCI World (EUNL)', 'etf', 0.7, isin='IE00B4L5Y983', q='παγκόσμιο world iwda swda'),
     A('XDWD', 'XDWD.DE', 'Xtrackers MSCI World (XDWD)', 'etf', 0.7, isin='IE00BJ0KDQ92', q='παγκόσμιο world'),
-    A('LCUW', 'LCUW.DE', 'Amundi Core MSCI World (LCUW)', 'etf', 0.7, isin='LU1781541179', q='παγκόσμιο world'),
     A('IUSQ', 'IUSQ.DE', 'iShares MSCI ACWI (IUSQ)', 'etf', 0.65, isin='IE00B6R52259', q='παγκόσμιο world acwi'),
     A('SPYI', 'SPYI.DE', 'SPDR MSCI ACWI IMI (SPYI)', 'etf', 0.65, isin='IE00B3YLTY66', q='παγκόσμιο world acwi imi'),
     A('IUSN', 'IUSN.DE', 'iShares MSCI World Small Cap (IUSN)', 'etf', 0.6, isin='IE00BF4RFH31', q='μικρές εταιρείες small cap'),
@@ -69,7 +68,6 @@ CATALOG = [
     A('XEON', 'XEON.DE', 'Xtrackers EUR Overnight Rate (XEON)', 'etf', 0, isin='LU0290358497', k='mm', q='money market ταμειακό διαθέσιμα €str'),
     # gold
     A('XGLD', '4GLD.DE', 'Xetra-Gold (4GLD)', 'etf', 1, isin='DE000A0S9GB0', k='gold', q='χρυσός gold'),
-    A('EWG2', 'EWG2.DE', 'EUWAX Gold II (EWG2)', 'etf', 1, isin='DE000EWG2LD7', k='gold', q='χρυσός gold'),
     A('PPFB', 'PPFB.DE', 'iShares Physical Gold (PPFB)', 'etf', 1, isin='IE00B4ND3602', k='gold', q='χρυσός gold sgln igln'),
 
     # ---------- US ETFs, in USD ----------
@@ -150,7 +148,7 @@ CATALOG = [
         ('AEGN', 'AEGN.AT', 'Aegean Airlines', None, 'αιγαιον'),
         ('PPA', 'PPA.AT', 'ΟΛΠ', 'Piraeus Port (OLP)', 'olp λιμανι πειραια'),
         ('OLTH', 'OLTH.AT', 'ΟΛΘ', 'Thessaloniki Port (OLTH)', 'olth λιμανι θεσσαλονικης'),
-        ('THEON', 'THEON.AT', 'Theon International', None, 'θεον'),
+        ('THEON', 'THEON.AS', 'Theon International', None, 'θεον'),
         ('AKTR', 'AKTR.AT', 'Aktor (πρώην Intrakat)', 'Aktor (formerly Intrakat)', 'ακτωρ intrakat'),
         ('ELLAKTOR', 'ELLAKTOR.AT', 'Ελλάκτωρ', 'Ellaktor', 'ellaktor'),
         ('AVAX', 'AVAX.AT', 'ΑΒΑΞ', 'AVAX', 'avax'),
@@ -171,7 +169,6 @@ CATALOG = [
         ('DIMAND', 'DIMAND.AT', 'Dimand', None, 'ντιμαντ ακινητα'),
         ('ATTICA', 'ATTICA.AT', 'Attica Group', None, 'attica ferries blue star'),
         ('PLAT', 'PLAT.AT', 'Thrace Plastics', None, 'πλαστικα θρακης'),
-        ('PLAIS', 'PLAIS.AT', 'Πλαίσιο', 'Plaisio', 'plaisio'),
         ('ALMY', 'ALMY.AT', 'Alumil', None, 'αλουμυλ'),
         ('PETRO', 'PETRO.AT', 'Πετρόπουλος', 'Petros Petropoulos', 'petropoulos'),
         ('AEM', 'AEM.AT', 'Alter Ego Media', None, 'αλτερ εγκο'),

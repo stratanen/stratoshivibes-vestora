@@ -41,7 +41,7 @@ jobs:
         run: |
           git config user.name "vestora-prices"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/history.json data/latest.json 2>/dev/null || true
+          git add -A data/
           if git diff --cached --quiet; then echo "No change"; exit 0; fi
           git commit -m "Update prices $(date -u +'%Y-%m-%d %H:%M')"
           for i in 1 2 3; do git pull --rebase -q && git push && exit 0; sleep 5; done

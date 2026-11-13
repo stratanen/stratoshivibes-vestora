@@ -51,6 +51,33 @@ CATALOG = [
 
 WEEK = 7 * 86400
 
+# US assets that also exist as xStocks on Solana (ticker + "x"). Their token address (mint) is looked up
+# every day on Jupiter and written into the file, so the app can show a live price for them.
+XSTOCKS = ['SPY', 'QQQ', 'GLD', 'AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'GOOGL', 'META', 'COIN', 'MSTR']
+JUP_SEARCH = 'https://lite-api.jup.ag/tokens/v2/search?query='
+JUP_PRICE = 'https://lite-api.jup.ag/price/v3?ids='
+
+
+def resolve_xstock(aid, last_usd):
+    """Returns the xStock mint for a US ticker, or None. Accepted only if: exact symbol <TICKER>x,
+    address starts with 'Xs' (all xStocks do), Jupiter marks it verified, and its price is within 15%
+    of the stock's last close (so a fake token with the same name can never get in)."""
+    want = (aid + 'x').lower()
+    res = json.loads(get(JUP_SEARCH + aid + 'x'))
+    cands = [t for t in res if str(t.get('symbol', '')).lower() == want and str(t.get('id', '')).startswith('Xs')
+             and (t.get('isVerified') or 'verified' in (t.get('tags') or []))]
+    if len(cands) != 1:
+        print(f'  {aid}x: {len(cands)} verified candidates; skipped', file=sys.stderr)
+        return None
+    mint = cands[0]['id']
+    q = json.loads(get(JUP_PRICE + mint)).get(mint) or {}
+    p = q.get('usdPrice')
+    if not p or not last_usd or abs(p / last_usd - 1) > 0.15:
+        print(f'  {aid}x {mint}: price {p} vs close {last_usd} too far; skipped', file=sys.stderr)
+        return None
+    print(f'  {aid}x -> {mint} (price {p:.2f} vs close {last_usd:.2f})')
+    return mint
+
 
 def get(url, tries=3):
     last = None
@@ -226,6 +253,18 @@ def main():
                 old = prev['assets'][aid]
                 assets[aid] = {**old, 'w': realign(prev, weeks, None, old['w'])}
                 print('  kept previous data for', aid, file=sys.stderr)
+
+    for aid in XSTOCKS:
+        if aid not in assets:
+            continue
+        old = ((prev.get('assets') or {}).get(aid) or {}).get('mint')
+        try:
+            m = resolve_xstock(aid, assets[aid]['last'] * fx_last)
+        except Exception as e:  # noqa: BLE001
+            print(f'  {aid}x lookup failed: {e}', file=sys.stderr)
+            m = None
+        if m or old:
+            assets[aid]['mint'] = m or old
 
     if len(assets) < len(CATALOG) // 2:
         sys.exit(f'Only {len(assets)} of {len(CATALOG)} assets downloaded; not overwriting the file.')

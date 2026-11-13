@@ -555,7 +555,7 @@ function countUp(prev,D){
 }
 function renderPriceNote(){
   if(!DATA)return;const u=new Date(DATA.updated),age=(Date.now()-u)/DAY;
-  $('priceNote').innerHTML=`Τιμές: κλείσιμο ${longDate(iso(u))}${liveAt?', ζωντανές για crypto και xStocks':''}.${age>4?' <b class="neg">Οι τιμές δεν έχουν ενημερωθεί για μερικές μέρες.</b>':''}`;
+  $('priceNote').innerHTML=`Τιμές: κλείσιμο ${longDate(iso(u))}${liveAt?', ζωντανές για crypto και αμερικανικές μετοχές/ETF (μέσω xStocks, που διαπραγματεύονται 24/7· εκτός ωραρίου αγοράς ΗΠΑ μπορεί να διαφέρουν λίγο)':''}.${age>4?' <b class="neg">Οι τιμές δεν έχουν ενημερωθεί για μερικές μέρες.</b>':''}`;
 }
 
 function render(){applyDep();if(!$('v-how').hidden)renderHowPage();renderWallet();const prev=D?D.end:null;D=compute();renderSummary(D);countUp(prev,D);renderChart(D);renderDD(D);renderStory(D);renderHoldings(D);renderInsights(D);renderPlan(D);renderGuide(D);renderStress(D);renderJournal();renderTx();renderBanner();renderPriceNote();renderBackupNote()}

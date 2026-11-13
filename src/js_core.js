@@ -52,7 +52,7 @@ function applyData(d){
   for(const [id,a] of Object.entries(d.assets)){
     const w=a.w.slice();let first=w.find(v=>v!=null);if(first==null)continue;
     for(let i=0;i<w.length;i++){if(w[i]==null)w[i]=first;else first=w[i]}
-    ASSETS[id]={name:LANG==='en'&&NAME_EN[id]||a.name,sym:id,cls:a.cls,usd:a.usd??1};PRICES[id]=w;
+    ASSETS[id]={name:LANG==='en'&&NAME_EN[id]||a.name,sym:id,cls:a.cls,usd:a.usd??1};if(a.mint)ASSETS[id].mint=a.mint;PRICES[id]=w;
   }
   ASSETS.DEP={name:'',sym:'',cls:'cash',usd:0,fixed:0};applyDep();
 }
@@ -77,7 +77,7 @@ function setCustom(k,e,unc){const c=state.custom[k];if(!c)return false;const old
   c.current=e;c.unc=!!unc;c.at=Date.now();delete c.man;return true}
 async function livePrices(){
   if(!DATA)return;
-  const ids={...MINT,...(state.mints||{})};
+  const ids={...MINT};for(const [k,a] of Object.entries(ASSETS))if(a.mint)ids[k]=a.mint;Object.assign(ids,state.mints||{});
   for(const [k,c] of Object.entries(state.custom))if(c.mint)ids[k]=c.mint;
   const mints=[...new Set(Object.values(ids))];
   try{

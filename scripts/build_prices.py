@@ -88,7 +88,7 @@ def get(url, tries=3):
                 return r.read().decode('utf-8')
         except Exception as e:  # noqa: BLE001
             last = e
-            time.sleep(2 + 3 * i)
+            time.sleep((2 + 3 * i) * (4 if '429' in str(e) else 1))
     raise last
 
 
@@ -258,6 +258,7 @@ def main():
         if aid not in assets:
             continue
         old = ((prev.get('assets') or {}).get(aid) or {}).get('mint')
+        time.sleep(4)  # Jupiter's free API allows only a few requests per second
         try:
             m = resolve_xstock(aid, assets[aid]['last'] * fx_last)
         except Exception as e:  # noqa: BLE001

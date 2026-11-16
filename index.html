@@ -2770,7 +2770,7 @@ $('kpis').addEventListener('keydown',e=>{const k=e.target.closest('.kpi[data-how
    (ISIN, ticker, remembered choices), flags duplicates, and lets the user edit everything before saving.
    Written in both languages side by side with T(greek, english); not passed through the i18n extractor. */
 const CX={rows:[],src:'',file:'',notes:[],undo:null,shown:150};
-const STABLES=new Set(['USDT','USDC','BUSD','FDUSD','TUSD','DAI','USDP','PYUSD','USDE','USDS','USD1','UST']);
+const STABLES=new Set(['USDT','USDC','BUSD','FDUSD','TUSD','DAI','USDP','PYUSD','USDE','USDS','USD1','UST','JUPUSD','USDG']);
 const FIAT=new Set(['EUR','USD','GBP','CHF','JPY','CAD','AUD','TRY','PLN','RON','BGN','CZK','SEK','NOK','DKK','HUF','BRL','GBX']);
 const KRAKEN_CODE={XBT:'BTC',XXBT:'BTC',XETH:'ETH',XXDG:'DOGE',XDG:'DOGE',XXRP:'XRP',XLTC:'LTC',XXLM:'XLM',XETC:'ETC',XXMR:'XMR',XZEC:'ZEC',ZEUR:'EUR',ZUSD:'USD',ZGBP:'GBP',ZCAD:'CAD',ZJPY:'JPY',ZCHF:'CHF'};
 const cxKey=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ς/g,'σ').replace(/[^\p{L}\p{N}]/gu,'');
@@ -2908,6 +2908,49 @@ const READERS=[
       else if(/reward|income|staking|interest|learning|inflation|airdrop/.test(ty))out.push({date,type:'reward',sym,qty,price:0,ext,cls:'crypto',note:r[iTy]});
     }
     return out}},
+ {id:'jupiter',name:'Jupiter Portfolio (Activity)',test:h=>has(h,'signature','blockTime','address','balanceChange','preBalance'),
+  /* One row = one token's balance change inside one Solana transaction. Rebuilt into trades:
+     - opening balance: the earliest "preBalance" of every token, priced at the closest known price;
+     - a transaction with tokens going out and others coming in is a swap, priced from its stablecoin or SOL/BTC/ETH side;
+     - anything else (transfers, staking deposits, perps collateral, prediction markets) is a transfer:
+       going out leaves at average cost (no profit or loss), coming in is a purchase at the day's price;
+     - failed transactions and SOL network fees are ignored. */
+  read(rows,h,ctx){const iS=H(h,'signature'),iT=H(h,'blockTime'),iOk=H(h,'success'),iTk=H(h,'ticker'),iA=H(h,'address'),iPre=H(h,'preBalance'),iCh=H(h,'balanceChange'),iSv=H(h,'serviceName');
+    const NATIVE='11111111111111111111111111111111',SM=new Set(['EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v','Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB','JuprjznTrTSp2UFa3ZBUFgwdAmtZCq4MQCwysN55USD','2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo','USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA']);
+    const legs=[];
+    for(const r of rows){if(iOk>-1&&String(r[iOk]).trim()!=='true')continue;const mint0=(r[iA]||'').trim(),ch=cxNum(r[iCh],ctx.delim);if(!mint0||!isFinite(ch)||!ch)continue;
+      const mint=mint0===NATIVE?MINT.SOL:mint0,t=String(r[iT]||'').trim(),ms=Date.parse(t);if(!isFinite(ms))continue;
+      legs.push({sig:r[iS],t:ms,date:new Date(ms).toISOString().slice(0,10),mint,sym:(r[iTk]||'').trim(),pre:cxNum(r[iPre],ctx.delim),ch,svc:r[iSv]||''})}
+    legs.sort((a,b)=>a.t-b.t);
+    const idOf=m=>m===MINT.SOL?'SOL':m===MINT.BTC?'BTC':m===MINT.ETH?'ETH':Object.keys(ASSETS).find(k=>ASSETS[k].mint===m)||(state.mints&&Object.keys(state.mints).find(k=>state.mints[k]===m))||null;
+    const stable=m=>SM.has(m),dust=l=>l.mint===MINT.SOL&&Math.abs(l.ch)<0.002;
+    const known=(m,date)=>{if(stable(m))return 1/cxWeekFx(date);const id=idOf(m);if(id&&PRICES[id]){const p=PRICES[id][toWeek(date)];if(p>0)return p}return null};
+    /* prices learned from swaps for tokens without a price history */
+    const pts={},bySig=new Map();for(const l of legs){if(!bySig.has(l.sig))bySig.set(l.sig,[]);bySig.get(l.sig).push(l)}
+    const swaps=[];
+    for(const [sig,g] of bySig){const real=g.filter(l=>!dust(l)),out=real.filter(l=>l.ch<0),inn=real.filter(l=>l.ch>0);if(!out.length||!inn.length)continue;swaps.push(sig);
+      const val=side=>{let v=0;for(const l of side){const p=known(l.mint,l.date);if(p==null)return null;v+=Math.abs(l.ch)*p}return v};
+      const vo=val(out),vi=val(inn),V=vo??vi;if(V==null)continue;
+      for(const side of [out,inn]){const un=side.filter(l=>known(l.mint,l.date)==null);if(un.length===1){const pr=side.filter(l=>l!==un[0]).reduce((s,l)=>s+Math.abs(l.ch)*known(l.mint,l.date),0);
+        const p=(V-pr)/Math.abs(un[0].ch);if(p>0)(pts[un[0].mint]=pts[un[0].mint]||[]).push({t:un[0].t,p})}}}
+    const jpx=ctx.jpx||{},est={};
+    const priceAt=(l)=>{const k=known(l.mint,l.date);if(k!=null)return k;const ps=pts[l.mint];
+      if(ps&&ps.length){let b=ps[0];for(const x of ps)if(Math.abs(x.t-l.t)<Math.abs(b.t-l.t))b=x;return b.p}
+      const j=jpx[l.mint];if(j>0){est[l.mint]=1;return j}return null};
+    const out=[],pos={},firstSeen=new Set(),hasJup=new Set(state.tx.filter(t=>/^jup:/.test(t.ext||'')).map(t=>t.a));
+    const base=l=>({date:l.date,sym:l.sym||l.mint.slice(0,4),a:idOf(l.mint),mint:l.mint,cls:stable(l.mint)?'cash':'crypto',priceCur:'EUR'});
+    const P=m=>pos[m]||(pos[m]={q:0,c:0});
+    const buy=(l,q,p,ext,note)=>{const x=P(l.mint);x.q+=q;x.c+=q*(p||0);out.push({...base(l),type:'buy',qty:q,price:p??NaN,ext,note:est[l.mint]&&!known(l.mint,l.date)&&!pts[l.mint]?T('Τιμή: η σημερινή, γιατί δεν βρέθηκε τιμή εκείνης της μέρας','Price: today\'s, as no price for that day was found')+(note?' · '+note:''):note})};
+    const sell=(l,q,p,ext,note)=>{const x=P(l.mint),avg=x.q>0?x.c/x.q:p;x.c-=Math.min(q,x.q)*avg;x.q=Math.max(0,x.q-q);out.push({...base(l),type:'sell',qty:q,price:p??avg??NaN,ext,note})};
+    for(const l of legs){
+      if(!firstSeen.has(l.mint)){firstSeen.add(l.mint);const q0=isFinite(l.pre)?l.pre:0;
+        if(q0>0&&!(l.mint===MINT.SOL&&q0<0.002)&&!hasJup.has(idOf(l.mint)||'m_'+l.mint))buy(l,q0,priceAt(l),'jup:open:'+l.mint+':'+l.date,T('Υπόλοιπο στην αρχή του αρχείου','Balance at the start of the file'))}
+      if(dust(l))continue;
+      const g=bySig.get(l.sig),isSwap=swaps.includes(l.sig),ext='jup:'+l.sig+':'+l.mint,q=Math.abs(l.ch);
+      if(isSwap){l.ch>0?buy(l,q,priceAt(l),ext,l.svc):sell(l,q,priceAt(l),ext,l.svc);continue}
+      if(l.ch>0)buy(l,q,priceAt(l),ext,T('Εισερχόμενο','Incoming')+(l.svc?' · '+l.svc:''));
+      else{const x=P(l.mint);sell(l,q,x.q>0?x.c/x.q:priceAt(l),ext,T('Μεταφορά: χωρίς κέρδος ή ζημιά','Transfer: no gain or loss')+(l.svc?' · '+l.svc:''))}}
+    return out}},
  {id:'trading212',name:'Trading 212',test:h=>has(h,'Action','No. of shares')&&(H(h,'Price / share')>-1||H(h,'Price per share')>-1),
   read(rows,h,ctx){const iA=H(h,'Action'),iT=H(h,'Time'),iI=H(h,'ISIN'),iTk=H(h,'Ticker'),iN=H(h,'Name'),iQ=H(h,'No. of shares'),iP=H(h,'Price / share','Price per share'),
     iPC=H(h,'Currency (Price / share)'),iX=H(h,'Exchange rate'),iTo=H(h,'Total'),iTC=H(h,'Currency (Total)'),iId=H(h,'ID');
@@ -2966,7 +3009,7 @@ function cxBuild(norm,merge){
   /* stablecoins and fiat bought or sold are cash moves, not investments */
   list=list.filter(r=>{const s=String(r.sym||'').toUpperCase();if(r.type!=='div'&&(STABLES.has(s)||FIAT.has(s))){CX.notes.push({...r,note:T('Stablecoin ή νόμισμα: μετράει ως μετρητά, παραλείπεται','Stablecoin or currency: counts as cash, skipped')});return false}return true});
   const out=list.map(r=>{
-    const a=cxAsset(r);let price=null;
+    const a=r.a||cxAsset(r);let price=null;
     if(r.type==='reward'){price=0}
     else if(r.type==='div'){price=null}
     else if(r.viaQuote){price=a&&PRICES[a]&&r.date?PRICES[a][toWeek(r.date)]:null}
@@ -2977,11 +3020,11 @@ function cxBuild(norm,merge){
       qty=r.type==='buy'?r.qty-feeAmt:r.qty+feeAmt;const fe=price!=null?feeAmt*price:null;feeAmt=0;r._feeEur=fe}
     const fee=r._feeEur!=null?r._feeEur:feeAmt?cxEur(feeAmt,feeCur,r.date):0;
     const divEur=r.type==='div'?cxEur(r.qty,r.priceCur,r.date):null;
-    return {on:true,date:r.date,type:r.type,a,sym:String(r.sym||'').toUpperCase(),isin:r.isin||'',name:r.name||'',cls:r.cls,
+    return {on:true,date:r.date,type:r.type,a,mint:r.mint||'',sym:String(r.sym||'').toUpperCase(),isin:r.isin||'',name:r.name||'',cls:r.cls,
       qty:r.type==='div'?divEur:qty,price:r.type==='div'?1:price,fee:fee==null?0:fee,feeLost:r.fee>0&&fee==null?r.feeCur:'',ext:r.ext||'',note:r.note||'',srcPrice:r.price,srcCur:r.priceCur};
   });
   let rows=out;
-  if(merge){const m=new Map();for(const r of out){if(r.type==='skip')continue;const k=[r.date,r.type,r.a||r.sym,r.isin].join('|');
+  if(merge&&CX.reader?.id!=='jupiter'){const m=new Map();for(const r of out){if(r.type==='skip')continue;const k=[r.date,r.type,r.a||r.sym,r.isin].join('|');
       if(!m.has(k)){m.set(k,{...r,n:1,ext:r.ext?r.ext:''});continue}const x=m.get(k),q=x.qty+r.qty;
       if(r.type==='buy'||r.type==='sell')x.price=(x.price!=null&&r.price!=null)?(x.price*x.qty+r.price*r.qty)/q:null;
       x.qty=q;x.fee+=r.fee;x.n++;x.ext=x.ext&&r.ext?x.ext+'+':''}
@@ -2994,9 +3037,9 @@ function cxCheck(r){
   if(!/^\d{4}-\d{2}-\d{2}$/.test(r.date))r.err=T('Λείπει η ημερομηνία','Date missing');
   else if(!(r.qty>0))r.err=T('Λείπει η ποσότητα','Quantity missing');
   else if((r.type==='buy'||r.type==='sell')&&!(r.price>0))r.err=r.srcCur&&!FIAT.has(r.srcCur)&&!STABLES.has(r.srcCur)&&!r.a?T(`Η τιμή είναι σε ${r.srcCur}: αντιστοίχισε πρώτα το ${r.srcCur}`,`The price is in ${r.srcCur}: match ${r.srcCur} first`):T(`Η τιμή σε ${r.srcCur||'?'} δεν μετατρέπεται σε ευρώ: γράψ' την με το χέρι`,`The price in ${r.srcCur||'?'} cannot be converted to euros: type it in`);
-  else if(!r.a)r.err=T('Διάλεξε ποιο asset είναι','Choose which asset this is');
-  if(!r.err&&r.a){
-    const same=state.tx.find(t=>t.a===r.a&&t.date===r.date&&t.type===r.type&&(r.ext&&t.ext===r.ext||Math.abs(t.qty-r.qty)<=Math.max(1e-9,r.qty*1e-6)&&(r.type!=='buy'&&r.type!=='sell'||Math.abs(t.price-r.price)<=r.price*0.01)));
+  else if(!r.a&&!r.mint)r.err=T('Διάλεξε ποιο asset είναι','Choose which asset this is');
+  if(!r.err&&(r.a||r.mint)){const ra=r.a||'m_'+r.mint;
+    const same=state.tx.find(t=>t.a===ra&&t.date===r.date&&t.type===r.type&&(r.ext&&t.ext===r.ext||Math.abs(t.qty-r.qty)<=Math.max(1e-9,r.qty*1e-6)&&(r.type!=='buy'&&r.type!=='sell'||Math.abs(t.price-r.price)<=r.price*0.01)));
     if(same){r.dup=true}
   }
 }
@@ -3016,6 +3059,7 @@ const CX_HELP=[
  ['Binance',T('Πορτοφόλι → Orders → Spot Order → Trade History → Export. Ή Wallet → Transaction History → Generate all statements (μαζί με ανταμοιβές Earn).','Orders → Spot Order → Trade History → Export. Or Wallet → Transaction History → Generate all statements (includes Earn rewards).')],
  ['Kraken',T('History → Export → «Trades» (ή «Ledgers» για να μπουν και οι ανταμοιβές staking) → CSV.','History → Export → “Trades” (or “Ledgers” to include staking rewards) → CSV.')],
  ['Coinbase',T('Προφίλ → Statements → Transaction history → Generate report → CSV.','Profile → Statements → Transaction history → Generate report → CSV.')],
+ ['Jupiter (Solana)',T('jup.ag/portfolio σε υπολογιστή → Activity → Next μέχρι να φορτώσουν οι παλιότερες συναλλαγές που θέλεις → Export CSV. Swaps με την πραγματική τιμή· μεταφορές και staking χωρίς κέρδος ή ζημιά· αντικαθιστά τις «αγορές σήμερα» από την εισαγωγή wallet για τα ίδια tokens.','jup.ag/portfolio on a computer → Activity → Next until the oldest transactions you want are loaded → Export CSV. Swaps at their real price; transfers and staking with no gain or loss; replaces the “bought today” rows from the wallet import for the same tokens.')],
  ['Trading 212',T('Ιστορικό → εικονίδιο λήψης → επίλεξε Orders και Dividends → Export CSV.','History → download icon → select Orders and Dividends → Export CSV.')],
  [T('Άλλος broker','Other broker'),T('Οποιοδήποτε CSV με ημερομηνία, σύμβολο ή ISIN, ποσότητα και τιμή. Θα σου δείξουμε ποια στήλη είναι τι, για να το διορθώσεις αν χρειαστεί.','Any CSV with date, symbol or ISIN, quantity and price. We show which column is which, so you can correct it if needed.')],
 ];
@@ -3030,7 +3074,7 @@ function cxDraw(){
       <details class="cxhelp"><summary>${T('Πώς το κατεβάζω;','How do I download it?')}</summary><dl>${CX_HELP.map(([n,t])=>`<dt>${n}</dt><dd>${t}</dd>`).join('')}</dl></details>`}
   else{
     const rows=CX.rows,on=rows.filter(r=>r.on),dups=rows.filter(r=>r.dup).length,errs=rows.filter(r=>r.err).length;
-    const unmatched=[...new Set(rows.filter(r=>!r.a&&r.type!=='skip').map(r=>r.isin?'isin:'+r.isin:r.sym).filter(Boolean))];
+    const unmatched=[...new Set(rows.filter(r=>!r.a&&!r.mint&&r.type!=='skip').map(r=>r.isin?'isin:'+r.isin:r.sym).filter(Boolean))];
     body=`<p class="cxsrc"><b>${esc(CX.file)}</b> · ${esc(CX.src)} · ${T(`${rows.length} συναλλαγές`,`${rows.length} transactions`)}${CX.order==='md'?' · '+T('ημερομηνίες μήνας/μέρα','dates month/day'):''}</p>`;
     if(CX.gen)body+=`<details class="cxmap"${CX.genOpen?' open':''}><summary>${T('Ποια στήλη είναι τι','Which column is what')}</summary><div class="cxmapg">${GEN_FIELDS.map(([f,l])=>`<label>${l}<select data-cxmap="${f}"><option value="-1">—</option>${CX.hdr.map((x,i)=>`<option value="${i}"${CX.map[f]===i?' selected':''}>${esc(x||('#'+(i+1)))}</option>`).join('')}</select></label>`).join('')}</div></details>`;
     if(unmatched.length)body+=`<div class="cxun"><h3>${T('Αντιστοίχισε αυτά τα assets','Match these assets')}</h3><p class="muted small">${T('Δεν τα βρήκαμε μόνοι μας. Διάλεξε τι είναι το καθένα· η επιλογή σου θα θυμάται και στις επόμενες εισαγωγές.','We could not find these ourselves. Choose what each one is; your choice is remembered for future imports.')}</p>
@@ -3052,7 +3096,7 @@ function cxRow(r,i){
   const pe=r.type==='buy'||r.type==='sell';
   return `<div class="cxr${r.on?'':' off'}${r.err?' bad':''}" data-i="${i}">
     <label class="cxon"><input type="checkbox" data-f="on"${r.on?' checked':''}${r.err?' disabled':''} aria-label="${T('Να καταχωρηθεί','Include')}"></label>
-    <div class="cxn"><b>${esc(name)}</b>${r.n>1?` <span class="muted small">×${r.n}</span>`:''}${!r.a?' <span class="neg small">'+T('χωρίς αντιστοίχιση','not matched')+'</span>':''}</div>
+    <div class="cxn"><b>${esc(name)}</b>${r.n>1?` <span class="muted small">×${r.n}</span>`:''}${!r.a&&r.mint?' <span class="muted small">'+T('νέο, με ζωντανή τιμή από το Jupiter','new, live price from Jupiter')+'</span>':!r.a?' <span class="neg small">'+T('χωρίς αντιστοίχιση','not matched')+'</span>':''}</div>
     <input type="date" data-f="date" value="${esc(r.date)}" aria-label="${T('Ημερομηνία','Date')}">
     <select data-f="type" aria-label="${T('Κίνηση','Type')}">${Object.entries(CXTYPE).map(([k,v])=>`<option value="${k}"${r.type===k?' selected':''}>${v}</option>`).join('')}</select>
     <label class="cxf cxq"><span>${r.type==='div'?T('Ποσό €','Amount €'):T('Ποσότητα','Quantity')}</span><input type="number" step="any" min="0" inputmode="decimal" data-f="qty" value="${r.qty>0?+(+r.qty).toPrecision(10):''}"></label>
@@ -3082,6 +3126,9 @@ async function cxLoad(file){
   const hdr=rows[hi].map(c=>c.trim()),data=rows.slice(hi+1).filter(r=>r.length>=Math.min(3,hdr.length));
   const di=reader?H(hdr,'Date(UTC)','UTC_Time','time','Timestamp','Time'):genGuess(hdr).date;
   CX.ctx={delim,order:cxDateOrder(data.slice(0,500).map(r=>r[di>-1?di:0]))};CX.order=CX.ctx.order;
+  if(reader?.id==='jupiter'){const ia=H(hdr,'address'),ms=[...new Set(data.map(r=>(r[ia]||'').trim()).filter(m=>m&&m!=='11111111111111111111111111111111'))],jpx={};
+    for(let i=0;i<ms.length;i+=50){try{const r=await jfetch(JUP+ms.slice(i,i+50).join(','));if(r.ok){const j=await r.json();for(const m of ms.slice(i,i+50))if(j[m]?.usdPrice>0)jpx[m]=j[m].usdPrice/FXL}}catch(e){console.warn('jup',e)}}
+    CX.ctx.jpx=jpx}
   CX.file=file.name;CX.hdr=hdr;CX.data=data;CX.reader=reader;CX.gen=!reader;CX.src=reader?reader.name:T('Γενικό αρχείο','Generic file');CX.merge=CX.merge??true;CX.shown=150;
   if(CX.gen){CX.map=genGuess(hdr);CX.genOpen=true}
   cxRebuild();
@@ -3092,13 +3139,23 @@ function cxClick(e){
   if(a==='close')cxClose();
   else if(a==='more'){CX.shown+=300;cxDraw()}
   else if(a==='again'){CX.rows=[];CX.gen=false;cxDraw()}
-  else if(a==='undo'){const imp=CX.undo.imp;state.tx=state.tx.filter(t=>t.imp!==imp);save();render();CX.undo=null;cxClose();toast(T('Η εισαγωγή αναιρέθηκε.','The import was undone.'),1)}
+  else if(a==='undo'){const imp=CX.undo.imp;state.tx=state.tx.filter(t=>t.imp!==imp).concat(CX.undo.removed||[]);save();render();CX.undo=null;cxClose();toast(T('Η εισαγωγή αναιρέθηκε.','The import was undone.'),1)}
   else if(a==='save'){
-    const imp='csv'+Date.now().toString(36),src=CX.reader?.id||'csv';let n=0;
+    const imp='csv'+Date.now().toString(36),src=CX.reader?.id||'csv';let n=0,removed=[];
+    if(state.sample)state={sample:false,onboarded:true,custom:{},mints:{},tx:[]};
+    if(src==='jupiter'){
+      const jp={};for(const r of CX.rows){const m=r.mint;if(m&&r.on&&!r.err&&!r.a&&!state.custom['m_'+m])jp[m]=1}
+      const mints=Object.keys(jp),cur={};
+      for(const r of CX.rows)if(!r.a&&r.mint){r.a='m_'+r.mint;if(!state.custom[r.a])state.custom[r.a]={name:r.sym||r.mint.slice(0,6),sym:r.sym,cls:r.cls==='cash'?'cash':'crypto',current:r.price>0?r.price:0,at:Date.now(),mint:r.mint}}
+      /* the CSV's history replaces "bought today" rows that the wallet or address import made for the same tokens */
+      const ids=new Set(CX.rows.filter(r=>r.on&&!r.err&&r.a).map(r=>r.a));
+      removed=state.tx.filter(t=>ids.has(t.a)&&(t.src==='wallet'||t.src==='sol'));state.tx=state.tx.filter(t=>!removed.includes(t));
+      if(mints.length)livePrices?.();
+    }
     for(const r of CX.rows){if(!r.on||r.err||!r.a)continue;
       const t={id:uid(),a:r.a,type:r.type,date:r.date,qty:+(+r.qty).toPrecision(12),price:r.type==='buy'||r.type==='sell'?+(+r.price).toPrecision(10):r.type==='div'?1:0,fee:r.type==='reward'?0:+(+r.fee||0).toFixed(4),reason:'',src,imp};
       if(r.ext)t.ext=r.ext;state.tx.push(t);n++}
-    state.onboarded=true;save();assetOptions('fAsset');render();CX.undo={imp,n};CX.rows=[];cxDraw();
+    state.onboarded=true;save();assetOptions('fAsset');render();CX.undo={imp,n,removed};CX.rows=[];cxDraw();
   }
 }
 function cxChange(e){

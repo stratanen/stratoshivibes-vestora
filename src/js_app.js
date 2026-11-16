@@ -6,7 +6,7 @@ const validAddr=a=>typeof a==='string'&&/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(a);
 let wallet=readJSON(WKEY);if(!wallet||!validAddr(wallet.addr))wallet=null;
 const saveWallet=()=>wallet?LS.set(WKEY,JSON.stringify(wallet)):LS.del(WKEY);
 /* Google Play edition: the Play app opens ?edition=play. No wallet and no SKR; every feature is free there (Play rules). */
-const PLAY=(()=>{const q=/[?&]edition=play\b/.test(location.search);try{if(q)localStorage.setItem('vestora-edition','play');return localStorage.getItem('vestora-edition')==='play'}catch(e){return q}})();
+const PLAY=(()=>{const q=/[?&]edition=play\b/.test(location.search);try{if(/[?&]edition=(dapp|seeker)\b/.test(location.search))localStorage.removeItem('vestora-edition');if(q)localStorage.setItem('vestora-edition','play');return localStorage.getItem('vestora-edition')==='play'}catch(e){return q}})();
 if(PLAY){wallet=null;document.documentElement.classList.add('play')}
 const isPro=()=>PLAY||!!wallet&&(!!wallet.genesis||(wallet.skrEur!=null&&wallet.skrEur>=THRESH_EUR));
 const needSkr=()=>skrEur?Math.ceil(THRESH_EUR/skrEur):null;

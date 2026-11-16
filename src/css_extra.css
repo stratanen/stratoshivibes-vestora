@@ -286,3 +286,5 @@ html.cxopen{overflow:hidden}
   .cxst{grid-column:2/4}
   .cxunr{grid-template-columns:1fr}
 }
+.histbox{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+.histbox p{margin:6px 0 10px}

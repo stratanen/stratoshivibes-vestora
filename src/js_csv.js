@@ -86,6 +86,40 @@ function splitPair(pair,base){
   for(const q of ['FDUSD','USDT','USDC','BUSD','TUSD','EUR','USD','BTC','ETH','BNB','TRY','GBP','DAI'])if(p.endsWith(q)&&p.length>q.length)return [p.slice(0,-q.length),q];
   return [p,''];
 }
+/* Jupiter CSV and the on-chain history share one rebuild: legs {sig,t,date,mint,sym,pre,ch,svc} → normalized rows */
+const JUP_SM=new Set(['EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v','Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB','JuprjznTrTSp2UFa3ZBUFgwdAmtZCq4MQCwysN55USD','2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo','USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA']);
+function jupRows(legs,ctx){const SM=JUP_SM;
+    legs.sort((a,b)=>a.t-b.t);
+    const idOf=m=>m===MINT.SOL?'SOL':m===MINT.BTC?'BTC':m===MINT.ETH?'ETH':Object.keys(ASSETS).find(k=>ASSETS[k].mint===m)||(state.mints&&Object.keys(state.mints).find(k=>state.mints[k]===m))||null;
+    const stable=m=>SM.has(m),dust=l=>l.mint===MINT.SOL&&Math.abs(l.ch)<0.002;
+    const known=(m,date)=>{if(stable(m))return 1/cxWeekFx(date);const id=idOf(m);if(id&&PRICES[id]){const p=PRICES[id][toWeek(date)];if(p>0)return p}return null};
+    /* prices learned from swaps for tokens without a price history */
+    const pts={},bySig=new Map();for(const l of legs){if(!bySig.has(l.sig))bySig.set(l.sig,[]);bySig.get(l.sig).push(l)}
+    const swaps=[];
+    for(const [sig,g] of bySig){const real=g.filter(l=>!dust(l)),out=real.filter(l=>l.ch<0),inn=real.filter(l=>l.ch>0);if(!out.length||!inn.length)continue;swaps.push(sig);
+      const val=side=>{let v=0;for(const l of side){const p=known(l.mint,l.date);if(p==null)return null;v+=Math.abs(l.ch)*p}return v};
+      const vo=val(out),vi=val(inn),V=vo??vi;if(V==null)continue;
+      for(const side of [out,inn]){const un=side.filter(l=>known(l.mint,l.date)==null);if(un.length===1){const pr=side.filter(l=>l!==un[0]).reduce((s,l)=>s+Math.abs(l.ch)*known(l.mint,l.date),0);
+        const p=(V-pr)/Math.abs(un[0].ch);if(p>0)(pts[un[0].mint]=pts[un[0].mint]||[]).push({t:un[0].t,p})}}}
+    const jpx=ctx.jpx||{},est={};
+    const priceAt=(l)=>{const k=known(l.mint,l.date);if(k!=null)return k;const ps=pts[l.mint];
+      if(ps&&ps.length){let b=ps[0];for(const x of ps)if(Math.abs(x.t-l.t)<Math.abs(b.t-l.t))b=x;return b.p}
+      const j=jpx[l.mint];if(j>0){est[l.mint]=1;return j}return null};
+    const out=[],pos={},firstSeen=new Set(),hasJup=new Set(state.tx.filter(t=>/^jup:/.test(t.ext||'')).map(t=>t.a));
+    const base=l=>({date:l.date,sym:l.sym||l.mint.slice(0,4),a:idOf(l.mint),mint:l.mint,cls:stable(l.mint)?'cash':'crypto',priceCur:'EUR'});
+    const P=m=>pos[m]||(pos[m]={q:0,c:0});
+    const buy=(l,q,p,ext,note)=>{const x=P(l.mint);x.q+=q;x.c+=q*(p||0);out.push({...base(l),type:'buy',qty:q,price:p??NaN,ext,note:est[l.mint]&&!known(l.mint,l.date)&&!pts[l.mint]?T('Τιμή: η σημερινή, γιατί δεν βρέθηκε τιμή εκείνης της μέρας','Price: today\'s, as no price for that day was found')+(note?' · '+note:''):note})};
+    const sell=(l,q,p,ext,note)=>{const x=P(l.mint),avg=x.q>0?x.c/x.q:p;x.c-=Math.min(q,x.q)*avg;x.q=Math.max(0,x.q-q);out.push({...base(l),type:'sell',qty:q,price:p??avg??NaN,ext,note})};
+    for(const l of legs){
+      if(!firstSeen.has(l.mint)){firstSeen.add(l.mint);const q0=isFinite(l.pre)?l.pre:0;
+        if(q0>0&&!(l.mint===MINT.SOL&&q0<0.002)&&!hasJup.has(idOf(l.mint)||'m_'+l.mint))buy(l,q0,priceAt(l),'jup:open:'+l.mint+':'+l.date,ctx.chain?T('Υπόλοιπο πριν από την παλιότερη συναλλαγή','Balance before the oldest transaction'):T('Υπόλοιπο στην αρχή του αρχείου','Balance at the start of the file'))}
+      if(l.only||dust(l))continue;
+      if(l.sig==='adjust'&&hasJup.has(idOf(l.mint)||'m_'+l.mint))continue;
+      const g=bySig.get(l.sig),isSwap=swaps.includes(l.sig),ext='jup:'+l.sig+':'+l.mint,q=Math.abs(l.ch);
+      if(isSwap){l.ch>0?buy(l,q,priceAt(l),ext,l.svc):sell(l,q,priceAt(l),ext,l.svc);continue}
+      if(l.ch>0)buy(l,q,priceAt(l),ext,T('Εισερχόμενο','Incoming')+(l.svc?' · '+l.svc:''));
+      else{const x=P(l.mint);sell(l,q,x.q>0?x.c/x.q:priceAt(l),ext,T('Μεταφορά: χωρίς κέρδος ή ζημιά','Transfer: no gain or loss')+(l.svc?' · '+l.svc:''))}}
+    return out}
 const READERS=[
  {id:'binance-trades',name:'Binance (Trade History)',test:h=>has(h,'Date(UTC)','Pair')&&(H(h,'Side')>-1||H(h,'Type')>-1),
   read(rows,h,ctx){const iD=H(h,'Date(UTC)'),iP=H(h,'Pair'),iB=H(h,'Base Asset'),iQ=H(h,'Quote Asset'),iS=H(h,'Side')>-1?H(h,'Side'):H(h,'Type'),iPr=H(h,'Price'),
@@ -149,41 +183,12 @@ const READERS=[
        going out leaves at average cost (no profit or loss), coming in is a purchase at the day's price;
      - failed transactions and SOL network fees are ignored. */
   read(rows,h,ctx){const iS=H(h,'signature'),iT=H(h,'blockTime'),iOk=H(h,'success'),iTk=H(h,'ticker'),iA=H(h,'address'),iPre=H(h,'preBalance'),iCh=H(h,'balanceChange'),iSv=H(h,'serviceName');
-    const NATIVE='11111111111111111111111111111111',SM=new Set(['EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v','Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB','JuprjznTrTSp2UFa3ZBUFgwdAmtZCq4MQCwysN55USD','2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo','USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA']);
+    const NATIVE='11111111111111111111111111111111';
     const legs=[];
     for(const r of rows){if(iOk>-1&&String(r[iOk]).trim()!=='true')continue;const mint0=(r[iA]||'').trim(),ch=cxNum(r[iCh],ctx.delim);if(!mint0||!isFinite(ch)||!ch)continue;
       const mint=mint0===NATIVE?MINT.SOL:mint0,t=String(r[iT]||'').trim(),ms=Date.parse(t);if(!isFinite(ms))continue;
       legs.push({sig:r[iS],t:ms,date:new Date(ms).toISOString().slice(0,10),mint,sym:(r[iTk]||'').trim(),pre:cxNum(r[iPre],ctx.delim),ch,svc:r[iSv]||''})}
-    legs.sort((a,b)=>a.t-b.t);
-    const idOf=m=>m===MINT.SOL?'SOL':m===MINT.BTC?'BTC':m===MINT.ETH?'ETH':Object.keys(ASSETS).find(k=>ASSETS[k].mint===m)||(state.mints&&Object.keys(state.mints).find(k=>state.mints[k]===m))||null;
-    const stable=m=>SM.has(m),dust=l=>l.mint===MINT.SOL&&Math.abs(l.ch)<0.002;
-    const known=(m,date)=>{if(stable(m))return 1/cxWeekFx(date);const id=idOf(m);if(id&&PRICES[id]){const p=PRICES[id][toWeek(date)];if(p>0)return p}return null};
-    /* prices learned from swaps for tokens without a price history */
-    const pts={},bySig=new Map();for(const l of legs){if(!bySig.has(l.sig))bySig.set(l.sig,[]);bySig.get(l.sig).push(l)}
-    const swaps=[];
-    for(const [sig,g] of bySig){const real=g.filter(l=>!dust(l)),out=real.filter(l=>l.ch<0),inn=real.filter(l=>l.ch>0);if(!out.length||!inn.length)continue;swaps.push(sig);
-      const val=side=>{let v=0;for(const l of side){const p=known(l.mint,l.date);if(p==null)return null;v+=Math.abs(l.ch)*p}return v};
-      const vo=val(out),vi=val(inn),V=vo??vi;if(V==null)continue;
-      for(const side of [out,inn]){const un=side.filter(l=>known(l.mint,l.date)==null);if(un.length===1){const pr=side.filter(l=>l!==un[0]).reduce((s,l)=>s+Math.abs(l.ch)*known(l.mint,l.date),0);
-        const p=(V-pr)/Math.abs(un[0].ch);if(p>0)(pts[un[0].mint]=pts[un[0].mint]||[]).push({t:un[0].t,p})}}}
-    const jpx=ctx.jpx||{},est={};
-    const priceAt=(l)=>{const k=known(l.mint,l.date);if(k!=null)return k;const ps=pts[l.mint];
-      if(ps&&ps.length){let b=ps[0];for(const x of ps)if(Math.abs(x.t-l.t)<Math.abs(b.t-l.t))b=x;return b.p}
-      const j=jpx[l.mint];if(j>0){est[l.mint]=1;return j}return null};
-    const out=[],pos={},firstSeen=new Set(),hasJup=new Set(state.tx.filter(t=>/^jup:/.test(t.ext||'')).map(t=>t.a));
-    const base=l=>({date:l.date,sym:l.sym||l.mint.slice(0,4),a:idOf(l.mint),mint:l.mint,cls:stable(l.mint)?'cash':'crypto',priceCur:'EUR'});
-    const P=m=>pos[m]||(pos[m]={q:0,c:0});
-    const buy=(l,q,p,ext,note)=>{const x=P(l.mint);x.q+=q;x.c+=q*(p||0);out.push({...base(l),type:'buy',qty:q,price:p??NaN,ext,note:est[l.mint]&&!known(l.mint,l.date)&&!pts[l.mint]?T('Τιμή: η σημερινή, γιατί δεν βρέθηκε τιμή εκείνης της μέρας','Price: today\'s, as no price for that day was found')+(note?' · '+note:''):note})};
-    const sell=(l,q,p,ext,note)=>{const x=P(l.mint),avg=x.q>0?x.c/x.q:p;x.c-=Math.min(q,x.q)*avg;x.q=Math.max(0,x.q-q);out.push({...base(l),type:'sell',qty:q,price:p??avg??NaN,ext,note})};
-    for(const l of legs){
-      if(!firstSeen.has(l.mint)){firstSeen.add(l.mint);const q0=isFinite(l.pre)?l.pre:0;
-        if(q0>0&&!(l.mint===MINT.SOL&&q0<0.002)&&!hasJup.has(idOf(l.mint)||'m_'+l.mint))buy(l,q0,priceAt(l),'jup:open:'+l.mint+':'+l.date,T('Υπόλοιπο στην αρχή του αρχείου','Balance at the start of the file'))}
-      if(dust(l))continue;
-      const g=bySig.get(l.sig),isSwap=swaps.includes(l.sig),ext='jup:'+l.sig+':'+l.mint,q=Math.abs(l.ch);
-      if(isSwap){l.ch>0?buy(l,q,priceAt(l),ext,l.svc):sell(l,q,priceAt(l),ext,l.svc);continue}
-      if(l.ch>0)buy(l,q,priceAt(l),ext,T('Εισερχόμενο','Incoming')+(l.svc?' · '+l.svc:''));
-      else{const x=P(l.mint);sell(l,q,x.q>0?x.c/x.q:priceAt(l),ext,T('Μεταφορά: χωρίς κέρδος ή ζημιά','Transfer: no gain or loss')+(l.svc?' · '+l.svc:''))}}
-    return out}},
+    return jupRows(legs,ctx)}},
  {id:'trading212',name:'Trading 212',test:h=>has(h,'Action','No. of shares')&&(H(h,'Price / share')>-1||H(h,'Price per share')>-1),
   read(rows,h,ctx){const iA=H(h,'Action'),iT=H(h,'Time'),iI=H(h,'ISIN'),iTk=H(h,'Ticker'),iN=H(h,'Name'),iQ=H(h,'No. of shares'),iP=H(h,'Price / share','Price per share'),
     iPC=H(h,'Currency (Price / share)'),iX=H(h,'Exchange rate'),iTo=H(h,'Total'),iTC=H(h,'Currency (Total)'),iId=H(h,'ID');
@@ -280,7 +285,7 @@ function cxCheck(r){
 /* --- the dialog --- */
 function cxOpen(){
   if(!DATA){toast(T('Περίμενε να φορτώσουν οι τιμές.','Wait for prices to load.'));return}
-  CX.rows=[];CX.notes=[];CX.src='';CX.file='';CX.undo=null;CX.gen=false;CX.reader=null;
+  CX.rows=[];CX.notes=[];CX.src='';CX.file='';CX.undo=null;CX.gen=false;CX.reader=null;CX.chain=false;
   let d=$('csvDlg');
   if(!d){d=document.createElement('div');d.id='csvDlg';d.className='cxdlg';d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');d.setAttribute('aria-labelledby','cxTitle');document.body.appendChild(d);
     d.addEventListener('click',cxClick);d.addEventListener('change',cxChange);d.addEventListener('input',cxInput);
@@ -319,7 +324,7 @@ function cxDraw(){
       ${CX.notes.length?`<details class="cxnotes"><summary>${T(`${CX.notes.length} γραμμές παραλείφθηκαν`,`${CX.notes.length} rows skipped`)}</summary><ul>${CX.notes.slice(0,60).map(n=>`<li>${esc(n.date||'')} ${esc(n.sym||'')} — ${esc(n.note||'')}</li>`).join('')}</ul></details>`:''}
       <div class="cxfoot"><button class="btn" type="button" data-cx="again">${T('Άλλο αρχείο','Another file')}</button><button class="btn primary" type="button" data-cx="save"${on.length?'':' disabled'}>${T(`Καταχώρηση ${on.length}`,`Add ${on.length}`)}</button></div>`;
   }
-  d.innerHTML=`<div class="cxbox"><div class="cxhead"><h2 id="cxTitle">${T('Εισαγωγή από CSV','Import from CSV')}</h2><button class="cxx" type="button" data-cx="close" aria-label="${T('Κλείσιμο','Close')}">×</button></div><div class="cxbody">${body}</div></div>`;
+  d.innerHTML=`<div class="cxbox"><div class="cxhead"><h2 id="cxTitle">${CX.chain?T('Ιστορικό συναλλαγών','Transaction history'):T('Εισαγωγή από CSV','Import from CSV')}</h2><button class="cxx" type="button" data-cx="close" aria-label="${T('Κλείσιμο','Close')}">×</button></div><div class="cxbody">${body}</div></div>`;
   d.querySelectorAll('[data-cxu]').forEach((inp,i)=>attachPicker(inp,$('cxl'+i),it=>cxPick(inp.dataset.cxu,it)));
 }
 const CXTYPE={buy:T('Αγορά','Buy'),sell:T('Πώληση','Sell'),reward:T('Ανταμοιβή','Reward'),div:T('Μέρισμα','Dividend')};
@@ -404,4 +409,48 @@ function cxInput(e){const r=cxRowOf(e),f=e.target.dataset.f;if(!r||!['qty','pric
   const was=r.err;cxCheck(r);if(!r.err&&was)r.on=true;if(!!was!==!!r.err){const el=e.target.closest('.cxr');el.classList.toggle('bad',!!r.err);el.querySelector('[data-f="on"]').disabled=!!r.err;el.querySelector('[data-f="on"]').checked=r.on;el.classList.toggle('off',!r.on);el.querySelector('.cxst').innerHTML=r.err?`<span class="neg">${esc(r.err)}</span>`:''}cxSum()}
 function cxSum(){const d=$('csvDlg');if(!d)return;const n=CX.rows.filter(r=>r.on&&!r.err).length,b=d.querySelector('[data-cx="save"]');if(b){b.textContent=T(`Καταχώρηση ${n}`,`Add ${n}`);b.disabled=!n}
   const s=d.querySelector('.cxsum span');if(s)s.innerHTML=T(`Θα καταχωρηθούν <b>${n}</b>`,`<b>${n}</b> will be added`)}
+
+/* ---------- Solana history from the blockchain (no file) ----------
+   Helius "transactions for an address": 100 analysed transactions per request, newest first. Only the public address is sent.
+   Each token's opening balance = today's balance minus every change found, so the result always ends at today's balance. */
+async function solHistoryRows(addr,onProg,stop){
+  const key=HELIUS.split('api-key=')[1],base=`https://api-mainnet.helius-rpc.com/v0/addresses/${addr}/transactions?api-key=${key}&limit=100`;
+  const txs=[];let before='',pages=0;
+  while(pages<100&&!stop?.()){let r,tries=0;
+    for(;;){r=await fetch(base+(before?'&before='+before:''));if(r.status!==429||tries++>6)break;await new Promise(f=>setTimeout(f,1500*tries))}
+    if(!r.ok)throw new Error('helius '+r.status);const page=await r.json();pages++;if(!Array.isArray(page)||!page.length)break;
+    txs.push(...page);before=page[page.length-1].signature;onProg?.(txs.length,page[page.length-1].timestamp);if(page.length<100)break;
+    await new Promise(f=>setTimeout(f,350))}
+  const cap=x=>String(x||'').toLowerCase().replace(/_/g,' ').replace(/(^|\s)\S/g,c=>c.toUpperCase());
+  const legs=[];
+  for(const x of txs){if(x.transactionError||!x.timestamp)continue;const t=x.timestamp*1000,date=new Date(t).toISOString().slice(0,10),ch={};
+    for(const a of x.accountData||[]){if(a.account===addr&&a.nativeBalanceChange)ch[MINT.SOL]=(ch[MINT.SOL]||0)+a.nativeBalanceChange/1e9;
+      for(const tb of a.tokenBalanceChanges||[])if(tb.userAccount===addr){const amt=Number(tb.rawTokenAmount?.tokenAmount)/10**(+tb.rawTokenAmount?.decimals||0);if(amt)ch[tb.mint]=(ch[tb.mint]||0)+amt}}
+    const svc=[cap(x.source==='UNKNOWN'?'':x.source),cap(x.type==='UNKNOWN'?'':x.type)].filter(Boolean).join(' ');
+    for(const [mint,c] of Object.entries(ch))if(Math.abs(c)>1e-12)legs.push({sig:x.signature,t,date,mint,sym:'',pre:NaN,ch:c,svc})}
+  /* today's balances */
+  const opt={encoding:'jsonParsed',commitment:'confirmed'};
+  const [bal,a1,a2]=await Promise.all([rpc('getBalance',[addr,{commitment:'confirmed'}]),rpc('getTokenAccountsByOwner',[addr,{programId:'TokenkegQfeZyiNwAJbNbGqPFXcQeP8ZpBYsLmQkPEeH6ug'},opt],20000),
+    rpc('getTokenAccountsByOwner',[addr,{programId:TOKEN_2022},opt],20000).catch(()=>({value:[]}))]);
+  const cur={[MINT.SOL]:(+(bal?.value??bal)||0)/1e9};
+  for(const ac of [...(a1?.value||[]),...(a2?.value||[])]){const i=ac.account?.data?.parsed?.info,q=+i?.tokenAmount?.uiAmount;if(i&&q>0)cur[i.mint]=(cur[i.mint]||0)+q}
+  /* names and today's prices from Jupiter, by token address */
+  const mints=[...new Set([...legs.map(l=>l.mint),...Object.keys(cur)])],meta={},jpx={};
+  for(let i=0;i<mints.length;i+=100){try{const r=await jfetch(JUPS+mints.slice(i,i+100).join(','));if(r.ok)for(const t of await r.json()){meta[t.id]=t;if(t.usdPrice>0)jpx[t.id]=t.usdPrice/FXL}}catch(e){console.warn('jup meta',e)}}
+  legs.sort((a,b)=>a.t-b.t);
+  const t0=legs.length?legs[0].t:Date.now(),d0=new Date(t0).toISOString().slice(0,10),sum={},first={};
+  for(const l of legs){sum[l.mint]=(sum[l.mint]||0)+l.ch;if(!first[l.mint])first[l.mint]=l}
+  const extra=[];
+  for(const m of mints){const open=(cur[m]||0)-(sum[m]||0);
+    if(first[m]){first[m].pre=Math.max(0,open);if(open<-1e-9){const l=legs[legs.length-1];extra.push({sig:'adjust',t:Date.now(),date:todayIso(),mint:m,sym:'',pre:NaN,ch:-open,svc:T('Διόρθωση: κινήσεις που δεν βρέθηκαν στο ιστορικό','Adjustment: movements not found in the history')})}}
+    else if(cur[m]>0)extra.push({sig:'open',t:t0,date:d0,mint:m,sym:'',pre:cur[m],ch:0,svc:'',only:true})}
+  let all=[...extra.filter(x=>x.only),...legs,...extra.filter(x=>!x.only)];
+  for(const l of all){const t=meta[l.mint];l.sym=String(t?.symbol||'').trim()||(l.mint===MINT.SOL?'SOL':l.mint.slice(0,4)+'…')}
+  /* tokens with no price at all (usually airdrop spam) are left out */
+  const priced=m=>m===MINT.SOL||JUP_SM.has(m)||jpx[m]>0||Object.values(ASSETS).some(a=>a.mint===m);
+  const dropped=new Set(all.filter(l=>!priced(l.mint)).map(l=>l.mint));all=all.filter(l=>priced(l.mint));
+  const rows=jupRows(all,{jpx,chain:true});
+  return{rows,n:txs.length,oldest:txs.length?txs[txs.length-1].timestamp*1000:null,dropped:dropped.size};
+}
+function cxShowRows(rows,name,file){cxOpen();CX.chain=true;CX.reader={id:'jupiter',name,read:()=>rows};CX.src=name;CX.file=file;CX.data=[];CX.hdr=[];CX.ctx={};CX.merge=false;CX.gen=false;cxRebuild()}
 (()=>{const head=document.querySelector('#txPanel .phead .btns');if(!head)return;const b=document.createElement('button');b.className='btn';b.type='button';b.id='btnCsv';b.textContent=T('Εισαγωγή από CSV','Import from CSV');head.prepend(b);b.addEventListener('click',cxOpen)})();

@@ -229,12 +229,14 @@ function drawSheet(){
       `<div class="row"><button class="btn" type="button" data-act="${E?'eth':S?'sol':'done'}">Πίσω</button>${I.list.length?`<button class="btn primary" type="button" data-act="doimport">Προσθήκη επιλεγμένων</button>`:''}</div>`;
     }
   }else if(st==='sol'){
-    const P=flow.sol||{},last=P.addr||LS.get(SKEY)||'';
+    const P=flow.sol||{},last=P.addr||LS.get(SKEY)||'',Hh=flow.hist;
+    if(Hh){s.innerHTML=head('Ιστορικό από το blockchain')+`<p class="num">${short(Hh.addr)}</p>${Hh.error?`<div class="verdict short" role="status">Δεν ήταν δυνατή η ανάγνωση του ιστορικού. Δοκίμασε ξανά σε λίγο.</div><div class="row"><button class="btn" type="button" data-act="sol">Πίσω</button></div>`:`<p role="status" aria-live="polite">Διαβάζονται οι συναλλαγές… <b id="histN">${Hh.n||0}</b>${Hh.d?` <span class="muted" id="histD">(έως ${longDate(Hh.d)})</span>`:''}</p><p class="muted small">Για περίπου 1.000 συναλλαγές χρειάζεται λιγότερο από ένα λεπτό.</p><div class="row"><button class="btn" type="button" data-act="histstop">Σταμάτα εδώ</button></div>`}`;return}
     s.innerHTML=head('Εισαγωγή από Solana')+`<p>Επικόλλησε τη δημόσια διεύθυνση του Solana wallet σου. Η Vestora διαβάζει τα υπόλοιπα και τις θέσεις στο Kamino και σου δείχνει τι βρήκε, για να διαλέξεις τι θα προστεθεί.</p>
       <p class="muted">Μόνο ανάγνωση: δεν συνδέεται wallet, δεν ζητείται υπογραφή, seed phrase ή private key, και τίποτα δεν μπορεί να μετακινηθεί. Η διεύθυνση στέλνεται στο δημόσιο RPC του Solana και στο Kamino για να διαβαστούν τα υπόλοιπα.</p>
       <div class="f"><label for="solAddr">Διεύθυνση Solana</label><input id="solAddr" type="text" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="π.χ. 7xKX…" value="${esc(last)}"></div>
       ${P.loading?`<p class="muted" role="status">Διαβάζονται τα υπόλοιπα…</p>`:P.error?`<div class="verdict short" role="status">Δεν ήταν δυνατή η ανάγνωση. Έλεγξε τη σύνδεση στο internet και δοκίμασε ξανά.</div>`:`<p class="neg small" id="solMsg" role="status"></p>`}
-      <div class="row"><button class="btn" type="button" data-act="close">Άκυρο</button><button class="btn primary" type="button" data-act="solgo"${P.loading?' disabled':''}>Διάβασε τα υπόλοιπα</button></div>`;
+      <div class="row"><button class="btn" type="button" data-act="close">Άκυρο</button><button class="btn primary" type="button" data-act="solgo"${P.loading?' disabled':''}>Διάβασε τα υπόλοιπα</button></div>
+      <div class="histbox"><b>Ή φέρε όλο το ιστορικό</b><p class="muted small">Διαβάζει τις συναλλαγές της διεύθυνσης από το blockchain και τις περνά με πραγματικές ημερομηνίες και τιμές: swaps με την τιμή τους, μεταφορές και staking χωρίς κέρδος ή ζημιά. Πριν την καταχώρηση βλέπεις και διορθώνεις τα πάντα. Αντικαθιστά τις «αγορές σήμερα» για τα ίδια tokens.</p><button class="btn" type="button" data-act="solhist"${P.loading?' disabled':''}>Φέρε το ιστορικό συναλλαγών</button></div>`;
   }else if(st==='eth'){
     const E=flow.eth||{},last=E.addr||LS.get(EKEY)||'';
     s.innerHTML=head('Εισαγωγή από Ethereum')+`<p>Επικόλλησε τη δημόσια διεύθυνση του Ethereum wallet σου. Η Vestora διαβάζει τα υπόλοιπα και σου δείχνει τι βρήκε, για να διαλέξεις τι θα προστεθεί.</p>
@@ -383,9 +385,11 @@ async function refreshDefi(){
 const SKEY='vestora-sol-v1',TOKEN_PROG='TokenkegQfeZyiNwAJbNbGqPFXcQeP8ZpBYsLmQkPEeH6ug';
 async function solPublicList(addr){
   const opt={encoding:'jsonParsed',commitment:'confirmed'};
-  const [bal,a1,a2]=await Promise.all([rpcAt(PUBLIC_RPC,'getBalance',[addr,{commitment:'confirmed'}]),
-    rpcAt(PUBLIC_RPC,'getTokenAccountsByOwner',[addr,{programId:TOKEN_PROG},opt],20000),
-    rpcAt(PUBLIC_RPC,'getTokenAccountsByOwner',[addr,{programId:TOKEN_2022},opt],20000).catch(()=>({value:[]}))]);
+  /* the public Solana node refuses browser requests, so balances come from Helius (the same node the wallet import uses), with the public node as fallback */
+  const R=(m,p,ms)=>rpc(m,p,ms).catch(()=>rpcAt(PUBLIC_RPC,m,p,ms));
+  const [bal,a1,a2]=await Promise.all([R('getBalance',[addr,{commitment:'confirmed'}]),
+    R('getTokenAccountsByOwner',[addr,{programId:TOKEN_PROG},opt],20000),
+    R('getTokenAccountsByOwner',[addr,{programId:TOKEN_2022},opt],20000).catch(()=>({value:[]}))]);
   const qty={};
   for(const a of [...(a1.value||[]),...(a2.value||[])]){const i=a.account?.data?.parsed?.info,q=+i?.tokenAmount?.uiAmount;if(i&&q>0)qty[i.mint]=(qty[i.mint]||0)+q}
   const mints=Object.keys(qty),meta={};
@@ -446,7 +450,16 @@ $('sheet').addEventListener('click',async e=>{
   if(a==='close')return closeSheet();
   if(a==='info'||a==='pick'||a==='done'){flow.step=a;if(a==='pick')loadBundle();return drawSheet()}
   if(a==='eth'){flow.step='eth';flow.eth=null;return drawSheet()}
-  if(a==='sol'){flow.step='sol';flow.sol=null;return drawSheet()}
+  if(a==='sol'){flow.step='sol';flow.sol=null;flow.hist=null;return drawSheet()}
+  if(a==='histstop'){if(flow.hist)flow.hist.stop=true;return}
+  if(a==='solhist'){const v=($('solAddr')?.value||'').trim();if(!validAddr(v)){const m=$('solMsg');if(m)m.textContent='Αυτή δεν μοιάζει με διεύθυνση Solana. Έχει 32 έως 44 γράμματα και αριθμούς, χωρίς 0x.';return}
+    LS.set(SKEY,v);const H={addr:v,n:0};flow.hist=H;drawSheet();
+    solHistoryRows(v,(n,ts)=>{H.n=n;H.d=new Date(ts*1000).toISOString().slice(0,10);const e=$('histN');if(e)e.textContent=n;const d=$('histD');if(d)d.textContent='(έως '+longDate(H.d)+')';else if(flow.hist===H)drawSheet()},()=>H.stop)
+      .then(r=>{if(flow.hist!==H)return;flow.hist=null;closeSheet();
+        if(!r.rows.length){toast('Δεν βρέθηκαν συναλλαγές με tokens που έχουν τιμή.');return}
+        cxShowRows(r.rows,'Solana · ιστορικό από το blockchain',`${short(v)} · ${r.n} συναλλαγές`+(r.oldest?' από '+longDate(new Date(r.oldest).toISOString().slice(0,10)):''));
+        if(r.dropped)toast(`Παραλείφθηκαν ${r.dropped} tokens χωρίς τιμή (συνήθως spam).`)})
+      .catch(e=>{console.warn('history',e);if(flow.hist===H){H.error=true;drawSheet()}});return}
   if(a==='solgo'){const v=$('solAddr').value.trim();if(!validAddr(v)){const m=$('solMsg');if(m)m.textContent=/\.sol$/i.test(v)?'Τα ονόματα .sol δεν υποστηρίζονται ακόμα. Επικόλλησε τη διεύθυνση.':'Αυτή δεν μοιάζει με διεύθυνση Solana. Έχει 32 έως 44 γράμματα και αριθμούς, χωρίς 0x.';return}return loadSol(v)}
   if(a==='ethgo'){const v=$('ethAddr').value.trim();
     if(!validEth(v)){const m=$('ethMsg');if(m)m.textContent=/\.eth$/i.test(v)?'Τα ονόματα .eth δεν υποστηρίζονται ακόμα. Επικόλλησε τη διεύθυνση που ξεκινά με 0x.':'Αυτή δεν μοιάζει με διεύθυνση Ethereum. Ξεκινά με 0x και έχει 42 χαρακτήρες.';return}

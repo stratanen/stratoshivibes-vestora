@@ -2213,6 +2213,10 @@ async function loadImport(){
       else if(/^Xs/.test(mint)&&/^[A-Z.]{1,6}x$/.test(sym)&&ASSETS[sym.slice(0,-1)]){id=sym.slice(0,-1);xstock=true}
       list.push({mint,id,name,sym,qty,xstock});
     }
+    /* Token-2022 tokens with a display multiplier (e.g. PreStocks after a split) report raw units in token_info; take the scaled amount the chain reports */
+    try{const r=await rpc('getTokenAccountsByOwner',[wallet.addr,{programId:TOKEN_2022},{encoding:'jsonParsed',commitment:'confirmed'}],20000),ui={};
+      for(const a of r.value||[]){const i=a.account?.data?.parsed?.info,q=+i?.tokenAmount?.uiAmount;if(i&&q>0)ui[i.mint]=(ui[i.mint]||0)+q}
+      for(const t of list)if(ui[t.mint]>0)t.qty=ui[t.mint]}catch(e){console.warn('t22 amounts',e)}
     try{const st=await skrStaked(wallet.addr);if(st>0)list.push({mint:MINT.SKR,id:null,name:'Seeker (staked)',sym:'SKR',qty:st,staked:true})}catch(e){console.warn('skr stake',e)}
     flow.imp=await finishSolList(wallet.addr,list);
   }catch(e){console.warn(e);flow.imp={error:_(496,"Έλεγξε τη σύνδεση στο internet.")}}
@@ -3214,7 +3218,12 @@ async function solHistoryRows(addr,onProg,stop){
   const [bal,a1,a2]=await Promise.all([rpc('getBalance',[addr,{commitment:'confirmed'}]),rpc('getTokenAccountsByOwner',[addr,{programId:'TokenkegQfeZyiNwAJbNbGqPFXcQeP8ZpBYsLmQkPEeH6ug'},opt],20000),
     rpc('getTokenAccountsByOwner',[addr,{programId:TOKEN_2022},opt],20000).catch(()=>({value:[]}))]);
   const cur={[MINT.SOL]:(+(bal?.value??bal)||0)/1e9};
-  for(const ac of [...(a1?.value||[]),...(a2?.value||[])]){const i=ac.account?.data?.parsed?.info,q=+i?.tokenAmount?.uiAmount;if(i&&q>0)cur[i.mint]=(cur[i.mint]||0)+q}
+  const mult={};
+  for(const ac of [...(a1?.value||[]),...(a2?.value||[])]){const i=ac.account?.data?.parsed?.info,ta=i?.tokenAmount,q=+ta?.uiAmount;if(!i||!(q>0))continue;cur[i.mint]=(cur[i.mint]||0)+q;
+    const raw=Number(ta.amount)/10**(+ta.decimals||0);if(raw>0&&Math.abs(q/raw-1)>1e-6)mult[i.mint]=q/raw}
+  /* tokens with a display multiplier (Token-2022 scaled amount, e.g. PreStocks after a split): the history holds raw units, so every change is scaled
+     by today's multiplier, the same way share counts are adjusted after a stock split */
+  for(const l of legs)if(mult[l.mint])l.ch*=mult[l.mint];
   /* names and today's prices from Jupiter, by token address */
   const mints=[...new Set([...legs.map(l=>l.mint),...Object.keys(cur)])],meta={},jpx={};
   for(let i=0;i<mints.length;i+=100){try{const r=await jfetch(JUPS+mints.slice(i,i+100).join(','));if(r.ok)for(const t of await r.json()){meta[t.id]=t;if(t.usdPrice>0)jpx[t.id]=t.usdPrice/FXL}}catch(e){console.warn('jup meta',e)}}
@@ -3222,7 +3231,7 @@ async function solHistoryRows(addr,onProg,stop){
   const t0=legs.length?legs[0].t:Date.now(),d0=new Date(t0).toISOString().slice(0,10),sum={},first={};
   for(const l of legs){sum[l.mint]=(sum[l.mint]||0)+l.ch;if(!first[l.mint])first[l.mint]=l}
   const extra=[];
-  for(const m of mints){const open=(cur[m]||0)-(sum[m]||0);
+  for(const m of mints){let open=(cur[m]||0)-(sum[m]||0);if(Math.abs(open)<=1e-9*Math.max(1,Math.abs(cur[m]||0)))open=0;
     if(first[m]){first[m].pre=Math.max(0,open);if(open<-1e-9){const l=legs[legs.length-1];extra.push({sig:'adjust',t:Date.now(),date:todayIso(),mint:m,sym:'',pre:NaN,ch:-open,svc:T('Διόρθωση: κινήσεις που δεν βρέθηκαν στο ιστορικό','Adjustment: movements not found in the history')})}}
     else if(cur[m]>0)extra.push({sig:'open',t:t0,date:d0,mint:m,sym:'',pre:cur[m],ch:0,svc:'',only:true})}
   let all=[...extra.filter(x=>x.only),...legs,...extra.filter(x=>!x.only)];

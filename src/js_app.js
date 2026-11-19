@@ -440,6 +440,10 @@ async function loadImport(){
       else if(/^Xs/.test(mint)&&/^[A-Z.]{1,6}x$/.test(sym)&&ASSETS[sym.slice(0,-1)]){id=sym.slice(0,-1);xstock=true}
       list.push({mint,id,name,sym,qty,xstock});
     }
+    /* Token-2022 tokens with a display multiplier (e.g. PreStocks after a split) report raw units in token_info; take the scaled amount the chain reports */
+    try{const r=await rpc('getTokenAccountsByOwner',[wallet.addr,{programId:TOKEN_2022},{encoding:'jsonParsed',commitment:'confirmed'}],20000),ui={};
+      for(const a of r.value||[]){const i=a.account?.data?.parsed?.info,q=+i?.tokenAmount?.uiAmount;if(i&&q>0)ui[i.mint]=(ui[i.mint]||0)+q}
+      for(const t of list)if(ui[t.mint]>0)t.qty=ui[t.mint]}catch(e){console.warn('t22 amounts',e)}
     try{const st=await skrStaked(wallet.addr);if(st>0)list.push({mint:MINT.SKR,id:null,name:'Seeker (staked)',sym:'SKR',qty:st,staked:true})}catch(e){console.warn('skr stake',e)}
     flow.imp=await finishSolList(wallet.addr,list);
   }catch(e){console.warn(e);flow.imp={error:'Έλεγξε τη σύνδεση στο internet.'}}

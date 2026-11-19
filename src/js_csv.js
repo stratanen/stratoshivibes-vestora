@@ -433,7 +433,12 @@ async function solHistoryRows(addr,onProg,stop){
   const [bal,a1,a2]=await Promise.all([rpc('getBalance',[addr,{commitment:'confirmed'}]),rpc('getTokenAccountsByOwner',[addr,{programId:'TokenkegQfeZyiNwAJbNbGqPFXcQeP8ZpBYsLmQkPEeH6ug'},opt],20000),
     rpc('getTokenAccountsByOwner',[addr,{programId:TOKEN_2022},opt],20000).catch(()=>({value:[]}))]);
   const cur={[MINT.SOL]:(+(bal?.value??bal)||0)/1e9};
-  for(const ac of [...(a1?.value||[]),...(a2?.value||[])]){const i=ac.account?.data?.parsed?.info,q=+i?.tokenAmount?.uiAmount;if(i&&q>0)cur[i.mint]=(cur[i.mint]||0)+q}
+  const mult={};
+  for(const ac of [...(a1?.value||[]),...(a2?.value||[])]){const i=ac.account?.data?.parsed?.info,ta=i?.tokenAmount,q=+ta?.uiAmount;if(!i||!(q>0))continue;cur[i.mint]=(cur[i.mint]||0)+q;
+    const raw=Number(ta.amount)/10**(+ta.decimals||0);if(raw>0&&Math.abs(q/raw-1)>1e-6)mult[i.mint]=q/raw}
+  /* tokens with a display multiplier (Token-2022 scaled amount, e.g. PreStocks after a split): the history holds raw units, so every change is scaled
+     by today's multiplier, the same way share counts are adjusted after a stock split */
+  for(const l of legs)if(mult[l.mint])l.ch*=mult[l.mint];
   /* names and today's prices from Jupiter, by token address */
   const mints=[...new Set([...legs.map(l=>l.mint),...Object.keys(cur)])],meta={},jpx={};
   for(let i=0;i<mints.length;i+=100){try{const r=await jfetch(JUPS+mints.slice(i,i+100).join(','));if(r.ok)for(const t of await r.json()){meta[t.id]=t;if(t.usdPrice>0)jpx[t.id]=t.usdPrice/FXL}}catch(e){console.warn('jup meta',e)}}
@@ -441,7 +446,7 @@ async function solHistoryRows(addr,onProg,stop){
   const t0=legs.length?legs[0].t:Date.now(),d0=new Date(t0).toISOString().slice(0,10),sum={},first={};
   for(const l of legs){sum[l.mint]=(sum[l.mint]||0)+l.ch;if(!first[l.mint])first[l.mint]=l}
   const extra=[];
-  for(const m of mints){const open=(cur[m]||0)-(sum[m]||0);
+  for(const m of mints){let open=(cur[m]||0)-(sum[m]||0);if(Math.abs(open)<=1e-9*Math.max(1,Math.abs(cur[m]||0)))open=0;
     if(first[m]){first[m].pre=Math.max(0,open);if(open<-1e-9){const l=legs[legs.length-1];extra.push({sig:'adjust',t:Date.now(),date:todayIso(),mint:m,sym:'',pre:NaN,ch:-open,svc:T('Διόρθωση: κινήσεις που δεν βρέθηκαν στο ιστορικό','Adjustment: movements not found in the history')})}}
     else if(cur[m]>0)extra.push({sig:'open',t:t0,date:d0,mint:m,sym:'',pre:cur[m],ch:0,svc:'',only:true})}
   let all=[...extra.filter(x=>x.only),...legs,...extra.filter(x=>!x.only)];

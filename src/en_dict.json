@@ -678,7 +678,15 @@
 "Αυτό το QR μοιάζει με μυστική φράση ή ιδιωτικό κλειδί. Η Vestora δεν τα δέχεται ποτέ. Δείξε το QR της δημόσιας διεύθυνσης.": "This QR looks like a seed phrase or a private key. Vestora never accepts those. Show the QR of the public address.",
 "Αυτό το QR δεν έχει διεύθυνση Ethereum.": "This QR has no Ethereum address.",
 "Αυτό το QR δεν έχει διεύθυνση Solana.": "This QR has no Solana address.",
-"<video playsinline muted></video><p class=\"qrmsg\" role=\"status\">Στόχευσε το QR με τη δημόσια διεύθυνση του wallet.</p><button class=\"btn\" type=\"button\">Άκυρο</button>": "<video playsinline muted></video><p class=\"qrmsg\" role=\"status\">Point the camera at the QR with your wallet's public address.</p><button class=\"btn\" type=\"button\">Cancel</button>"
+"<video playsinline muted></video><p class=\"qrmsg\" role=\"status\">Στόχευσε το QR με τη δημόσια διεύθυνση του wallet.</p><button class=\"btn\" type=\"button\">Άκυρο</button>": "<video playsinline muted></video><p class=\"qrmsg\" role=\"status\">Point the camera at the QR with your wallet's public address.</p><button class=\"btn\" type=\"button\">Cancel</button>",
+"<video playsinline muted></video><p class=\"qrmsg\" role=\"status\">Στόχευσε το QR με τη δημόσια διεύθυνση του wallet.</p><div class=\"qrbtns\"><button class=\"btn\" type=\"button\" data-q=\"photo\">Φωτογράφισε το QR</button><button class=\"btn\" type=\"button\" data-q=\"x\">Άκυρο</button></div><input type=\"file\" accept=\"image/*\" capture=\"environment\" hidden>": "<video playsinline muted></video><p class=\"qrmsg\" role=\"status\">Point the camera at the QR with your wallet's public address.</p><div class=\"qrbtns\"><button class=\"btn\" type=\"button\" data-q=\"photo\">Photograph the QR</button><button class=\"btn\" type=\"button\" data-q=\"x\">Cancel</button></div><input type=\"file\" accept=\"image/*\" capture=\"environment\" hidden>",
+"Διαβάζεται η φωτογραφία…": "Reading the photo…",
+"Δεν βρέθηκε QR στη φωτογραφία. Δοκίμασε πιο κοντά και με καλό φως.": "No QR found in the photo. Try closer and with good light.",
+"Δεν διαβάστηκε η φωτογραφία. Δοκίμασε ξανά.": "The photo could not be read. Try again.",
+"Η ζωντανή κάμερα δεν είναι διαθέσιμη εδώ. Πάτα «Φωτογράφισε το QR».": "The live camera is not available here. Tap “Photograph the QR”.",
+"Η ζωντανή κάμερα δεν άνοιξε (": "The live camera did not open (",
+"σφάλμα": "error",
+"). Πάτα «Φωτογράφισε το QR» ή επικόλλησε τη διεύθυνση.": "). Tap “Photograph the QR” or paste the address."
 },
 "html": {
 "Φορτώνουν οι τιμές…": "Loading prices…",

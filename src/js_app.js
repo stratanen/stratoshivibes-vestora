@@ -458,35 +458,37 @@ function qrAddress(text,net){
   return{}}
 async function scanQR(inputId){
   const net=inputId==='ethAddr'?'eth':'sol',input=$(inputId);
-  if(!navigator.mediaDevices?.getUserMedia){toast('Η κάμερα δεν είναι διαθέσιμη εδώ. Επικόλλησε τη διεύθυνση.');return}
   const box=document.createElement('div');box.className='qrscan';box.setAttribute('role','dialog');box.setAttribute('aria-label','Σκανάρισμα QR');
-  box.innerHTML='<video playsinline muted></video><p class="qrmsg" role="status">Στόχευσε το QR με τη δημόσια διεύθυνση του wallet.</p><button class="btn" type="button">Άκυρο</button>';
+  box.innerHTML='<video playsinline muted></video><p class="qrmsg" role="status">Στόχευσε το QR με τη δημόσια διεύθυνση του wallet.</p><div class="qrbtns"><button class="btn" type="button" data-q="photo">Φωτογράφισε το QR</button><button class="btn" type="button" data-q="x">Άκυρο</button></div><input type="file" accept="image/*" capture="environment" hidden>';
   document.body.appendChild(box);
-  const video=box.querySelector('video'),msg=box.querySelector('.qrmsg');let stream,stop=false;
+  const video=box.querySelector('video'),msg=box.querySelector('.qrmsg'),file=box.querySelector('input');let stream,stop=false,det=null;
   const done=()=>{stop=true;stream?.getTracks().forEach(t=>t.stop());box.remove()};
-  box.querySelector('button').addEventListener('click',done);
+  const finish=text=>{const r=qrAddress(text,net);
+    if(r.addr){done();input.value=r.addr;input.dispatchEvent(new Event('input',{bubbles:true}));input.focus();toast('Η διεύθυνση συμπληρώθηκε.');return true}
+    msg.textContent=r.secret?'Αυτό το QR μοιάζει με μυστική φράση ή ιδιωτικό κλειδί. Η Vestora δεν τα δέχεται ποτέ. Δείξε το QR της δημόσιας διεύθυνσης.':net==='eth'?'Αυτό το QR δεν έχει διεύθυνση Ethereum.':'Αυτό το QR δεν έχει διεύθυνση Solana.';return false};
+  const loadLib=()=>new Promise(r=>{if(window.jsQR||det)return r();const sc=document.createElement('script');sc.src='qr.bundle.js';sc.onload=r;sc.onerror=r;document.head.appendChild(sc)});
+  try{if('BarcodeDetector' in window)det=new BarcodeDetector({formats:['qr_code']})}catch(e){}
+  const decode=async src=>{ // src: video element or image bitmap
+    if(det){try{const r=await det.detect(src);if(r[0]?.rawValue)return r[0].rawValue}catch(e){}}
+    await loadLib();if(!window.jsQR)return '';
+    const w=src.videoWidth||src.width,h=src.videoHeight||src.height;if(!w)return '';
+    const k=Math.min(1,900/Math.max(w,h)),cv=document.createElement('canvas');cv.width=Math.round(w*k);cv.height=Math.round(h*k);
+    const cx=cv.getContext('2d',{willReadFrequently:true});cx.drawImage(src,0,0,cv.width,cv.height);
+    const d=cx.getImageData(0,0,cv.width,cv.height),r=window.jsQR(d.data,d.width,d.height);return r?.data||''};
+  box.addEventListener('click',e=>{const q=e.target.dataset?.q;if(q==='x')done();if(q==='photo')file.click()});
+  file.addEventListener('change',async()=>{const f=file.files[0];if(!f)return;msg.textContent='Διαβάζεται η φωτογραφία…';
+    try{const bmp=await createImageBitmap(f);const t=await decode(bmp);if(!t)msg.textContent='Δεν βρέθηκε QR στη φωτογραφία. Δοκίμασε πιο κοντά και με καλό φως.';else finish(t)}
+    catch(e){msg.textContent='Δεν διαβάστηκε η φωτογραφία. Δοκίμασε ξανά.'}file.value=''});
+  if(!navigator.mediaDevices?.getUserMedia){video.hidden=true;msg.textContent='Η ζωντανή κάμερα δεν είναι διαθέσιμη εδώ. Πάτα «Φωτογράφισε το QR».';return}
   try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false})}
-  catch(e){done();toast('Δεν δόθηκε πρόσβαση στην κάμερα. Μπορείς να επικολλήσεις τη διεύθυνση.');return}
+  catch(e){video.hidden=true;msg.textContent='Η ζωντανή κάμερα δεν άνοιξε ('+(e&&e.name||'σφάλμα')+'). Πάτα «Φωτογράφισε το QR» ή επικόλλησε τη διεύθυνση.';return}
   if(stop){stream.getTracks().forEach(t=>t.stop());return}
   video.srcObject=stream;try{await video.play()}catch(e){}
-  let det=null;try{if('BarcodeDetector' in window)det=new BarcodeDetector({formats:['qr_code']})}catch(e){}
-  if(!det){await new Promise(r=>{if(window.jsQR)return r();const sc=document.createElement('script');sc.src='qr.bundle.js';sc.onload=r;sc.onerror=r;document.head.appendChild(sc)});
-    if(!window.jsQR&&!stop){done();toast('Δεν φορτώθηκε ο αναγνώστης QR. Επικόλλησε τη διεύθυνση.');return}}
-  const cv=document.createElement('canvas'),cx=cv.getContext('2d',{willReadFrequently:true});
   while(!stop){
-    await new Promise(r=>setTimeout(r,det?150:250));
+    await new Promise(r=>setTimeout(r,det?150:300));
     if(stop||!video.videoWidth)continue;
-    let text='';
-    try{
-      if(det){const r=await det.detect(video);text=r[0]?.rawValue||''}
-      else{const k=Math.min(1,640/video.videoWidth);cv.width=Math.round(video.videoWidth*k);cv.height=Math.round(video.videoHeight*k);cx.drawImage(video,0,0,cv.width,cv.height);
-        const d=cx.getImageData(0,0,cv.width,cv.height),r=window.jsQR(d.data,d.width,d.height);text=r?.data||''}
-    }catch(e){continue}
-    if(!text)continue;
-    const r=qrAddress(text,net);
-    if(r.addr){done();input.value=r.addr;input.dispatchEvent(new Event('input',{bubbles:true}));input.focus();toast('Η διεύθυνση συμπληρώθηκε.');return}
-    msg.textContent=r.secret?'Αυτό το QR μοιάζει με μυστική φράση ή ιδιωτικό κλειδί. Η Vestora δεν τα δέχεται ποτέ. Δείξε το QR της δημόσιας διεύθυνσης.':net==='eth'?'Αυτό το QR δεν έχει διεύθυνση Ethereum.':'Αυτό το QR δεν έχει διεύθυνση Solana.';
-  }
+    let t='';try{t=await decode(video)}catch(e){continue}
+    if(t&&finish(t))return}
 }
 $('sheet').addEventListener('click',async e=>{
   const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act;

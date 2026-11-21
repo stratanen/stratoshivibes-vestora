@@ -70,6 +70,23 @@ jobs:
           grep -n -A2 "BackHandler(enabled" "$F"
           grep -q "BackHandler(enabled = true)" "$F"
 
+      - name: Allow the camera (QR scan) and image picking in the web view
+        # The web shell template has no camera permission and no handlers for the page's camera and file-picker requests,
+        # so getUserMedia fails with NotAllowedError. This adds the CAMERA permission, a small helper (android-assets/CameraBridge.kt)
+        # and two handlers in the template's WebChromeClient. Only the camera is granted, only to stratoshivibes.com pages.
+        run: |
+          J=android/app/src/main/java/com/example/webshell
+          M=android/app/src/main/AndroidManifest.xml
+          test -f "$J/WebShellChromeClient.kt" && test -f "$J/MainActivity.kt" && test -f "$M"
+          cp android-assets/CameraBridge.kt "$J/CameraBridge.kt"
+          perl -0pi -e 's#(<uses-permission android:name="android.permission.INTERNET" />)#$1\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-feature android:name="android.hardware.camera" android:required="false" />#' "$M"
+          grep -q "permission.CAMERA" "$M"
+          perl -0pi -e 's#(    private companion object \{)#    override fun onPermissionRequest(request: android.webkit.PermissionRequest) {\n        CameraBridge.handlePermission(request)\n    }\n\n    override fun onShowFileChooser(\n        webView: WebView?,\n        filePathCallback: android.webkit.ValueCallback<Array<android.net.Uri>>,\n        fileChooserParams: WebChromeClient.FileChooserParams,\n    ): Boolean = CameraBridge.handleChooser(filePathCallback, fileChooserParams)\n\n$1#' "$J/WebShellChromeClient.kt"
+          grep -q "CameraBridge.handlePermission" "$J/WebShellChromeClient.kt"
+          perl -0pi -e 's#(        enableEdgeToEdge\(\)\n)#$1        CameraBridge.activity = this\n#' "$J/MainActivity.kt"
+          grep -q "CameraBridge.activity = this" "$J/MainActivity.kt"
+          grep -n "CAMERA" "$M"
+
       - name: Add Android developer verification file (assets/adi-registration.properties)
         run: |
           mkdir -p android/app/src/main/assets

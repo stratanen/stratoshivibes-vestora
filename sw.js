@@ -1,10 +1,10 @@
 // Offline support: keeps a copy of Vestora on the device after the first online launch.
 // Pages and prices load network-first (fresh when online), everything else comes from the cache.
 // Raise the number in CACHE every time you change a file, so phones pick up the change.
-const CACHE = 'vestora-v41';
+const CACHE = 'vestora-v42';
 const CORE = [
   './', './index.html', './manifest.webmanifest', './privacy.html', './terms.html',
-  './icons/icon-192.png', './icons/icon-512.png', './wallet.bundle.js', './data/history.json',
+  './icons/icon-192.png', './icons/icon-512.png', './wallet.bundle.js', './qr.bundle.js', './data/history.json',
   './fonts/commissioner-greek-400-normal.woff2', './fonts/commissioner-greek-600-normal.woff2', './fonts/commissioner-greek-800-normal.woff2',
   './fonts/commissioner-latin-400-normal.woff2', './fonts/commissioner-latin-600-normal.woff2', './fonts/commissioner-latin-800-normal.woff2'
 ];

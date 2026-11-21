@@ -233,7 +233,7 @@ function drawSheet(){
     if(Hh){s.innerHTML=head('Ιστορικό από το blockchain')+`<p class="num">${short(Hh.addr)}</p>${Hh.error?`<div class="verdict short" role="status">Δεν ήταν δυνατή η ανάγνωση του ιστορικού. Δοκίμασε ξανά σε λίγο.</div><div class="row"><button class="btn" type="button" data-act="sol">Πίσω</button></div>`:`<p role="status" aria-live="polite">Διαβάζονται οι συναλλαγές… <b id="histN">${Hh.n||0}</b>${Hh.d?` <span class="muted" id="histD">(έως ${longDate(Hh.d)})</span>`:''}</p><p class="muted small">Για περίπου 1.000 συναλλαγές χρειάζεται λιγότερο από ένα λεπτό.</p><div class="row"><button class="btn" type="button" data-act="histstop">Σταμάτα εδώ</button></div>`}`;return}
     s.innerHTML=head('Εισαγωγή από Solana')+`<p>Επικόλλησε τη δημόσια διεύθυνση του Solana wallet σου. Η Vestora διαβάζει τα υπόλοιπα και τις θέσεις στο Kamino και σου δείχνει τι βρήκε, για να διαλέξεις τι θα προστεθεί.</p>
       <p class="muted">Μόνο ανάγνωση: δεν συνδέεται wallet, δεν ζητείται υπογραφή, seed phrase ή private key, και τίποτα δεν μπορεί να μετακινηθεί. Η διεύθυνση στέλνεται στο δημόσιο RPC του Solana και στο Kamino για να διαβαστούν τα υπόλοιπα.</p>
-      <div class="f"><label for="solAddr">Διεύθυνση Solana</label><input id="solAddr" type="text" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="π.χ. 7xKX…" value="${esc(last)}"></div>
+      <div class="f"><label for="solAddr">Διεύθυνση Solana</label><button class="btn" type="button" data-act="scan" data-for="solAddr">Σκάναρε QR</button><input id="solAddr" type="text" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="π.χ. 7xKX…" value="${esc(last)}"></div>
       ${P.loading?`<p class="muted" role="status">Διαβάζονται τα υπόλοιπα…</p>`:P.error?`<div class="verdict short" role="status">Δεν ήταν δυνατή η ανάγνωση. Έλεγξε τη σύνδεση στο internet και δοκίμασε ξανά.</div>`:`<p class="neg small" id="solMsg" role="status"></p>`}
       <div class="row"><button class="btn" type="button" data-act="close">Άκυρο</button><button class="btn primary" type="button" data-act="solgo"${P.loading?' disabled':''}>Διάβασε τα υπόλοιπα</button></div>
       <div class="histbox"><b>Ή φέρε όλο το ιστορικό</b><p class="muted small">Διαβάζει τις συναλλαγές της διεύθυνσης από το blockchain και τις περνά με πραγματικές ημερομηνίες και τιμές: swaps με την τιμή τους, μεταφορές και staking χωρίς κέρδος ή ζημιά. Πριν την καταχώρηση βλέπεις και διορθώνεις τα πάντα. Αντικαθιστά τις «αγορές σήμερα» για τα ίδια tokens.</p><button class="btn" type="button" data-act="solhist"${P.loading?' disabled':''}>Φέρε το ιστορικό συναλλαγών</button></div>`;
@@ -241,7 +241,7 @@ function drawSheet(){
     const E=flow.eth||{},last=E.addr||LS.get(EKEY)||'';
     s.innerHTML=head('Εισαγωγή από Ethereum')+`<p>Επικόλλησε τη δημόσια διεύθυνση του Ethereum wallet σου. Η Vestora διαβάζει τα υπόλοιπα και σου δείχνει τι βρήκε, για να διαλέξεις τι θα προστεθεί.</p>
       <p class="muted">Μόνο ανάγνωση: δεν συνδέεται wallet, δεν ζητείται υπογραφή, seed phrase ή private key, και τίποτα δεν μπορεί να μετακινηθεί. Η διεύθυνση στέλνεται σε δημόσιο block explorer για να διαβαστούν τα υπόλοιπα.</p>
-      <div class="f"><label for="ethAddr">Διεύθυνση Ethereum (0x…)</label><input id="ethAddr" type="text" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="0x…" value="${esc(last)}"></div>
+      <div class="f"><label for="ethAddr">Διεύθυνση Ethereum (0x…)</label><button class="btn" type="button" data-act="scan" data-for="ethAddr">Σκάναρε QR</button><input id="ethAddr" type="text" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="0x…" value="${esc(last)}"></div>
       ${E.loading?`<p class="muted" role="status">Διαβάζονται τα υπόλοιπα…</p>`:E.error?`<div class="verdict short" role="status">Δεν ήταν δυνατή η ανάγνωση. Έλεγξε τη σύνδεση στο internet και δοκίμασε ξανά.</div>`:`<p class="neg small" id="ethMsg" role="status"></p>`}
       <div class="row"><button class="btn" type="button" data-act="close">Άκυρο</button><button class="btn primary" type="button" data-act="ethgo"${E.loading?' disabled':''}>Διάβασε τα υπόλοιπα</button></div>`;
   }else if(st==='price'){
@@ -449,9 +449,49 @@ async function loadImport(){
   }catch(e){console.warn(e);flow.imp={error:'Έλεγξε τη σύνδεση στο internet.'}}
   if(!$('overlay').hidden&&flow.step==='import')drawSheet();
 }
+/* ---------- QR scan for a public address. The camera image never leaves the device. ---------- */
+function qrAddress(text,net){
+  const t=String(text||'').trim();
+  // a seed phrase or a private key must never be accepted, and is not kept
+  if(/^\[[\d,\s]+\]$/.test(t)||/^[1-9A-HJ-NP-Za-km-z]{80,90}$/.test(t)||/^(0x)?[0-9a-fA-F]{64}$/.test(t)||/^([a-z]{3,8}\s+){11,23}[a-z]{3,8}$/.test(t))return{secret:true};
+  for(const w of t.split(/[^A-Za-z0-9]+/)){if(net==='eth'?validEth(w):validAddr(w))return{addr:w}}
+  return{}}
+async function scanQR(inputId){
+  const net=inputId==='ethAddr'?'eth':'sol',input=$(inputId);
+  if(!navigator.mediaDevices?.getUserMedia){toast('Η κάμερα δεν είναι διαθέσιμη εδώ. Επικόλλησε τη διεύθυνση.');return}
+  const box=document.createElement('div');box.className='qrscan';box.setAttribute('role','dialog');box.setAttribute('aria-label','Σκανάρισμα QR');
+  box.innerHTML='<video playsinline muted></video><p class="qrmsg" role="status">Στόχευσε το QR με τη δημόσια διεύθυνση του wallet.</p><button class="btn" type="button">Άκυρο</button>';
+  document.body.appendChild(box);
+  const video=box.querySelector('video'),msg=box.querySelector('.qrmsg');let stream,stop=false;
+  const done=()=>{stop=true;stream?.getTracks().forEach(t=>t.stop());box.remove()};
+  box.querySelector('button').addEventListener('click',done);
+  try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false})}
+  catch(e){done();toast('Δεν δόθηκε πρόσβαση στην κάμερα. Μπορείς να επικολλήσεις τη διεύθυνση.');return}
+  if(stop){stream.getTracks().forEach(t=>t.stop());return}
+  video.srcObject=stream;try{await video.play()}catch(e){}
+  let det=null;try{if('BarcodeDetector' in window)det=new BarcodeDetector({formats:['qr_code']})}catch(e){}
+  if(!det){await new Promise(r=>{if(window.jsQR)return r();const sc=document.createElement('script');sc.src='qr.bundle.js';sc.onload=r;sc.onerror=r;document.head.appendChild(sc)});
+    if(!window.jsQR&&!stop){done();toast('Δεν φορτώθηκε ο αναγνώστης QR. Επικόλλησε τη διεύθυνση.');return}}
+  const cv=document.createElement('canvas'),cx=cv.getContext('2d',{willReadFrequently:true});
+  while(!stop){
+    await new Promise(r=>setTimeout(r,det?150:250));
+    if(stop||!video.videoWidth)continue;
+    let text='';
+    try{
+      if(det){const r=await det.detect(video);text=r[0]?.rawValue||''}
+      else{const k=Math.min(1,640/video.videoWidth);cv.width=Math.round(video.videoWidth*k);cv.height=Math.round(video.videoHeight*k);cx.drawImage(video,0,0,cv.width,cv.height);
+        const d=cx.getImageData(0,0,cv.width,cv.height),r=window.jsQR(d.data,d.width,d.height);text=r?.data||''}
+    }catch(e){continue}
+    if(!text)continue;
+    const r=qrAddress(text,net);
+    if(r.addr){done();input.value=r.addr;input.dispatchEvent(new Event('input',{bubbles:true}));input.focus();toast('Η διεύθυνση συμπληρώθηκε.');return}
+    msg.textContent=r.secret?'Αυτό το QR μοιάζει με μυστική φράση ή ιδιωτικό κλειδί. Η Vestora δεν τα δέχεται ποτέ. Δείξε το QR της δημόσιας διεύθυνσης.':net==='eth'?'Αυτό το QR δεν έχει διεύθυνση Ethereum.':'Αυτό το QR δεν έχει διεύθυνση Solana.';
+  }
+}
 $('sheet').addEventListener('click',async e=>{
   const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act;
   if(a==='close')return closeSheet();
+  if(a==='scan')return scanQR(b.dataset.for);
   if(a==='info'||a==='pick'||a==='done'){flow.step=a;if(a==='pick')loadBundle();return drawSheet()}
   if(a==='eth'){flow.step='eth';flow.eth=null;return drawSheet()}
   if(a==='sol'){flow.step='sol';flow.sol=null;flow.hist=null;return drawSheet()}

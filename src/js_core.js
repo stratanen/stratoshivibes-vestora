@@ -329,6 +329,43 @@ function mixFocus(c){const on=$('alegend').querySelector(`.arow[data-c="${c}"]`)
 $('alegend').addEventListener('click',e=>{const r=e.target.closest('.arow');if(r)mixFocus(r.dataset.c)});
 $('alloc').addEventListener('click',e=>{const r=e.target.closest('.seg');if(r)mixFocus(r.dataset.c)});
 
+/* ---------- monthly returns: green bars up, red bars down, chained from the same weekly index as the main return ---------- */
+let MO=null;
+function monthlyRets(D){const out=[];let prev=1,key=null,last=D.w0;
+  for(let w=D.w0;w<W;w++){const d=wDate(w),k=d.getUTCFullYear()*12+d.getUTCMonth();
+    if(key!==null&&k!==key){out.push({k:key,r:D.idx[last]/prev-1});prev=D.idx[last]}
+    key=k;if(D.idx[w]!=null)last=w}
+  if(key!==null)out.push({k:key,r:D.idx[last]/prev-1,open:true});return out}
+function renderMonthly(D){
+  const svg=$('moChart'),box=$('moBox');$('moTip').hidden=true;box.querySelector('.empty')?.remove();
+  const msg=t=>{svg.setAttribute('height',0);svg.innerHTML='';$('moNote').textContent='';box.insertAdjacentHTML('afterbegin',`<div class="empty">${t}</div>`);MO=null};
+  if(!D)return msg('Πρόσθεσε τι έχεις για να δεις πώς πήγε κάθε μήνας.');
+  if(D.short)return msg('Το γράφημα χρειάζεται τουλάχιστον δύο μήνες ιστορικού.');
+  const m=monthlyRets(D).slice(-36);if(m.length<2)return msg('Το γράφημα χρειάζεται τουλάχιστον δύο μήνες ιστορικού.');
+  const cw=Math.max(300,box.clientWidth),ch=cw<560?170:200,P={l:cw<560?44:52,r:8,t:10,b:24};
+  svg.setAttribute('viewBox',`0 0 ${cw} ${ch}`);svg.setAttribute('height',ch);
+  const vals=m.map(o=>o.r*100),Y=nice(Math.min(0,...vals),Math.max(0,...vals),4),n=m.length;
+  const y=v=>P.t+(1-(v-Y.lo)/(Y.hi-Y.lo||1))*(ch-P.t-P.b),slot=(cw-P.l-P.r)/n,bw=Math.max(3,Math.min(26,slot*.7));
+  let g='';
+  Y.t.forEach(v=>{g+=`<line x1="${P.l}" x2="${cw-P.r}" y1="${y(v)}" y2="${y(v)}" stroke="${css(v===0?'--muted':'--line')}" stroke-width="1"/><text x="${P.l-8}" y="${y(v)+4}" text-anchor="end">${nf(0).format(v)}%</text>`});
+  const every=Math.ceil(n/(cw<560?5:10));
+  m.forEach((o,i)=>{const cx=P.l+slot*(i+.5),v=o.r*100,y0=y(0),y1=y(v);
+    g+=`<rect x="${(cx-bw/2).toFixed(1)}" y="${Math.min(y0,y1).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1,Math.abs(y1-y0)).toFixed(1)}" rx="2" fill="${css(v>=0?'--good':'--bad')}" opacity="${o.open?.55:1}"/>`;
+    if(i%every===0||i===n-1&&every===1){const d=new Date(Date.UTC(Math.floor(o.k/12),o.k%12,1));g+=`<text x="${cx}" y="${ch-6}" text-anchor="middle">${shortDate(d)}</text>`}});
+  g+=`<line id="mox" y1="${P.t}" y2="${ch-P.b}" stroke="${css('--muted')}" stroke-width="1" stroke-dasharray="2 3" visibility="hidden"/><rect id="mohit" x="${P.l}" y="${P.t}" width="${cw-P.l-P.r}" height="${ch-P.t-P.b}" fill="transparent"/>`;
+  svg.innerHTML=g;
+  const up=m.filter(o=>o.r>0).length,best=m.reduce((a,o)=>o.r>a.r?o:a),worst=m.reduce((a,o)=>o.r<a.r?o:a),nm=o=>shortDate(new Date(Date.UTC(Math.floor(o.k/12),o.k%12,1)));
+  $('moNote').textContent=`Σε ${up} από τους ${n} μήνες το χαρτοφυλάκιο ανέβηκε. Ο καλύτερος μήνας ήταν ο ${nm(best)} (${pct(best.r)}) και ο χειρότερος ο ${nm(worst)} (${pct(worst.r)}). Ο τελευταίος μήνας είναι ακόμα ανοιχτός.`;
+  MO={m,n,P,cw,slot,nm};
+}
+$('moBox').addEventListener('pointermove',e=>{if(e.target.id!=='mohit'||!MO)return;
+  const r=$('moChart').getBoundingClientRect(),px=(e.clientX-r.left)*MO.cw/r.width;
+  const i=Math.max(0,Math.min(MO.n-1,Math.floor((px-MO.P.l)/MO.slot))),cx=MO.P.l+MO.slot*(i+.5);
+  const l=$('mox');l.setAttribute('x1',cx);l.setAttribute('x2',cx);l.setAttribute('visibility','visible');
+  const t=$('moTip');t.innerHTML=`<b>${MO.nm(MO.m[i])}</b><span>Απόδοση μήνα <b class="num">${pct(MO.m[i].r)}</b></span>`;
+  t.hidden=false;const tx=cx*r.width/MO.cw;t.style.left=Math.min(Math.max(0,tx-70),r.width-150)+'px';t.style.top='4px'});
+$('moBox').addEventListener('pointerleave',()=>{$('moTip').hidden=true;$('mox')?.setAttribute('visibility','hidden')});
+
 /* ---------- drawdown: how far below its last high the portfolio was, week by week ---------- */
 let DD=null;
 function ddSeries(idx,w0){const out=[];let peak=0;for(let w=w0;w<W;w++){const v=idx[w];if(v==null){out.push(null);continue}peak=Math.max(peak,v);out.push(peak?(v/peak-1)*100:0)}return out}

@@ -768,8 +768,8 @@ function renderPriceNote(){
   $('priceNote').innerHTML=`Τιμές: κλείσιμο ${longDate(iso(u))}${liveAt?', ζωντανές για crypto και για όσες αμερικανικές μετοχές και ETF έχουν xStock με αξιόπιστη τιμή (διαπραγματεύονται 24/7· εκτός ωραρίου ΗΠΑ μπορεί να διαφέρουν λίγο). Οι υπόλοιπες μετοχές και ETF ενημερώνονται κάθε ώρα όσο είναι ανοιχτά τα χρηματιστήρια':''}.${age>4?' <b class="neg">Οι τιμές δεν έχουν ενημερωθεί για μερικές μέρες.</b>':''}`;
 }
 
-function render(){applyDep();if(!$('v-how').hidden)renderHowPage();renderWallet();const prev=D?D.end:null;D=compute();renderSummary(D);countUp(prev,D);renderChart(D);renderDD(D);renderStory(D);renderHoldings(D);renderInsights(D);renderPlan(D);renderGuide(D);renderStress(D);renderJournal();renderTx();renderBanner();renderPriceNote();renderBackupNote()}
-const redraw=()=>{if(!W)return;renderChart(D);if(!$('v-risk').hidden)renderDD(D);if(lastProj)drawProj(lastProj,plan.bShow!==false?lastB:null)};
+function render(){applyDep();if(!$('v-how').hidden)renderHowPage();renderWallet();const prev=D?D.end:null;D=compute();renderSummary(D);countUp(prev,D);renderChart(D);renderMonthly(D);renderDD(D);renderStory(D);renderHoldings(D);renderInsights(D);renderPlan(D);renderGuide(D);renderStress(D);renderJournal();renderTx();renderBanner();renderPriceNote();renderBackupNote()}
+const redraw=()=>{if(!W)return;renderChart(D);renderMonthly(D);if(!$('v-risk').hidden)renderDD(D);if(lastProj)drawProj(lastProj,plan.bShow!==false?lastB:null)};
 let rt;const ro=new ResizeObserver(()=>{clearTimeout(rt);rt=setTimeout(redraw,80)});ro.observe($('chartbox'));ro.observe($('ddBox'));ro.observe($('projBox'));
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',redraw);
 const MARK='<svg viewBox="0 0 32 32" width="100%" height="100%"><path d="M5 9 L16 25 L27 9" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="27" cy="9" r="3.2" fill="var(--accent)"/></svg>';

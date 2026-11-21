@@ -660,7 +660,14 @@
 "tokens χωρίς τιμή (συνήθως spam).": "tokens with no price (usually spam).",
 ">Διάβασε τα υπόλοιπα</button></div>": ">Read balances</button></div>",
 "<span class=\"muted\">Ποσά σε δολάρια, με ισοτιμία EUR/USD": "<span class=\"muted\">Amounts in dollars, at the EUR/USD rate",
-". Οι αποδόσεις % υπολογίζονται σε ευρώ.</span>": ". Returns (%) are calculated in euros.</span>"
+". Οι αποδόσεις % υπολογίζονται σε ευρώ.</span>": ". Returns (%) are calculated in euros.</span>",
+"Πρόσθεσε τι έχεις για να δεις πώς πήγε κάθε μήνας.": "Add what you hold to see how each month went.",
+"Το γράφημα χρειάζεται τουλάχιστον δύο μήνες ιστορικού.": "The chart needs at least two months of history.",
+"από τους": "out of",
+"μήνες το χαρτοφυλάκιο ανέβηκε. Ο καλύτερος μήνας ήταν ο": "months the portfolio went up. The best month was",
+") και ο χειρότερος ο": ") and the worst was",
+"). Ο τελευταίος μήνας είναι ακόμα ανοιχτός.": "). The latest month is still open.",
+"</b><span>Απόδοση μήνα <b class=\"num\">": "</b><span>Month return <b class=\"num\">"
 },
 "html": {
 "Φορτώνουν οι τιμές…": "Loading prices…",
@@ -804,6 +811,8 @@
 "Νόμισμα εμφάνισης": "Display currency",
 "Ευρώ (EUR)": "Euro (EUR)",
 "Δολάρια (USD)": "US dollar (USD)",
-"Στα δολάρια, όλα τα ποσά εμφανίζονται με την τελευταία ισοτιμία EUR/USD και ό,τι γράφεις (τιμές, καταβολές, στόχος) το γράφεις σε δολάρια. Οι αποδόσεις % και οι υπολογισμοί γίνονται σε ευρώ, άρα δεν αλλάζουν. Τα στοιχεία σου δεν πειράζονται.": "With dollars, all amounts are shown at the latest EUR/USD rate, and whatever you type (prices, contributions, goal) you type in dollars. Returns (%) and all calculations are done in euros, so they do not change. Your data is not touched."
+"Στα δολάρια, όλα τα ποσά εμφανίζονται με την τελευταία ισοτιμία EUR/USD και ό,τι γράφεις (τιμές, καταβολές, στόχος) το γράφεις σε δολάρια. Οι αποδόσεις % και οι υπολογισμοί γίνονται σε ευρώ, άρα δεν αλλάζουν. Τα στοιχεία σου δεν πειράζονται.": "With dollars, all amounts are shown at the latest EUR/USD rate, and whatever you type (prices, contributions, goal) you type in dollars. Returns (%) and all calculations are done in euros, so they do not change. Your data is not touched.",
+"Μήνας με τον μήνα": "Month by month",
+"Μηνιαίες αποδόσεις χαρτοφυλακίου": "Monthly portfolio returns"
 }
 }

@@ -1,6 +1,6 @@
 /* ---------- "Πώς υπολογίζεται" / "How it works": every number in the app explained simply, with the user's own figures ----------
    This file is written in both languages side by side (T(greek, english)) and is NOT passed through the i18n extractor. */
-const T=(el,en)=>LANG==='en'?en:el;
+const T=(el,en)=>CURXS(LANG==='en'?en:el);
 const HOW_IDS=['prices','value','capital','gain','avg','twr','mwr','bench','risk','fees','plan','left','ai','backup'];
 function howMine(html){return `<div class="mine"><span class="mlbl">${T('Στο δικό σου χαρτοφυλάκιο','In your portfolio')}</span>${html}</div>`}
 function howEx(html){return `<div class="hex"><span class="mlbl">${T('Παράδειγμα','Example')}</span>${html}</div>`}

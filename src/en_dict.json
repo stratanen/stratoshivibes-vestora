@@ -658,7 +658,9 @@
 " από ": " from ",
 "Παραλείφθηκαν": "Left out",
 "tokens χωρίς τιμή (συνήθως spam).": "tokens with no price (usually spam).",
-">Διάβασε τα υπόλοιπα</button></div>": ">Read balances</button></div>"
+">Διάβασε τα υπόλοιπα</button></div>": ">Read balances</button></div>",
+"<span class=\"muted\">Ποσά σε δολάρια, με ισοτιμία EUR/USD": "<span class=\"muted\">Amounts in dollars, at the EUR/USD rate",
+". Οι αποδόσεις % υπολογίζονται σε ευρώ.</span>": ". Returns (%) are calculated in euros.</span>"
 },
 "html": {
 "Φορτώνουν οι τιμές…": "Loading prices…",
@@ -798,6 +800,10 @@
 "Εξηγήσεις": "Explained",
 "Αναζήτηση: όνομα, ticker ή ISIN": "Search: name, ticker or ISIN",
 "Η Vestora περιγράφει και εξηγεί την πορεία των επενδύσεών σου. Δεν αποτελεί επενδυτική συμβουλή και δεν προτείνει αγορές, πωλήσεις ή κατανομή. Οι προβολές βασίζονται σε εκτιμήσεις και δεν είναι προβλέψεις. Τιμές: Yahoo Finance (κλείσιμο ημέρας και τιμές ανά ώρα) και Jupiter (ζωντανές τιμές Solana), μετατροπή σε ευρώ με την ισοτιμία EUR/USD.": "Vestora describes and explains how your investments are doing. It is not investment advice and does not suggest buys, sales or allocations. Projections are based on assumptions and are not forecasts. Prices: Yahoo Finance (daily close and hourly prices) and Jupiter (live Solana prices), converted to euros at the EUR/USD rate.",
-"Εισαγωγή από διεύθυνση Solana": "Import from a Solana address"
+"Εισαγωγή από διεύθυνση Solana": "Import from a Solana address",
+"Νόμισμα εμφάνισης": "Display currency",
+"Ευρώ (EUR)": "Euro (EUR)",
+"Δολάρια (USD)": "US dollar (USD)",
+"Στα δολάρια, όλα τα ποσά εμφανίζονται με την τελευταία ισοτιμία EUR/USD και ό,τι γράφεις (τιμές, καταβολές, στόχος) το γράφεις σε δολάρια. Οι αποδόσεις % και οι υπολογισμοί γίνονται σε ευρώ, άρα δεν αλλάζουν. Τα στοιχεία σου δεν πειράζονται.": "With dollars, all amounts are shown at the latest EUR/USD rate, and whatever you type (prices, contributions, goal) you type in dollars. Returns (%) and all calculations are done in euros, so they do not change. Your data is not touched."
 }
 }

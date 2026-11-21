@@ -247,7 +247,7 @@ function drawSheet(){
   }else if(st==='price'){
     const c=state.custom[flow.arg];if(!c){closeSheet();return}
     s.innerHTML=head('Τρέχουσα τιμή')+`<p>${esc(c.name)}</p><p class="muted">Η τιμή που βάζεις μένει μέχρι να την αλλάξεις. Για ακίνητο, βάλε την αξία που θα έπαιρνες αν το πουλούσες σήμερα.</p>
-      <div class="f"><label for="pxNew">Νέα τιμή ανά μονάδα €</label><input id="pxNew" type="number" min="0" step="any" inputmode="decimal" value="${+(+c.current||0).toPrecision(8)}"></div>
+      <div class="f"><label for="pxNew">Νέα τιμή ανά μονάδα €</label><input id="pxNew" type="number" min="0" step="any" inputmode="decimal" value="${+((+c.current||0)*fxm()).toPrecision(8)}"></div>
       <div class="f"><label for="pxCls">Κατηγορία</label><select id="pxCls">${Object.entries(CUSTOM_CLS).map(([k,v])=>`<option value="${k}"${k===c.cls?' selected':''}>${v}</option>`).join('')}</select></div>
       <p class="muted" id="pxMsg" role="status"></p><div class="row"><button class="btn" type="button" data-act="close">Άκυρο</button><button class="btn primary" type="button" data-act="setprice">Αποθήκευση</button></div>`;
   }
@@ -497,7 +497,7 @@ $('sheet').addEventListener('click',async e=>{
     if(!$('onb').hidden)renderOnb();
     return;
   }
-  if(a==='setprice'){const v=parseFloat($('pxNew').value);if(!(v>=0)){$('pxMsg').textContent='Βάλε μια τιμή 0 ή μεγαλύτερη.';return}
+  if(a==='setprice'){const v=fromD(parseFloat($('pxNew').value));if(!(v>=0)){$('pxMsg').textContent='Βάλε μια τιμή 0 ή μεγαλύτερη.';return}
     const c=state.custom[flow.arg];c.current=v;c.cls=$('pxCls').value;c.at=Date.now();c.man=1;c.unc=false;save();render();closeSheet();toast('Η τιμή ενημερώθηκε.',1)}
 });
 $('overlay').addEventListener('click',e=>{if(e.target.id==='overlay')closeSheet()});
@@ -599,6 +599,7 @@ $('btnClear').addEventListener('click',e=>{const b=e.currentTarget;
   state={sample:false,onboarded:false,custom:{},mints:{},tx:[]};save();LS.del(PKEY);LS.del(EKEY);LS.del(GKEY);plan={goal:null,monthly:null,years:15,fee:.3,ass:'0',real:'1',target:null,next:null,exp:'',res:'',inc:'',vr:'',debt:'',tol:'30',b:null,bShow:true};targetBuilt=false;
   assetOptions('fAsset');render();openOnb()});
 $('btnGuide').addEventListener('click',()=>{LS.del(GKEY);openOnb()});
+document.querySelectorAll('[data-cur]').forEach(b=>{b.setAttribute('aria-pressed',b.dataset.cur===CUR);b.addEventListener('click',()=>{if(b.dataset.cur===CUR)return;LS.set('vestora-cur',b.dataset.cur);location.reload()})});
 document.querySelectorAll('[data-lang]').forEach(b=>{b.setAttribute('aria-pressed',b.dataset.lang===LANG);b.addEventListener('click',()=>{if(b.dataset.lang===LANG)return;LS.set('vestora-lang',b.dataset.lang);location.reload()})});
 $('bannerGo').addEventListener('click',()=>{state={sample:false,onboarded:false,custom:{},mints:{},tx:[]};save();plan.target=null;targetBuilt=false;render();openOnb()});
 function renderBanner(){$('banner').hidden=!state.sample}
@@ -606,7 +607,7 @@ function renderBanner(){$('banner').hidden=!state.sample}
 /* ---------- first-run guide ---------- */
 let onb={step:0,rows:[{a:'',v:'',name:''}],monthly:'',years:15,goal:'',tol:'30'};
 const TOLS=[['10','Έως −10%','Μια μικρή πτώση θα με αγχώσει.'],['20','Έως −20%','Αντέχω μια μέτρια διόρθωση.'],['30','Έως −30%','Αντέχω μια σοβαρή πτώση.'],['50','Έως −50%','Έχω περάσει μεγάλες πτώσεις χωρίς να πουλήσω.'],['70','Έως −70%','Αντέχω πτώσεις τύπου crypto.']];
-function openOnb(){arm();onb={step:0,rows:[{a:'',v:'',name:''}],monthly:plan.monthly!=null&&state.tx.length?String(plan.monthly):'',years:+plan.years||15,goal:plan.goal&&state.tx.length?String(plan.goal):'',tol:plan.tol||'30'};$('onb').hidden=false;renderOnb()}
+function openOnb(){arm();onb={step:0,rows:[{a:'',v:'',name:''}],monthly:plan.monthly!=null&&state.tx.length?String(inpD(plan.monthly)):'',years:+plan.years||15,goal:plan.goal&&state.tx.length?String(inpD(plan.goal)):'',tol:plan.tol||'30'};$('onb').hidden=false;renderOnb()}
 function onbAssetSelect(i,r){
   const lbl=r.a==='__new'?'Άλλο, με δική σου τιμή':r.tok?`${r.tok.name} (${r.tok.sym})`:r.a?meta(r.a).name:'';
   return `<div class="pick obpick"><input id="ob_a${i}" data-i="${i}" type="search" autocomplete="off" spellcheck="false" value="${esc(lbl)}" data-picked="${esc(lbl)}" placeholder="Αναζήτηση: π.χ. VWCE, Bitcoin, Πειραιώς" aria-label="Επένδυση ${i+1}" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="ob_l${i}"><div class="plist" id="ob_l${i}" role="listbox" hidden></div></div>`;
@@ -637,7 +638,7 @@ function renderOnb(){
     <div class="onbbtns"><button class="btn primary" type="button" data-o="next">Συνέχεια</button>${have?'':'<button class="btn ghost" type="button" data-o="skip">Δεν έχω ακόμα επενδύσεις</button>'}</div>`;bindOnbPickers();return}
   if(s===2){box.innerHTML=`<h2>Πόσα μπορείς να βάζεις τον μήνα;</h2><p class="muted">Το ποσό που μπορείς να επενδύεις σταθερά, χωρίς να πιεστείς. Μπορεί να είναι και 0.</p>
     <div class="f"><label for="ob_m">Μηνιαία καταβολή €</label><input id="ob_m" data-k="monthly" type="number" min="0" step="10" inputmode="numeric" value="${esc(onb.monthly)}" placeholder="π.χ. 150"></div>
-    <div class="chips">${[50,100,200,300,500].map(v=>`<button type="button" data-o="setm" data-v="${v}">${v} €</button>`).join('')}</div>
+    <div class="chips">${[50,100,200,300,500].map(v=>`<button type="button" data-o="setm" data-v="${v}">${v} ${CS}</button>`).join('')}</div>
     <div class="onbbtns"><button class="btn primary" type="button" data-o="next">Συνέχεια</button><button class="btn ghost" type="button" data-o="back">Πίσω</button></div>`;return}
   if(s===3){box.innerHTML=`<h2>Για πόσο καιρό και για ποιο στόχο;</h2><p class="muted">Ο στόχος μπορεί να είναι ένα ποσό, ένα σπίτι, οικονομική ανεξαρτησία. Βάλε το ποσό που αντιστοιχεί, σε σημερινά ευρώ.</p>
     <div class="f"><label for="ob_y">Χρόνια <output class="num" id="ob_yo">${onb.years}</output></label><input id="ob_y" data-k="years" type="range" min="1" max="40" value="${onb.years}"></div>
@@ -673,12 +674,12 @@ $('onbBody').addEventListener('click',e=>{const b=e.target.closest('[data-o]');i
 function finishOnb(){
   if(state.sample)state={sample:false,onboarded:false,custom:{},mints:{},tx:[]};
   const date=todayIso();
-  for(const r of onb.rows){const v=+r.v;if(!r.a||!(v>0))continue;
+  for(const r of onb.rows){const v=fromD(+r.v);if(!r.a||!(v>0))continue;
     if(r.a==='__new'){const id='c_'+uid();state.custom[id]={name:r.name.trim(),cls:'other',current:v};state.tx.push({id:uid(),a:id,type:'buy',date,qty:1,price:v,fee:0,reason:''})}
     else if(r.a==='__tok'&&r.tok){const id=tokCustom(r.tok),p=r.tok.eur;state.tx.push({id:uid(),a:id,type:'buy',date,qty:+(v/p).toPrecision(8),price:+p.toPrecision(8),fee:0,reason:''})}
     else{const p=nowPrice(r.a);if(!(p>0))continue;state.tx.push({id:uid(),a:r.a,type:'buy',date,qty:+(v/p).toPrecision(8),price:+p.toPrecision(8),fee:0,reason:''})}}
   state.onboarded=true;save();
-  plan.monthly=+onb.monthly||0;plan.years=+onb.years||15;plan.goal=+onb.goal||plan.goal||50000;plan.tol=onb.tol;plan.target=null;plan.next=null;plan.b=null;targetBuilt=false;savePlan();
+  plan.monthly=fromD(+onb.monthly)||0;plan.years=+onb.years||15;plan.goal=fromD(+onb.goal)||plan.goal||50000;plan.tol=onb.tol;plan.target=null;plan.next=null;plan.b=null;targetBuilt=false;savePlan();
   LS.del(GKEY);$('onb').hidden=true;assetOptions('fAsset');render();go('home');toast('Έτοιμο. Δες παρακάτω τι δείχνουν τα στοιχεία σου και το πλάνο σου.');
 }
 

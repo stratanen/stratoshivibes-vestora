@@ -54,10 +54,10 @@ function renderPlan(D){
   if(plan.goal==null)plan.goal=150000;
   if(!plan.target&&D&&D.hold.length){const w=toW(curAlloc(D));const t=Object.fromEntries(PK.map(k=>[k,Math.round(w[k]*20)*5]));const diff=100-PK.reduce((s,k)=>s+t[k],0);t.eq+=diff;plan.target=t}
   const set=(id,v)=>{const el=$(id);if(document.activeElement!==el)el.value=v};
-  set('pGoal',plan.goal);set('pMonthly',plan.monthly);set('pYears',plan.years);set('pFee',plan.fee);set('pAss',plan.ass);set('pReal',plan.real);set('pTol',plan.tol);
+  set('pGoal',inpD(plan.goal));set('pMonthly',inpD(plan.monthly));set('pYears',plan.years);set('pFee',plan.fee);set('pAss',plan.ass);set('pReal',plan.real);set('pTol',plan.tol);
   $('pYearsO').textContent=plan.years;
-  if(plan.next==null)plan.next=plan.monthly;set('nAmt',plan.next);
-  set('rExp',plan.exp);set('rRes',plan.res);
+  if(plan.next==null)plan.next=plan.monthly;set('nAmt',inpD(plan.next));
+  set('rExp',inpD(plan.exp));set('rRes',inpD(plan.res));set('rInc',inpD(plan.inc));set('rVar',inpD(plan.vr));set('rDebt',inpD(plan.debt));
   $('pHint').textContent=D?`Ξεκινά από τη σημερινή αξία (${eur.format(D.end)}).`+(D.years>=1?` Τους τελευταίους 12 μήνες έβαλες κατά μέσο όρο περίπου ${eur.format(histMonthly(D))} τον μήνα.`:''):'Πρόσθεσε θέσεις ή ξεκίνα από το μηδέν με μηνιαία καταβολή.';
   const R0=planRun(),L=R0.last,real=R0.args.real;
   $('projHead').innerHTML=`<div class="projhead"><div><span class="lbl">Μεσαίο σενάριο σε ${R0.args.years} χρόνια</span><span class="big2 num">${eur.format(L.p50)}</span></div>
@@ -65,7 +65,7 @@ function renderPlan(D){
     <div><span class="lbl">Δικά σου χρήματα</span><span class="num">${eur.format(L.contrib)}</span></div>
     <span class="goalchip" style="color:${R0.hit>=.7?'var(--good)':R0.hit>=.4?'var(--warn)':'var(--bad)'};border-color:currentColor">Στόχος ${eur.format(R0.args.goal)}: σε ${Math.round(R0.hit*100)} από τα 100 σενάρια</span></div>`+splitHtml(L);
   // levers
-  const f=+plan.fee,lv=[['Το πλάνο σου όπως είναι',{}],['+50 € τον μήνα',{monthly:R0.args.monthly+50}],['−50 € τον μήνα',{monthly:Math.max(0,R0.args.monthly-50)}],
+  const f=+plan.fee,lv=[['Το πλάνο σου όπως είναι',{}],['+50 € τον μήνα',{monthly:R0.args.monthly+50/fxm()}],['−50 € τον μήνα',{monthly:Math.max(0,R0.args.monthly-50/fxm())}],
     ['+3 χρόνια',{years:R0.args.years+3}],[f>=.5?'Έξοδα −0,5 μονάδα':'Χωρίς έξοδα',{fee:f>=.5?f-.5:0}]];
   $('levers').innerHTML=`<thead><tr><th>Αν αλλάξει…</th><th>Μεσαίο σενάριο</th><th>Δυσμενές (1 στα 10)</th><th>Δικά σου χρήματα</th><th>Σενάρια με στόχο</th></tr></thead><tbody>`+
     lv.map(([n,o],i)=>{const r=i?planRun(o):R0,d=r.last.p50-L.p50;return `<tr${i?'':' class="sel"'}><td>${n}</td><td class="num">${eur.format(r.last.p50)}${i?` <span class="${sgn(d)} small">${(d>0?'+':'')+eur.format(d)}</span>`:''}</td><td class="num">${eur.format(r.last.p10)}</td><td class="num">${eur.format(r.last.contrib)}</td><td class="num">${Math.round(r.hit*100)}/100</td></tr>`}).join('')+'</tbody>';
@@ -95,10 +95,10 @@ function drawProj(R0,RB){
   svg.setAttribute('viewBox',`0 0 ${cw} ${ch}`);svg.setAttribute('height',ch);
   const P={l:cw<560?46:58,r:12,t:14,b:24},B=R0.band,goal=R0.args.goal;
   const Y=Math.max(R0.args.years,RB?RB.args.years:0);
-  const mx=Math.max(B[B.length-1].p90,RB?RB.band[RB.band.length-1].p50*1.05:0,goal*1.05,1);const T=nice(0,mx,4);
-  const x=y=>P.l+y/Y*(cw-P.l-P.r),yy=v=>P.t+(1-(v-T.lo)/(T.hi-T.lo))*(ch-P.t-P.b);
+  const mx=Math.max(B[B.length-1].p90,RB?RB.band[RB.band.length-1].p50*1.05:0,goal*1.05,1);const kD=fxm(),T=nice(0,mx*kD,4);
+  const x=y=>P.l+y/Y*(cw-P.l-P.r),yD=v=>P.t+(1-(v-T.lo)/(T.hi-T.lo))*(ch-P.t-P.b),yy=v=>yD(v*kD);
   const fm=v=>v>=1e6?nf(1).format(v/1e6)+'M':v>=1000?nf(0).format(v/1000)+'k':nf(0).format(v);
-  let g='';T.t.forEach(v=>g+=`<line x1="${P.l}" x2="${cw-P.r}" y1="${yy(v)}" y2="${yy(v)}" stroke="${css('--line')}"/><text x="${P.l-8}" y="${yy(v)+4}" text-anchor="end">${fm(v)}</text>`);
+  let g='';T.t.forEach(v=>g+=`<line x1="${P.l}" x2="${cw-P.r}" y1="${yD(v)}" y2="${yD(v)}" stroke="${css('--line')}"/><text x="${P.l-8}" y="${yD(v)+4}" text-anchor="end">${fm(v)}</text>`);
   const step=Y<=10?1:Y<=20?5:10;for(let y=0;y<=Y;y+=step)g+=`<text x="${x(y)}" y="${ch-6}" text-anchor="${y===0?'start':'middle'}">${y===0?'σήμερα':y+'ε'}</text>`;
   const pth=(Bd,k)=>Bd.map((b,i)=>(i?'L':'M')+x(b.y).toFixed(1)+','+yy(b[k]).toFixed(1)).join('');
   g+=`<path d="${pth(B,'p90')}L${B.slice().reverse().map(b=>x(b.y).toFixed(1)+','+yy(b.p10).toFixed(1)).join('L')}Z" fill="${css('--accent')}" fill-opacity=".16" stroke="none"/>`;
@@ -122,7 +122,7 @@ function solveMonthly(frac,o={}){
   while(run(hi)<frac&&it<8){lo=hi;hi*=2;it++}
   if(run(hi)<frac)return null;
   for(let i=0;i<16;i++){const m=(lo+hi)/2;run(m)>=frac?hi=m:lo=m}
-  return Math.ceil(hi/10)*10;
+  return Math.ceil(hi*fxm()/10)*10/fxm();
 }
 function yearsToGoal(frac,o={}){const r=planRun({...o,years:50});const y=r.hitY.findIndex(h=>h>=frac);return y<0?null:y}
 function renderNeed(R0){
@@ -155,7 +155,7 @@ function renderTol(R0){
 function bArgs(){if(!plan.b)plan.b={monthly:(+plan.monthly||0)+50,years:+plan.years||15,fee:+plan.fee||0,ass:plan.ass};return plan.b}
 function renderPlanB(R0){
   const b=bArgs();const set=(id,v)=>{const el=$(id);if(document.activeElement!==el)el.value=v};
-  set('bMonthly',b.monthly);set('bYears',b.years);set('bFee',b.fee);set('bAss',b.ass);$('bShow').checked=plan.bShow!==false;
+  set('bMonthly',inpD(b.monthly));set('bYears',b.years);set('bFee',b.fee);set('bAss',b.ass);$('bShow').checked=plan.bShow!==false;
   const RB=planRun({monthly:b.monthly,years:b.years,fee:b.fee,ass:b.ass});
   const A=R0,Bp=RB,diff=(f,fmt)=>{const d=f(Bp)-f(A);return `<span class="num ${sgn(d)}">${Math.abs(d)>1e-9?(d>0?'+':'−')+fmt(Math.abs(d)):'—'}</span>`};
   const rows=[
@@ -201,7 +201,7 @@ function renderReserve(){
   if(inc!=null){
     const sur=inc-need;R.περίσσευμα_σταθερό=Math.round(sur);R.περίσσευμα_με_ασταθές=Math.round(sur+vr);
     k+=`<div><span class="v num ${sgn(sur)}">${eur.format(sur)}</span><span class="l">περισσεύουν τον μήνα από το σταθερό εισόδημα</span></div><div><span class="v num">${sur>0?nf(0).format(mo/sur*100)+'%':'—'}</span><span class="l">του περισσεύματος είναι η καταβολή των ${eur.format(mo)}</span></div>`;
-    const plus=sur-(mo+50);
+    const plus=sur-(mo+50/fxm());
     if(mo<=sur)ck.push(['good','Η καταβολή χωράει στο σταθερό εισόδημα',`Μετά την καταβολή μένουν ${eur.format(sur-mo)} τον μήνα. Με +50 € καταβολή θα έμεναν ${eur.format(plus)}.`]);
     else if(mo<=sur+vr)ck.push(['warn','Η καταβολή στηρίζεται εν μέρει στο ασταθές εισόδημα',`Σε μήνα χωρίς ασταθές εισόδημα λείπουν ${eur.format(mo-sur)}, που θα έβγαιναν από το αποθεματικό ή θα σήμαιναν μικρότερη καταβολή.`]);
     else{const gap=mo-(sur+vr);ck.push(['bad','Η καταβολή ξεπερνά όσα περισσεύουν',`Λείπουν περίπου ${eur.format(gap)} τον μήνα. Αν έβγαιναν από το αποθεματικό, θα κρατούσε περίπου ${nf(0).format(res/gap)} μήνες.`])}
@@ -209,7 +209,7 @@ function renderReserve(){
     if(!short)ck.push(['good','Πτώση εισοδήματος 30% για 6 μήνες','Ακόμα και τότε το σταθερό εισόδημα καλύπτει τις βασικές υποχρεώσεις, αν σταματήσουν οι καταβολές.']);
     else{const after=res-6*short;ck.push([after>=0?'warn':'bad','Πτώση εισοδήματος 30% για 6 μήνες',after>=0?`Με σταματημένες καταβολές, θα έλειπαν ${eur.format(short)} τον μήνα και το αποθεματικό θα έπεφτε στα ${eur.format(after)}.`:`Με σταματημένες καταβολές, θα έλειπαν ${eur.format(short)} τον μήνα. Το αποθεματικό θα τελείωνε σε περίπου ${nf(1).format(res/short)} μήνες.`]);R.πτώση_εισοδήματος_30_6μήνες_αποθεματικό_μετά=Math.round(after)}
   }
-  const ex=2000,after2=res-ex;
+  const ex=2000/fxm(),after2=res-ex;
   ck.push([after2/need>=3?'good':after2>=0?'warn':'bad','Έκτακτο έξοδο 2.000 €',after2>=0?`Το αποθεματικό θα έπεφτε στα ${eur.format(after2)}, δηλαδή ${nf(1).format(after2/need)} μήνες κάλυψης.`:`Το αποθεματικό δεν φτάνει. Θα έλειπαν ${eur.format(-after2)}, που θα έπρεπε να βγουν από τις επενδύσεις.`]);
   if(D&&D.hold.length){const loss=stressCalc(D,'all').tot;ck.push(['warn','Αν χρειαστείς χρήματα μέσα σε κρίση',`Στο σενάριο «Όλα μαζί» το χαρτοφυλάκιο θα είχε χάσει περίπου ${eur.format(Math.abs(loss))}. Ό,τι ξεπερνά το αποθεματικό θα έβγαινε πουλώντας σε χαμηλές τιμές.`])}
   k+='</div>';
@@ -220,8 +220,9 @@ function renderReserve(){
 function onPlanInput(e){
   const el=e.target,map={pGoal:'goal',pMonthly:'monthly',pYears:'years',pFee:'fee',pAss:'ass',pReal:'real',pTol:'tol',nAmt:'next',rExp:'exp',rRes:'res',rInc:'inc',rVar:'vr',rDebt:'debt'};
   const bmap={bMonthly:'monthly',bYears:'years',bFee:'fee',bAss:'ass'},str=['ass','real','tol','exp','res','inc','vr','debt'];
-  if(map[el.id]){const k=map[el.id];plan[k]=str.includes(k)?el.value:(el.value===''?0:+el.value)}
-  else if(bmap[el.id]){const k=bmap[el.id];plan.b={...bArgs(),[k]:k==='ass'?el.value:(el.value===''?0:+el.value)}}
+  const ev=['pGoal','pMonthly','nAmt','rExp','rRes','rInc','rVar','rDebt','bMonthly'].includes(el.id)&&el.value!==''?String(+(+el.value/fxm()).toFixed(6)):el.value;
+  if(map[el.id]){const k=map[el.id];plan[k]=str.includes(k)?ev:(ev===''?0:+ev)}
+  else if(bmap[el.id]){const k=bmap[el.id];plan.b={...bArgs(),[k]:k==='ass'?ev:(ev===''?0:+ev)}}
   else if(el.id==='bShow')plan.bShow=el.checked;
   else if(el.dataset.t)plan.target={...plan.target,[el.dataset.t]:el.value===''?0:+el.value};
   else return;

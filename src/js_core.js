@@ -119,10 +119,14 @@ async function livePrices(){
 
 /* ---------- helpers ---------- */
 function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
-const eur=new Intl.NumberFormat(LOC,{style:'currency',currency:'EUR',maximumFractionDigits:0});
-const eur2=new Intl.NumberFormat(LOC,{style:'currency',currency:'EUR',minimumFractionDigits:2,maximumFractionDigits:2});
+/* Display currency. Everything is calculated and stored in euros. With the dollar option only what is shown (and typed) is converted, at the latest EUR/USD rate. */
+const fxm=()=>CUR==='USD'?FXL:1;
+const fromD=v=>v/fxm(),inpD=v=>v===''||v==null||isNaN(+v)?v:+(+v*fxm()).toFixed(2);
+const _e0=new Intl.NumberFormat(LOC,{style:'currency',currency:CUR,currencyDisplay:'narrowSymbol',maximumFractionDigits:0});
+const _e2=new Intl.NumberFormat(LOC,{style:'currency',currency:CUR,currencyDisplay:'narrowSymbol',minimumFractionDigits:2,maximumFractionDigits:2});
+const eur={format:v=>_e0.format(v*fxm())},eur2={format:v=>_e2.format(v*fxm())};
 const nf=(d)=>new Intl.NumberFormat(LOC,{maximumFractionDigits:d});
-const price=v=>v>=1000?eur.format(v):v>=1?eur2.format(v):'€'+nf(6).format(v);
+const price=v=>v>=1000?eur.format(v):v>=1?eur2.format(v):CS+nf(6).format(v*fxm());
 const pct=(v,d=1)=>v==null||!isFinite(v)?'—':(v>0?'+':'')+nf(d).format(v*100)+'%';
 const sgn=v=>v>0?'pos':v<0?'neg':'';
 const wDate=i=>new Date(START+i*7*DAY);
@@ -229,7 +233,7 @@ function renderSummary(D){
   if(!D){$('totVal').textContent=eur.format(0);$('totSub').innerHTML='<span>Πρόσθεσε τι έχεις για να ξεκινήσει η παρακολούθηση.</span>';$('kpis').innerHTML='';return}
   const gain=D.end-D.inv+D.income;
   $('totVal').textContent=eur.format(D.end);
-  $('totSub').innerHTML=`<span>Καθαρό κεφάλαιο που έβαλες <b class="num">${eur.format(D.inv)}</b></span><span>Κέρδος/ζημιά <b class="num ${sgn(gain)}">${(gain>0?'+':'')+eur.format(gain)}</b></span>${D.income?`<span>Από αυτό, εισόδημα που εισέπραξες <b class="num pos">${eur.format(D.income)}</b></span>`:''}`;
+  $('totSub').innerHTML=`<span>Καθαρό κεφάλαιο που έβαλες <b class="num">${eur.format(D.inv)}</b></span><span>Κέρδος/ζημιά <b class="num ${sgn(gain)}">${(gain>0?'+':'')+eur.format(gain)}</b></span>${D.income?`<span>Από αυτό, εισόδημα που εισέπραξες <b class="num pos">${eur.format(D.income)}</b></span>`:''}${CUR==='USD'?`<span class="muted">Ποσά σε δολάρια, με ισοτιμία EUR/USD ${nf(3).format(FXL)}. Οι αποδόσεις % υπολογίζονται σε ευρώ.</span>`:''}`;
   const b=D.bench[ui.bench];const diff=b?D.end-b.B[W-1]:0;
   const k=[
     [D.short?'—':D.twrA!=null?pct(D.twrA):pct(D.twr),D.twrA!=null?'Απόδοση επιλογών / έτος (TWR)':'Απόδοση επιλογών (TWR)',sgn(D.twr)],
@@ -264,16 +268,17 @@ function renderChart(D){
   if(ui.mode==='value')lines=[{k:'p',v:D.V,c:css('--accent'),n:'Χαρτοφυλάκιο'},{k:'b',v:b.B,c:css('--bench'),n:BN[ui.bench][1]},{k:'i',v:D.INV,c:css('--invest'),n:'Κεφάλαιο που έβαλες',dash:'4 4'}];
   else lines=[{k:'p',v:D.idx.map(x=>x==null?null:(x-1)*100),c:css('--accent'),n:'Απόδοση επιλογών (TWR)'},{k:'b',v:b.idx.map(x=>x==null?null:(x-1)*100),c:css('--bench'),n:BN[ui.bench][2]}];
   let mn=Infinity,mx=-Infinity;lines.forEach(L=>{for(let w=w0;w<W;w++){const v=L.v[w];if(v!=null){mn=Math.min(mn,v);mx=Math.max(mx,v)}}});
+  const kD=ui.mode==='value'?fxm():1;mn*=kD;mx*=kD;
   if(ui.mode==='value')mn=Math.min(0,mn);
   const Y=nice(mn,mx,5);
   const x=w=>P.l+(w-w0)/Math.max(1,W-1-w0)*(cw-P.l-P.r);
-  const y=v=>P.t+(1-(v-Y.lo)/(Y.hi-Y.lo))*(ch-P.t-P.b);
+  const yD=v=>P.t+(1-(v-Y.lo)/(Y.hi-Y.lo))*(ch-P.t-P.b),y=v=>yD(v*kD);
   const fmtY=v=>ui.mode==='value'?(Math.abs(v)>=1000?nf(0).format(v/1000)+'k':nf(0).format(v)):nf(0).format(v)+'%';
   let g='';
-  Y.t.forEach(v=>{g+=`<line x1="${P.l}" x2="${cw-P.r}" y1="${y(v)}" y2="${y(v)}" stroke="${css(v===0&&ui.mode==='pct'?'--muted':'--line')}" stroke-width="1"/><text x="${P.l-8}" y="${y(v)+4}" text-anchor="end">${fmtY(v)}</text>`});
+  Y.t.forEach(v=>{g+=`<line x1="${P.l}" x2="${cw-P.r}" y1="${yD(v)}" y2="${yD(v)}" stroke="${css(v===0&&ui.mode==='pct'?'--muted':'--line')}" stroke-width="1"/><text x="${P.l-8}" y="${yD(v)+4}" text-anchor="end">${fmtY(v)}</text>`});
   const nT=cw<560?3:6;for(let i=0;i<=nT;i++){const w=Math.round(w0+i*(W-1-w0)/nT);const anchor=i===0?'start':i===nT?'end':'middle';g+=`<text x="${x(w)}" y="${ch-6}" text-anchor="${anchor}">${shortDate(wDate(w))}</text>`}
   const path=v=>{let d='';for(let w=w0;w<W;w++){if(v[w]==null)continue;d+=(d?'L':'M')+x(w).toFixed(1)+','+y(v[w]).toFixed(1)}return d};
-  const pl=lines[0];const base=y(Math.max(Y.lo,Math.min(Y.hi,0)));
+  const pl=lines[0];const base=yD(Math.max(Y.lo,Math.min(Y.hi,0)));
   g+=`<defs><linearGradient id="ga" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${pl.c}" stop-opacity=".22"/><stop offset="1" stop-color="${pl.c}" stop-opacity="0"/></linearGradient></defs>`;
   g+=`<path d="${path(pl.v)}L${x(W-1)},${base}L${x(w0)},${base}Z" fill="url(#ga)" stroke="none"/>`;
   [...lines].reverse().forEach(L=>{g+=`<path d="${path(L.v)}" fill="none" stroke="${L.c}" stroke-width="${L.k==='p'?2.4:1.7}" ${L.dash?`stroke-dasharray="${L.dash}"`:''} stroke-linejoin="round"/>`});
@@ -638,9 +643,9 @@ function autoPrice(){
   $('wrapPrice').hidden=type==='div'||type==='reward';$('wrapFee').hidden=type==='reward';$('wrapReason').hidden=type==='div'||type==='reward';
   $('typeHint').textContent=TYPE_HINT[type];$('typeHint').hidden=!TYPE_HINT[type];
   if(priceTouched)return;
-  if(PRICES[a]&&$('fDate').value){const p=PRICES[a][toWeek($('fDate').value)];$('fPrice').value=+p.toPrecision(6)}
-  else if(a==='__tok'&&pendTok)$('fPrice').value=+pendTok.eur.toPrecision(6);
-  else if(!isNew&&state.custom[a])$('fPrice').value=+(+state.custom[a].current||0).toPrecision(6);
+  if(PRICES[a]&&$('fDate').value){const p=PRICES[a][toWeek($('fDate').value)];$('fPrice').value=+(p*fxm()).toPrecision(6)}
+  else if(a==='__tok'&&pendTok)$('fPrice').value=+(pendTok.eur*fxm()).toPrecision(6);
+  else if(!isNew&&state.custom[a])$('fPrice').value=+((+state.custom[a].current||0)*fxm()).toPrecision(6);
   else $('fPrice').value='';
 }
 $('fAsset').addEventListener('change',()=>{priceTouched=false;autoPrice()});
@@ -653,8 +658,8 @@ const heldOn=(a,date)=>state.tx.filter(t=>t.a===a&&t.date<=date&&t.type!=='div')
 $('txForm').addEventListener('submit',e=>{
   e.preventDefault();const msg=$('formMsg');msg.textContent='';
   let a=$('fAsset').value;const type=$('fType').value,date=$('fDate').value;
-  const qty=parseFloat($('fQty').value),fee=type==='reward'?0:(parseFloat($('fFee').value)||0);
-  let pr=parseFloat($('fPrice').value);
+  const qty=type==='div'?fromD(parseFloat($('fQty').value)):parseFloat($('fQty').value),fee=type==='reward'?0:fromD(parseFloat($('fFee').value)||0);
+  let pr=fromD(parseFloat($('fPrice').value));
   if(!date){msg.textContent='Διάλεξε ημερομηνία.';return}
   if(date>todayIso()){msg.textContent='Η ημερομηνία δεν μπορεί να είναι στο μέλλον.';return}
   if(!(qty>0)){msg.textContent=type==='div'?'Το ποσό πρέπει να είναι μεγαλύτερο από 0.':'Η ποσότητα πρέπει να είναι μεγαλύτερη από 0.';return}
@@ -664,7 +669,7 @@ $('txForm').addEventListener('submit',e=>{
   if(a==='__new'&&type!=='buy'){msg.textContent='Ένα νέο στοιχείο ξεκινά με αγορά.';return}
   if(state.sample)state={sample:false,onboarded:true,custom:{},mints:{},tx:[]};
   if(a==='__tok'){if(!pendTok){msg.textContent='Διάλεξε περιουσιακό στοιχείο.';return}a=tokCustom(pendTok);pendTok=null}
-  if(a==='__new'){const now=parseFloat($('fCNow').value);a='c_'+uid();state.custom[a]={name:$('fCName').value.trim(),cls:$('fCCls').value,current:now>0?now:pr}}
+  if(a==='__new'){const now=fromD(parseFloat($('fCNow').value));a='c_'+uid();state.custom[a]={name:$('fCName').value.trim(),cls:$('fCCls').value,current:now>0?now:pr}}
   if(type==='sell'||type==='div'){const held=heldOn(a,date);
     if(type==='sell'&&qty>held+1e-9){msg.textContent=`Μπορείς να πουλήσεις έως ${nf(6).format(Math.max(0,held))} μονάδες σε αυτή την ημερομηνία.`;return}
     if(type==='div'&&!(held>0)){msg.textContent='Δεν κατείχες αυτό το στοιχείο εκείνη την ημερομηνία.';return}}

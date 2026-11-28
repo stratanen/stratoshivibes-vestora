@@ -226,7 +226,8 @@ function drawSheet(){
       (I.list.length?`<div class="imp">${I.list.map((t,i)=>`<label><input type="checkbox" id="imp${i}" data-i="${i}"${t.unc?'':' checked'}> <span>${esc(t.id?ASSETS[t.id].name:t.name)} <small class="muted">${t.kmn||t.lend||t.mph?'DeFi':esc(t.sym)}${t.xstock?' · xStock':''}${t.tag?' · '+t.tag:''}${t.staked?' · staking':''}${t.id||t.kmn||t.lend||t.mph?'':' · χωρίς ιστορικό τιμών'}${t.unc?' · <span class="neg">αβέβαιη τιμή</span>':''}</small></span><span class="num">${t.kmn||t.lend||t.mph?'':nf(t.qty<1?6:2).format(t.qty)+' · '}${eur.format(t.qty*t.eur)}</span></label>`).join('')}</div>${I.defiMsg?`<p class="muted small">${esc(I.defiMsg)}</p>`:''}${I.list.some(t=>t.lend)?'<p class="muted small">Στα Aave, Spark και HyperLend μετράνε οι καταθέσεις που χρησιμοποιούνται ως εγγύηση. Μια κατάθεση που έχεις ορίσει να μην είναι εγγύηση δεν μετράει εδώ: πρόσθεσέ τη χειροκίνητα.</p>':''}${flow.lendErr&&E?'<p class="muted small">Κάποια από τα Aave, Spark, HyperLend και Morpho δεν απάντησαν αυτή τη φορά.</p>':''}${flow.baseErr&&E?'<p class="muted small">Το Base δεν απάντησε αυτή τη φορά.</p>':''}${I.list.some(t=>t.kmn||t.lend||t.mph)?'<p class="muted small">Οι θέσεις DeFi μπαίνουν με την καθαρή τους αξία: καταθέσεις μείον δάνεια. Η αξία ενημερώνεται μόνη της. Αν προσθέσεις ή αποσύρεις χρήματα από τη θέση, η αλλαγή θα φανεί ως κέρδος ή ζημιά.</p>':''}${I.list.some(t=>t.unc)?'<p class="muted small">Όσα γράφουν «αβέβαιη τιμή» έχουν πολύ μικρή αγορά, οπότε η τιμή τους μπορεί να μην ισχύει στην πράξη. Γι\' αυτό δεν είναι επιλεγμένα. Πολλά τέτοια tokens είναι spam που στάλθηκε χωρίς να το ζητήσεις.</p>':''}`:'<p>Δεν βρέθηκαν assets με αξία πάνω από 1 €.</p>')+
       (E?`<p class="muted">Η ανάγνωση είναι μόνο για προβολή. Φαίνονται το ETH και τα tokens του Ethereum mainnet που έχουν τιμή αγοράς, και στο Hyperliquid τα spot υπόλοιπα, το HYPE σε staking, η αξία του λογαριασμού perps και τα vaults. Η αξία των perps και των vaults ενημερώνεται μόνη της. Από το Base φαίνονται το ETH και τα κύρια tokens (USDC, cbBTC, AERO κ.ά.). Φαίνονται επίσης οι θέσεις σε Aave (Ethereum, Base), Spark, HyperLend και Morpho (Ethereum, Base, HyperEVM), με την καθαρή τους αξία. Ό,τι έχεις σε άλλα δίκτυα (Arbitrum, Optimism κ.ά.), σε άλλα tokens του Base ή σε άλλα πρωτόκολλα δεν φαίνεται εδώ: πρόσθεσέ το χειροκίνητα.</p>${flow.hlErr?'<p class="neg small">Το Hyperliquid δεν απάντησε αυτή τη φορά.</p>':flow.hlNone?'<p class="muted small">Στο Hyperliquid δεν βρέθηκαν υπόλοιπα για αυτή τη διεύθυνση.</p>':''}`
         :`<p class="muted">Η ανάγνωση είναι μόνο για προβολή. Το SOL που έχεις σε native stake δεν φαίνεται εδώ: πρόσθεσέ το χειροκίνητα. Liquid staking tokens (π.χ. JitoSOL) εμφανίζονται κανονικά.</p>`)+
-      `<div class="row"><button class="btn" type="button" data-act="${E?'eth':S?'sol':'done'}">Πίσω</button>${I.list.length?`<button class="btn primary" type="button" data-act="doimport">Προσθήκη επιλεγμένων</button>`:''}</div>`;
+      goneHtml(I,E,S)+
+      `<div class="row"><button class="btn" type="button" data-act="${E?'eth':S?'sol':'done'}">Πίσω</button>${I.list.length||goneList(I,E,S).length?`<button class="btn primary" type="button" data-act="doimport">Προσθήκη επιλεγμένων</button>`:''}</div>`;
     }
   }else if(st==='sol'){
     const P=flow.sol||{},last=P.addr||LS.get(SKEY)||'',Hh=flow.hist;
@@ -421,6 +422,18 @@ async function loadSol(addr){
   catch(e){console.warn(e);flow.sol={addr,error:true}}
   if(!$('overlay').hidden&&(flow.step==='sol'||flow.step==='import'))drawSheet();
 }
+/* ---------- repeat import: assets that were imported before but are no longer in the wallet ---------- */
+function impKey(t,E){
+  if(E){if(t.id)return t.id;if(t.mph)return 'mo_'+t.mph.t+'_'+t.mph.c+'_'+t.mph.k+'_'+t.mph.w;if(t.lend)return 'l_'+t.lend.k+'_'+t.lend.w;if(t.hlKey)return 'h_'+t.hlKey;return 'e_'+(t.ch?t.ch+'_':'')+t.contract}
+  if(t.kmn)return 'k_'+t.kmn.o;if(t.id)return t.id;return 'm_'+t.mint+(t.staked?'_st':'')}
+function goneList(I,E,S){
+  const src=E?'eth':S?'sol':'wallet',have=new Set(I.list.map(t=>impKey(t,E))),q={};
+  state.tx.forEach(x=>{if(x.src!==src||x.type==='div')return;q[x.a]=(q[x.a]||0)+(x.type==='sell'?-x.qty:x.qty)});
+  return Object.keys(q).filter(id=>q[id]>1e-9&&!have.has(id)&&(ASSETS[id]||state.custom[id])).map(id=>({id,qty:q[id]}))}
+function goneHtml(I,E,S){
+  const g=goneList(I,E,S);if(!g.length)return '';
+  const off=!!I.defiMsg; // a position read may have failed, so nothing is ticked for the user
+  return `<p class="muted"><b>Δεν υπάρχουν πια στο wallet</b> (ή αξία κάτω από 1 €). Αν τα πούλησες, διάλεξε να βγουν από το χαρτοφυλάκιο: θα καταγραφεί πώληση σήμερα, με τη σημερινή τιμή.${off?' Μερικές θέσεις DeFi δεν διαβάστηκαν αυτή τη φορά, γι’ αυτό δεν είναι τικαρισμένα.':''}</p><div class="imp">${g.map((o,i)=>`<label><input type="checkbox" data-g="${i}"${off?'':' checked'}> <span>${esc(meta(o.id).name)}</span><span class="num">${nf(o.qty<1?6:2).format(o.qty)} · ${eur.format(o.qty*(nowPrice(o.id)||state.custom[o.id]?.current||0))}</span></label>`).join('')}</div>`}
 function openSol(){if(!isPro())return openSheet('info');flow.sol=null;openSheet('sol')}
 async function loadImport(){
   flow.imp={loading:true};
@@ -535,6 +548,9 @@ $('sheet').addEventListener('click',async e=>{
       const src=E?'eth':S?'sol':'wallet',had=state.tx.filter(x=>x.a===id&&x.src===src&&x.type!=='div').reduce((q,x)=>q+(x.type==='sell'?-x.qty:x.qty),0),d=t.qty-had;
       if(Math.abs(d)<=Math.max(1e-9,t.qty*1e-6))return;
       state.tx.push({id:uid(),a:id,type:d>0?'buy':'sell',date,qty:+Math.abs(d).toPrecision(12),price:+px.toPrecision(8),fee:0,reason:'',src});n++});
+    {const g=goneList(flow.imp,E,S);$('sheet').querySelectorAll('input[data-g]:checked').forEach(c=>{const o=g[+c.dataset.g];if(!o)return;
+      const px=nowPrice(o.id)||state.custom[o.id]?.current||0;
+      state.tx.push({id:uid(),a:o.id,type:'sell',date,qty:+o.qty.toPrecision(12),price:+px.toPrecision(8),fee:0,reason:'',src:E?'eth':S?'sol':'wallet'});n++})}
     state.onboarded=true;save();assetOptions('fAsset');render();closeSheet();toast(!n?'Όλα ήταν ήδη ενημερωμένα.':n===1?'Ενημερώθηκε 1 asset.':`Ενημερώθηκαν ${n} assets.`,1);
     if(!$('onb').hidden)renderOnb();
     return;

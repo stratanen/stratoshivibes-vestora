@@ -686,7 +686,9 @@
 "Η ζωντανή κάμερα δεν είναι διαθέσιμη εδώ. Πάτα «Φωτογράφισε το QR».": "The live camera is not available here. Tap “Photograph the QR”.",
 "Η ζωντανή κάμερα δεν άνοιξε (": "The live camera did not open (",
 "σφάλμα": "error",
-"). Πάτα «Φωτογράφισε το QR» ή επικόλλησε τη διεύθυνση.": "). Tap “Photograph the QR” or paste the address."
+"). Πάτα «Φωτογράφισε το QR» ή επικόλλησε τη διεύθυνση.": "). Tap “Photograph the QR” or paste the address.",
+"<p class=\"muted\"><b>Δεν υπάρχουν πια στο wallet</b> (ή αξία κάτω από 1 €). Αν τα πούλησες, διάλεξε να βγουν από το χαρτοφυλάκιο: θα καταγραφεί πώληση σήμερα, με τη σημερινή τιμή.": "<p class=\"muted\"><b>No longer in the wallet</b> (or worth under €1). If you sold them, tick them to take them out of the portfolio: a sale is recorded today at today's price.",
+" Μερικές θέσεις DeFi δεν διαβάστηκαν αυτή τη φορά, γι’ αυτό δεν είναι τικαρισμένα.": " Some DeFi positions could not be read this time, so these are not ticked."
 },
 "html": {
 "Φορτώνουν οι τιμές…": "Loading prices…",

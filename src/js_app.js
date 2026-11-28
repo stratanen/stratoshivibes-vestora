@@ -432,8 +432,8 @@ function goneList(I,E,S){
   return Object.keys(q).filter(id=>q[id]>1e-9&&!have.has(id)&&(ASSETS[id]||state.custom[id])).map(id=>({id,qty:q[id]}))}
 function goneHtml(I,E,S){
   const g=goneList(I,E,S);if(!g.length)return '';
-  const off=!!I.defiMsg; // a position read may have failed, so nothing is ticked for the user
-  return `<p class="muted"><b>Δεν υπάρχουν πια στο wallet</b> (ή αξία κάτω από 1 €). Αν τα πούλησες, διάλεξε να βγουν από το χαρτοφυλάκιο: θα καταγραφεί πώληση σήμερα, με τη σημερινή τιμή.${off?' Μερικές θέσεις DeFi δεν διαβάστηκαν αυτή τη φορά, γι’ αυτό δεν είναι τικαρισμένα.':''}</p><div class="imp">${g.map((o,i)=>`<label><input type="checkbox" data-g="${i}"${off?'':' checked'}> <span>${esc(meta(o.id).name)}</span><span class="num">${nf(o.qty<1?6:2).format(o.qty)} · ${eur.format(o.qty*(nowPrice(o.id)||state.custom[o.id]?.current||0))}</span></label>`).join('')}</div>`}
+  const off=true; // never tick by default: removing a position is the user's choice
+  return `<p class="muted"><b>Δεν υπάρχουν πια στο wallet</b> (ή αξία κάτω από 1 €). Δεν είναι τικαρισμένα. Αν τα πούλησες, τίκαρε όσα θέλεις να βγουν από το χαρτοφυλάκιο: θα καταγραφεί πώληση σήμερα, με τη σημερινή τιμή.${I.defiMsg?' Μερικές θέσεις DeFi δεν διαβάστηκαν αυτή τη φορά, γι’ αυτό δεν είναι τικαρισμένα.':''}</p><div class="imp">${g.map((o,i)=>`<label><input type="checkbox" data-g="${i}"${off?'':' checked'}> <span>${esc(meta(o.id).name)}</span><span class="num">${nf(o.qty<1?6:2).format(o.qty)} · ${eur.format(o.qty*(nowPrice(o.id)||state.custom[o.id]?.current||0))}</span></label>`).join('')}</div>`}
 function openSol(){if(!isPro())return openSheet('info');flow.sol=null;openSheet('sol')}
 async function loadImport(){
   flow.imp={loading:true};

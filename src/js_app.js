@@ -113,7 +113,7 @@ function ethToken(contract,name,sym,qty,usd){
   sym=String(sym||'').trim().slice(0,12);name=String(name||sym||'Token').trim().slice(0,40);
   return{contract,id:contract===WBTC&&ASSETS.BTC?'BTC':null,name,sym,qty,eur:usd/FXL,cls:STABLE.has(contract)?'cash':'crypto'};
 }
-async function ethRead(addr){
+async function ethRead(addr,all){
   const list=[];
   try{
     const [a,tb]=await Promise.all([getJSON(ETH_API+addr),getJSON(ETH_API+addr+'/token-balances')]);
@@ -136,11 +136,11 @@ async function ethRead(addr){
       const t=ethToken(k.address,k.name,k.symbol,Number(it.rawBalance??it.balance??0)/10**(+k.decimals||0),+(k.price&&k.price.rate)||0);if(t)list.push(t)}
   }
   for(const t of list)if(t.id&&nowPrice(t.id)>0)t.eur=nowPrice(t.id);   // ETH and wrapped BTC use the app's own price, so the list shows exactly what gets added
-  return list.filter(t=>t.qty*t.eur>=1).sort((a,b)=>b.qty*b.eur-a.qty*a.eur);
+  return list.filter(t=>t.qty*t.eur>=(all?1e-9:1)).sort((a,b)=>b.qty*b.eur-a.qty*a.eur);
 }
 /* Hyperliquid uses the same 0x address. Spot balances, staked HYPE, the perps account and vault deposits. */
 const HL_MAP={UBTC:'BTC',UETH:'ETH',USOL:'SOL'},HL_CASH=new Set(['USDC','USDT0','USDE','USDH']);
-async function hlRead(addr){
+async function hlRead(addr,all){
   addr=addr.toLowerCase();   // the Hyperliquid API answers with an empty account for a mixed-case (checksummed) address
   const [sp,pe,dg,vt,px]=await Promise.all([hlPost({type:'spotClearinghouseState',user:addr}),hlPost({type:'clearinghouseState',user:addr}).catch(()=>null),
     hlPost({type:'delegatorSummary',user:addr}).catch(()=>null),hlPost({type:'userVaultEquities',user:addr}).catch(()=>[]),hlSpotPx()]);
@@ -154,12 +154,12 @@ async function hlRead(addr){
   add('perps','Hyperliquid perps','USDC',av,1,open?'crypto':'cash',{usdv:true});
   const vq=(Array.isArray(vt)?vt:[]).reduce((s,v)=>s+(+v.equity||0),0);
   add('vaults','Hyperliquid vaults','USDC',vq,1,'crypto',{usdv:true});
-  return out.filter(t=>t.qty*t.eur>=1);
+  return out.filter(t=>t.qty*t.eur>=(all?1e-9:1));
 }
-async function loadEth(addr){
-  flow.eth={addr,loading:true};drawSheet();
-  try{const [l1,l2,l3,l4,l5]=await Promise.all([ethRead(addr).catch(e=>{console.warn('eth',e);return null}),hlRead(addr).catch(e=>{console.warn('hl',e);return null}),lendRead(addr).catch(e=>{console.warn('lend',e);return null}),
-      baseRead(addr).catch(e=>{console.warn('base',e);return null}),morphoRead(addr).catch(e=>{console.warn('morpho',e);return null})]);if(!l1&&!l2&&!l4)throw new Error('all failed');
+/* reads everything at an Ethereum address; ok says which parts were read, so the sync never removes what it could not see */
+async function ethCollect(addr,all){
+  const [l1,l2,l3,l4,l5]=await Promise.all([ethRead(addr,all).catch(e=>{console.warn('eth',e);return null}),hlRead(addr,all).catch(e=>{console.warn('hl',e);return null}),lendRead(addr).catch(e=>{console.warn('lend',e);return null}),
+      baseRead(addr,all).catch(e=>{console.warn('base',e);return null}),morphoRead(addr).catch(e=>{console.warn('morpho',e);return null})]);if(!l1&&!l2&&!l4)throw new Error('all failed');
     const lend=[...(l3?.list||[]).filter(p=>p.eur>=1).map(p=>({...p,id:null,name:lendName(p),sym:'',qty:1,tag:p.bor>0?'δάνειο '+eur.format(p.bor):''})),
       ...(l5?.list||[]).map(p=>({...p,id:null,sym:'',qty:1,tag:p.chain+(p.bor>0?' · δάνειο '+eur.format(p.bor):'')}))];
     const vaults=new Set(lend.filter(p=>p.vault).map(p=>p.vault));
@@ -168,7 +168,12 @@ async function loadEth(addr){
     const toks=[...(l1||[]),...(l4||[])].filter(t=>!/^(variable|stable)Debt/i.test(t.sym)&&!skip.some(r=>r.test(t.sym))&&!vaults.has(t.contract));
     /* the same asset on two networks (ETH on Ethereum and on Base) becomes one line, so the quantity check on a repeat import stays right */
     const merged=[];for(const t of toks){const o=t.id&&merged.find(x=>x.id===t.id);if(o){o.qty+=t.qty;o.tag=[o.tag||'Ethereum',t.tag||'Ethereum'].filter((v,i,a)=>a.indexOf(v)===i).join(' + ')}else merged.push({...t})}
-    const list=[...merged,...(l2||[]),...lend].sort((a,b)=>b.qty*b.eur-a.qty*a.eur);flow.lendErr=!!l3?.failed||!l5||l5.failed;flow.baseErr=!l4;flow.hlErr=!l2;flow.hlNone=!!l2&&!l2.length;LS.set(EKEY,addr);flow.imp={list,src:'eth',addr};flow.eth={addr};flow.step='import'}
+    const list=[...merged,...(l2||[]),...lend].sort((a,b)=>b.qty*b.eur-a.qty*a.eur);
+    return{list,l2,l3,l4,l5,ok:{tok:!!l1&&!!l4,hl:!!l2,lend:!!l3&&!l3.failed&&!!l5&&!l5.failed}}}
+async function loadEth(addr){
+  flow.eth={addr,loading:true};drawSheet();
+  try{const {list,l2,l3,l4,l5}=await ethCollect(addr);
+    flow.lendErr=!!l3?.failed||!l5||l5.failed;flow.baseErr=!l4;flow.hlErr=!l2;flow.hlNone=!!l2&&!l2.length;LS.set(EKEY,addr);flow.imp={list,src:'eth',addr};flow.eth={addr};flow.step='import'}
   catch(e){console.warn(e);flow.eth={addr,error:true}}
   if(!$('overlay').hidden&&(flow.step==='eth'||flow.step==='import'))drawSheet();
 }
@@ -222,12 +227,11 @@ function drawSheet(){
     else{
       const dup=state.tx.some(t=>t.src===(E?'eth':S?'sol':'wallet'));
       s.innerHTML=head(E?'Εισαγωγή από Ethereum':S?'Εισαγωγή από Solana':'Εισαγωγή από wallet')+(E?`<p class="muted small num">${shortE(I.addr)}</p>`:S?`<p class="muted small num">${short(I.addr)}</p>`:'')+`<p class="muted">Βρέθηκαν αυτά τα assets αξίας πάνω από 1 €. Διάλεξε ποια θα προστεθούν. Μπαίνουν σαν αγορά σήμερα, με τη σημερινή τιμή. Αν τα αγόρασες παλιότερα, άλλαξε μετά ημερομηνία και τιμή στις συναλλαγές για σωστή απόδοση.</p>`+
-      (dup?`<div class="verdict short">${E?'Έχεις ήδη κάνει εισαγωγή από Ethereum.':S?'Έχεις ήδη κάνει εισαγωγή από διεύθυνση Solana.':'Έχεις ήδη κάνει εισαγωγή από wallet.'} Δεν θα διπλασιαστεί τίποτα: οι ποσότητες θα ενημερωθούν ώστε να ταιριάζουν με το wallet.</div>`:'')+
-      (I.list.length?`<div class="imp">${I.list.map((t,i)=>`<label><input type="checkbox" id="imp${i}" data-i="${i}"${t.unc?'':' checked'}> <span>${esc(t.id?ASSETS[t.id].name:t.name)} <small class="muted">${t.kmn||t.lend||t.mph?'DeFi':esc(t.sym)}${t.xstock?' · xStock':''}${t.tag?' · '+t.tag:''}${t.staked?' · staking':''}${t.id||t.kmn||t.lend||t.mph?'':' · χωρίς ιστορικό τιμών'}${t.unc?' · <span class="neg">αβέβαιη τιμή</span>':''}</small></span><span class="num">${t.kmn||t.lend||t.mph?'':nf(t.qty<1?6:2).format(t.qty)+' · '}${eur.format(t.qty*t.eur)}</span></label>`).join('')}</div>${I.defiMsg?`<p class="muted small">${esc(I.defiMsg)}</p>`:''}${I.list.some(t=>t.lend)?'<p class="muted small">Στα Aave, Spark και HyperLend μετράνε οι καταθέσεις που χρησιμοποιούνται ως εγγύηση. Μια κατάθεση που έχεις ορίσει να μην είναι εγγύηση δεν μετράει εδώ: πρόσθεσέ τη χειροκίνητα.</p>':''}${flow.lendErr&&E?'<p class="muted small">Κάποια από τα Aave, Spark, HyperLend και Morpho δεν απάντησαν αυτή τη φορά.</p>':''}${flow.baseErr&&E?'<p class="muted small">Το Base δεν απάντησε αυτή τη φορά.</p>':''}${I.list.some(t=>t.kmn||t.lend||t.mph)?'<p class="muted small">Οι θέσεις DeFi μπαίνουν με την καθαρή τους αξία: καταθέσεις μείον δάνεια. Η αξία ενημερώνεται μόνη της. Αν προσθέσεις ή αποσύρεις χρήματα από τη θέση, η αλλαγή θα φανεί ως κέρδος ή ζημιά.</p>':''}${I.list.some(t=>t.unc)?'<p class="muted small">Όσα γράφουν «αβέβαιη τιμή» έχουν πολύ μικρή αγορά, οπότε η τιμή τους μπορεί να μην ισχύει στην πράξη. Γι\' αυτό δεν είναι επιλεγμένα. Πολλά τέτοια tokens είναι spam που στάλθηκε χωρίς να το ζητήσεις.</p>':''}`:'<p>Δεν βρέθηκαν assets με αξία πάνω από 1 €.</p>')+
+      (dup?`<div class="verdict short">${E?'Έχεις ήδη κάνει εισαγωγή από Ethereum.':S?'Έχεις ήδη κάνει εισαγωγή από διεύθυνση Solana.':'Έχεις ήδη κάνει εισαγωγή από wallet.'} Δεν θα διπλασιαστεί τίποτα: οι ποσότητες θα ενημερωθούν ώστε να ταιριάζουν με το wallet.</div>`:'')+`<p class="muted small">Μετά την εισαγωγή η εφαρμογή ενημερώνεται μόνη της από το wallet: σε κάθε άνοιγμα και κάθε 5 λεπτά. Ό,τι δεν τικάρεις δεν θα παρακολουθείται.</p>`+
+      (I.list.length?`<div class="imp">${I.list.map((t,i)=>`<label><input type="checkbox" id="imp${i}" data-i="${i}"${t.unc&&!heldBy(E)[impKey(t,E)]||(state.ignore||{})[impKey(t,E)]?'':' checked'}> <span>${esc(t.id?ASSETS[t.id].name:t.name)} <small class="muted">${t.kmn||t.lend||t.mph?'DeFi':esc(t.sym)}${t.xstock?' · xStock':''}${t.tag?' · '+t.tag:''}${t.staked?' · staking':''}${t.id||t.kmn||t.lend||t.mph?'':' · χωρίς ιστορικό τιμών'}${t.unc?' · <span class="neg">αβέβαιη τιμή</span>':''}</small></span><span class="num">${t.kmn||t.lend||t.mph?'':nf(t.qty<1?6:2).format(t.qty)+' · '}${eur.format(t.qty*t.eur)}</span></label>`).join('')}</div>${I.defiMsg?`<p class="muted small">${esc(I.defiMsg)}</p>`:''}${I.list.some(t=>t.lend)?'<p class="muted small">Στα Aave, Spark και HyperLend μετράνε οι καταθέσεις που χρησιμοποιούνται ως εγγύηση. Μια κατάθεση που έχεις ορίσει να μην είναι εγγύηση δεν μετράει εδώ: πρόσθεσέ τη χειροκίνητα.</p>':''}${flow.lendErr&&E?'<p class="muted small">Κάποια από τα Aave, Spark, HyperLend και Morpho δεν απάντησαν αυτή τη φορά.</p>':''}${flow.baseErr&&E?'<p class="muted small">Το Base δεν απάντησε αυτή τη φορά.</p>':''}${I.list.some(t=>t.kmn||t.lend||t.mph)?'<p class="muted small">Οι θέσεις DeFi μπαίνουν με την καθαρή τους αξία: καταθέσεις μείον δάνεια. Η αξία ενημερώνεται μόνη της. Αν προσθέσεις ή αποσύρεις χρήματα από τη θέση, η αλλαγή θα φανεί ως κέρδος ή ζημιά.</p>':''}${I.list.some(t=>t.unc)?'<p class="muted small">Όσα γράφουν «αβέβαιη τιμή» έχουν πολύ μικρή αγορά, οπότε η τιμή τους μπορεί να μην ισχύει στην πράξη. Γι\' αυτό δεν είναι επιλεγμένα. Πολλά τέτοια tokens είναι spam που στάλθηκε χωρίς να το ζητήσεις.</p>':''}`:'<p>Δεν βρέθηκαν assets με αξία πάνω από 1 €.</p>')+
       (E?`<p class="muted">Η ανάγνωση είναι μόνο για προβολή. Φαίνονται το ETH και τα tokens του Ethereum mainnet που έχουν τιμή αγοράς, και στο Hyperliquid τα spot υπόλοιπα, το HYPE σε staking, η αξία του λογαριασμού perps και τα vaults. Η αξία των perps και των vaults ενημερώνεται μόνη της. Από το Base φαίνονται το ETH και τα κύρια tokens (USDC, cbBTC, AERO κ.ά.). Φαίνονται επίσης οι θέσεις σε Aave (Ethereum, Base), Spark, HyperLend και Morpho (Ethereum, Base, HyperEVM), με την καθαρή τους αξία. Ό,τι έχεις σε άλλα δίκτυα (Arbitrum, Optimism κ.ά.), σε άλλα tokens του Base ή σε άλλα πρωτόκολλα δεν φαίνεται εδώ: πρόσθεσέ το χειροκίνητα.</p>${flow.hlErr?'<p class="neg small">Το Hyperliquid δεν απάντησε αυτή τη φορά.</p>':flow.hlNone?'<p class="muted small">Στο Hyperliquid δεν βρέθηκαν υπόλοιπα για αυτή τη διεύθυνση.</p>':''}`
         :`<p class="muted">Η ανάγνωση είναι μόνο για προβολή. Το SOL που έχεις σε native stake δεν φαίνεται εδώ: πρόσθεσέ το χειροκίνητα. Liquid staking tokens (π.χ. JitoSOL) εμφανίζονται κανονικά.</p>`)+
-      goneHtml(I,E,S)+
-      `<div class="row"><button class="btn" type="button" data-act="${E?'eth':S?'sol':'done'}">Πίσω</button>${I.list.length||goneList(I,E,S).length?`<button class="btn primary" type="button" data-act="doimport">Προσθήκη επιλεγμένων</button>`:''}</div>`;
+      `<div class="row"><button class="btn" type="button" data-act="${E?'eth':S?'sol':'done'}">Πίσω</button>${I.list.length?`<button class="btn primary" type="button" data-act="doimport">Προσθήκη επιλεγμένων</button>`:''}</div>`;
     }
   }else if(st==='sol'){
     const P=flow.sol||{},last=P.addr||LS.get(SKEY)||'',Hh=flow.hist;
@@ -292,7 +296,7 @@ const BASE_TOKENS=[['USDC','0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',6,'cash'
 async function evmBatch(net,calls){let err;for(const u of EVM_RPC[net]){try{const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),15000);
     const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(calls.map((c,i)=>({jsonrpc:'2.0',id:i,...c}))),signal:ctl.signal}).finally(()=>clearTimeout(to));
     const j=await r.json();if(!Array.isArray(j))throw new Error('batch');const out=[];for(const x of j)out[x.id]=x.result;return out}catch(e){err=e;console.warn('evm batch',u,e)}}throw err||new Error('evm')}
-async function baseRead(addr){
+async function baseRead(addr,all){
   const arg=addr.toLowerCase().slice(2).padStart(64,'0');
   const res=await evmBatch('base',[{method:'eth_getBalance',params:[addr,'latest']},...BASE_TOKENS.map(t=>({method:'eth_call',params:[{to:t[1],data:'0x70a08231'+arg},'latest']}))]);
   const list=[],eth=Number(BigInt(res[0]||'0x0'))/1e18;
@@ -304,7 +308,7 @@ async function baseRead(addr){
     if(t[3]==='ETH'||t[3]==='BTC'){list.push({id:t[3],name:ASSETS[t[3]].name,sym:t[0],qty:q,eur:nowPrice(t[3]),cls:'crypto',tag:'Base'});continue}
     const p=px['base:'+t[1]],usd=+p?.price||(t[3]==='cash'&&t[0]!=='EURC'?1:0);if(!(usd>0))continue;
     list.push({contract:t[1].toLowerCase(),ch:'base',id:null,name:t[0],sym:t[0],qty:q,eur:usd/FXL,cls:t[3]==='cash'?'cash':'crypto',tag:'Base',unc:p&&p.confidence!=null&&p.confidence<.9})}
-  return list.filter(t=>t.qty*t.eur>=1);
+  return list.filter(t=>t.qty*t.eur>=(all?1e-9:1));
 }
 /* ---------- Morpho (Ethereum, Base, HyperEVM): public API, no key; only the public address is sent ---------- */
 const MORPHO='https://api.morpho.org/graphql',MCH={1:'Ethereum',8453:'Base',999:'HyperEVM'};
@@ -406,10 +410,11 @@ async function solPublicList(addr){
   return list;
 }
 /* prices the raw token list and adds Kamino positions; shared by the wallet import and the pasted-address import */
-async function finishSolList(addr,list){
+async function finishSolList(addr,list,held){
   const mints=[...new Set(list.map(t=>t.mint))],pr={};
   for(let i=0;i<mints.length;i+=50){const r=await jfetch(JUP+mints.slice(i,i+50).join(','));if(r.ok)Object.assign(pr,await r.json())}
-  const out=list.map(t=>{const q=pr[t.mint];return{...t,eur:(q?.usdPrice||0)/FXL,unc:!t.id&&!STABLE.has(t.mint)&&q?.liquidity!=null&&+q.liquidity<MIN_LIQ}}).filter(t=>t.eur>0&&t.qty*t.eur>=1);
+  const hk=t=>t.id||'m_'+t.mint+(t.staked?'_st':'');
+  const out=list.map(t=>{const q=pr[t.mint];let e=(q?.usdPrice||0)/FXL;if(!(e>0)&&held?.has(hk(t)))e=nowPrice(hk(t))||state.custom[hk(t)]?.current||0;return{...t,eur:e,unc:!t.id&&!STABLE.has(t.mint)&&q?.liquidity!=null&&+q.liquidity<MIN_LIQ}}).filter(t=>held?.has(hk(t))?t.qty>0:t.eur>0&&t.qty*t.eur>=1);
   let defi=[],defiMsg='';
   try{const k=await kaminoPositions(addr);defi=k.list.filter(p=>p.eur>=1).map(p=>({...p,id:null,name:kmnName(p),sym:'',qty:1,tag:(p.mode?p.mode+' · ':'')+(p.bor>0?'δάνειο '+eur.format(p.bor):'').replace(/ · $/,'')||''}));
     if(k.failed)defiMsg=`Δεν απάντησαν ${k.failed} από τις ${k.checked} αγορές του Kamino. Δοκίμασε ξανά αργότερα για να εμφανιστούν όλες οι θέσεις.`}
@@ -422,23 +427,73 @@ async function loadSol(addr){
   catch(e){console.warn(e);flow.sol={addr,error:true}}
   if(!$('overlay').hidden&&(flow.step==='sol'||flow.step==='import'))drawSheet();
 }
-/* ---------- repeat import: assets that were imported before but are no longer in the wallet ---------- */
+/* ---------- automatic sync with the wallet and the saved addresses ----------
+   On every open, when the app comes back to the screen and every 5 minutes, the app reads the connected wallet and the
+   saved Solana and Ethereum addresses and brings the holdings in line with them: a new asset or a bigger balance is
+   recorded as a buy today, a smaller balance as a sale today, at today's price. History imported from the blockchain or
+   a Jupiter file counts towards the same holdings, so nothing is counted twice. An asset is taken out only when it is
+   missing in two reads in a row and the part of the read that covers it worked, so a failed request never sells anything. */
+const SOLG=['wallet','sol','jupiter'],ETHG=['eth'];
 function impKey(t,E){
   if(E){if(t.id)return t.id;if(t.mph)return 'mo_'+t.mph.t+'_'+t.mph.c+'_'+t.mph.k+'_'+t.mph.w;if(t.lend)return 'l_'+t.lend.k+'_'+t.lend.w;if(t.hlKey)return 'h_'+t.hlKey;return 'e_'+(t.ch?t.ch+'_':'')+t.contract}
   if(t.kmn)return 'k_'+t.kmn.o;if(t.id)return t.id;return 'm_'+t.mint+(t.staked?'_st':'')}
-function goneList(I,E,S){
-  const src=E?'eth':S?'sol':'wallet',have=new Set(I.list.map(t=>impKey(t,E))),q={};
-  state.tx.forEach(x=>{if(x.src!==src||x.type==='div')return;q[x.a]=(q[x.a]||0)+(x.type==='sell'?-x.qty:x.qty)});
-  return Object.keys(q).filter(id=>q[id]>1e-9&&!have.has(id)&&(ASSETS[id]||state.custom[id])).map(id=>({id,qty:q[id]}))}
-function goneHtml(I,E,S){
-  const g=goneList(I,E,S);if(!g.length)return '';
-  const off=true; // never tick by default: removing a position is the user's choice
-  return `<p class="muted"><b>Δεν υπάρχουν πια στο wallet</b> (ή αξία κάτω από 1 €). Δεν είναι τικαρισμένα. Αν τα πούλησες, τίκαρε όσα θέλεις να βγουν από το χαρτοφυλάκιο: θα καταγραφεί πώληση σήμερα, με τη σημερινή τιμή.${I.defiMsg?' Μερικές θέσεις DeFi δεν διαβάστηκαν αυτή τη φορά, γι’ αυτό δεν είναι τικαρισμένα.':''}</p><div class="imp">${g.map((o,i)=>`<label><input type="checkbox" data-g="${i}"${off?'':' checked'}> <span>${esc(meta(o.id).name)}</span><span class="num">${nf(o.qty<1?6:2).format(o.qty)} · ${eur.format(o.qty*(nowPrice(o.id)||state.custom[o.id]?.current||0))}</span></label>`).join('')}</div>`}
+function heldBy(E){const g=E?ETHG:SOLG,q={};
+  state.tx.forEach(x=>{if(!g.includes(x.src)||x.type==='div')return;q[x.a]=(q[x.a]||0)+(x.type==='sell'?-x.qty:x.qty)});
+  for(const k in q)if(!(q[k]>1e-9))delete q[k];return q}
+/* registers the asset (price, DeFi details) and returns its id and today's price */
+function regAsset(t,E,owner){let id=t.id,px=t.eur;
+  if(E){if(id)px=nowPrice(id)||t.eur;else if(t.mph){id='mo_'+t.mph.t+'_'+t.mph.c+'_'+t.mph.k+'_'+t.mph.w;state.custom[id]={name:t.name,sym:'',cls:t.cls,current:t.eur,at:Date.now(),mph:t.mph,dep:t.dep,bor:t.bor,ltv:t.ltv,liq:t.liq}}
+    else if(t.lend){id='l_'+t.lend.k+'_'+t.lend.w;state.custom[id]={name:t.name,sym:'',cls:'crypto',current:t.eur,at:Date.now(),lend:t.lend,dep:t.dep,bor:t.bor,ltv:t.ltv,liq:t.liq}}
+    else if(t.hlKey){id='h_'+t.hlKey;state.custom[id]={name:t.name,sym:t.sym,cls:t.cls,current:t.eur,unc:!!t.unc,at:Date.now(),...(t.hl?{hl:t.hl}:{hlv:1,w:owner})}}else{id='e_'+(t.ch?t.ch+'_':'')+t.contract;state.custom[id]={name:t.name,sym:t.sym,cls:t.cls,current:t.eur,unc:!!t.unc,at:Date.now(),evm:t.contract,...(t.ch?{ch:t.ch}:{})}}}
+  else if(t.kmn){id='k_'+t.kmn.o;state.custom[id]={name:t.name,sym:'',cls:kmnCls(t),current:t.eur,at:Date.now(),kmn:t.kmn,w:owner,mode:t.mode,dep:t.dep,bor:t.bor,ltv:t.ltv,liq:t.liq}}
+  else if(id){if(t.xstock)state.mints[id]=t.mint;if(PRICES[id]&&t.eur>0)PRICES[id][W-1]=t.eur}
+  else{id='m_'+t.mint+(t.staked?'_st':'');const o=state.custom[id]||{};state.custom[id]={...o,name:t.name,sym:t.sym,cls:o.man?o.cls:STABLE.has(t.mint)?'cash':'crypto',current:t.eur>0?t.eur:o.current||0,unc:!!t.unc,at:Date.now(),mint:t.mint}}
+  return{id,px:px>0?px:nowPrice(id)||state.custom[id]?.current||0}}
+async function syncChain(E){
+  const held=heldBy(E);let rows=[],ok;
+  if(E){const a=LS.get(EKEY);if(!a)return null;const r=await ethCollect(a,true);rows=r.list.map(t=>({...t,owner:a}));ok=r.ok}
+  else{
+    const wa=wallet&&!PLAY?wallet.addr:null,addrs=[...new Set([wa,LS.get(SKEY)].filter(Boolean))];if(!addrs.length)return null;
+    /* holdings that came from a wallet that is no longer connected cannot be checked, so the Solana sync waits */
+    if(!wa&&state.tx.some(x=>x.src==='wallet'))return null;
+    ok={tok:true,kmn:true};const hs=new Set(Object.keys(held));
+    for(const a of addrs){const raw=a===wa?await walletCollect(a):await solPublicList(a);const r=await finishSolList(a,raw,hs);
+      rows.push(...r.list.map(t=>({...t,owner:a})));if(r.defiMsg)ok.kmn=false}}
+  const tgt={};for(const t of rows){const k=impKey(t,E);if(tgt[k])tgt[k].qty+=t.qty;else tgt[k]={t,qty:t.qty}}
+  state.ignore=state.ignore||{};state.miss=state.miss||{};
+  const date=todayIso(),src=E?'eth':'sol',out={add:0,chg:0,rem:0,pending:0};
+  for(const k in tgt){const {t,qty}=tgt[k],had=held[k]||0;
+    if(state.ignore[k])continue;
+    if(!had&&(t.unc||!(qty*t.eur>=1)))continue;
+    delete state.miss[k];
+    const {id,px}=regAsset(t,E,t.owner),d=qty-had;
+    if(Math.abs(d)<=Math.max(1e-9,qty*1e-6))continue;
+    state.tx.push({id:uid(),a:id,type:d>0?'buy':'sell',date,qty:+Math.abs(d).toPrecision(12),price:+px.toPrecision(8),fee:0,reason:'',src,auto:1});
+    had?out.chg++:out.add++}
+  for(const k in held){if(tgt[k]||state.ignore[k])continue;
+    const kind=k.startsWith('k_')?'kmn':/^(l_|mo_)/.test(k)?'lend':k.startsWith('h_')?'hl':'tok';
+    if(ok[kind]===false)continue;
+    const n=(state.miss[k]||0)+1;if(n<2){state.miss[k]=n;out.pending++;continue}
+    delete state.miss[k];const px=nowPrice(k)||state.custom[k]?.current||0;
+    state.tx.push({id:uid(),a:k,type:'sell',date,qty:+held[k].toPrecision(12),price:+px.toPrecision(8),fee:0,reason:'',src,auto:1});out.rem++}
+  return out}
+let syncing=false,lastSync=0,syncAgain=null;
+async function syncAll(quiet){
+  if(syncing||!isPro())return;if(!LS.get(SKEY)&&!LS.get(EKEY)&&!(wallet&&!PLAY&&state.tx.some(x=>SOLG.includes(x.src))))return;
+  syncing=true;lastSync=Date.now();const tot={add:0,chg:0,rem:0,pending:0};let failed=false;
+  for(const E of [false,true]){try{const r=await syncChain(E);if(r)for(const k in tot)tot[k]+=r[k]}catch(e){console.warn('sync',E?'eth':'sol',e);failed=true}}
+  syncing=false;
+  if(state.sample&&(tot.add||tot.chg||tot.rem))state.sample=false;
+  save();
+  if(tot.add||tot.chg||tot.rem){assetOptions('fAsset');render();
+    toast([tot.add?(tot.add===1?'1 νέο asset':`${tot.add} νέα assets`):'',tot.chg?(tot.chg===1?'1 αλλαγή ποσότητας':`${tot.chg} αλλαγές ποσότητας`):'',tot.rem?(tot.rem===1?'1 asset δεν υπάρχει πια':`${tot.rem} assets δεν υπάρχουν πια`):''].filter(Boolean).join(' · ')+' (από το wallet)',1)}
+  else if(!quiet)toast(failed?'Δεν ήταν δυνατή η ενημέρωση από το wallet. Θα ξαναδοκιμάσει σε λίγο.':'Όλα ήταν ήδη ενημερωμένα.',!failed);
+  /* something looked missing: check again in a minute before taking it out */
+  clearTimeout(syncAgain);if(tot.pending)syncAgain=setTimeout(()=>syncAll(true),60e3);
+}
 function openSol(){if(!isPro())return openSheet('info');flow.sol=null;openSheet('sol')}
-async function loadImport(){
-  flow.imp={loading:true};
-  try{
-    const params=o=>({ownerAddress:wallet.addr,page:1,limit:1000,...o});
+async function walletCollect(addr){
+    const params=o=>({ownerAddress:addr,page:1,limit:1000,...o});
     let res;try{res=await rpc('getAssetsByOwner',params({options:{showFungible:true,showNativeBalance:true}}),20000)}
     catch(e){res=await rpc('getAssetsByOwner',params({displayOptions:{showFungible:true,showNativeBalance:true}}),20000)}
     const list=[];
@@ -454,12 +509,15 @@ async function loadImport(){
       list.push({mint,id,name,sym,qty,xstock});
     }
     /* Token-2022 tokens with a display multiplier (e.g. PreStocks after a split) report raw units in token_info; take the scaled amount the chain reports */
-    try{const r=await rpc('getTokenAccountsByOwner',[wallet.addr,{programId:TOKEN_2022},{encoding:'jsonParsed',commitment:'confirmed'}],20000),ui={};
+    try{const r=await rpc('getTokenAccountsByOwner',[addr,{programId:TOKEN_2022},{encoding:'jsonParsed',commitment:'confirmed'}],20000),ui={};
       for(const a of r.value||[]){const i=a.account?.data?.parsed?.info,q=+i?.tokenAmount?.uiAmount;if(i&&q>0)ui[i.mint]=(ui[i.mint]||0)+q}
       for(const t of list)if(ui[t.mint]>0)t.qty=ui[t.mint]}catch(e){console.warn('t22 amounts',e)}
-    try{const st=await skrStaked(wallet.addr);if(st>0)list.push({mint:MINT.SKR,id:null,name:'Seeker (staked)',sym:'SKR',qty:st,staked:true})}catch(e){console.warn('skr stake',e)}
-    flow.imp=await finishSolList(wallet.addr,list);
-  }catch(e){console.warn(e);flow.imp={error:'Έλεγξε τη σύνδεση στο internet.'}}
+    try{const st=await skrStaked(addr);if(st>0)list.push({mint:MINT.SKR,id:null,name:'Seeker (staked)',sym:'SKR',qty:st,staked:true})}catch(e){console.warn('skr stake',e)}
+    return list}
+async function loadImport(){
+  flow.imp={loading:true};
+  try{flow.imp=await finishSolList(wallet.addr,await walletCollect(wallet.addr))}
+  catch(e){console.warn(e);flow.imp={error:'Έλεγξε τη σύνδεση στο internet.'}}
   if(!$('overlay').hidden&&flow.step==='import')drawSheet();
 }
 /* ---------- QR scan for a public address. The camera image never leaves the device. ---------- */
@@ -534,24 +592,18 @@ $('sheet').addEventListener('click',async e=>{
   if(a==='refresh'){checkWallet(true);return}
   if(a==='disconnect'){try{window.SVWallet&&await SVWallet.disconnect()}catch(err){}wallet=null;saveWallet();if(ui.bench!=='SPY')ui.bench='SPY';render();closeSheet();toast('Το wallet αποσυνδέθηκε.');return}
   if(a==='doimport'){
-    const date=todayIso();let n=0;
     if(state.sample)state={sample:false,onboarded:true,custom:{},mints:{},tx:[]};
-    const E=flow.imp.src==='eth',S=flow.imp.src==='sol',owner=S?flow.imp.addr:wallet?.addr;
-    $('sheet').querySelectorAll('.imp input:checked').forEach(c=>{const t=flow.imp.list[+c.dataset.i];let id=t.id,px=t.eur;
-      if(E){if(id)px=nowPrice(id)||t.eur;else if(t.mph){id='mo_'+t.mph.t+'_'+t.mph.c+'_'+t.mph.k+'_'+t.mph.w;state.custom[id]={name:t.name,sym:'',cls:t.cls,current:t.eur,at:Date.now(),mph:t.mph,dep:t.dep,bor:t.bor,ltv:t.ltv,liq:t.liq}}
-        else if(t.lend){id='l_'+t.lend.k+'_'+t.lend.w;state.custom[id]={name:t.name,sym:'',cls:'crypto',current:t.eur,at:Date.now(),lend:t.lend,dep:t.dep,bor:t.bor,ltv:t.ltv,liq:t.liq}}
-        else if(t.hlKey){id='h_'+t.hlKey;state.custom[id]={name:t.name,sym:t.sym,cls:t.cls,current:t.eur,unc:!!t.unc,at:Date.now(),...(t.hl?{hl:t.hl}:{hlv:1,w:flow.imp.addr})}}else{id='e_'+(t.ch?t.ch+'_':'')+t.contract;state.custom[id]={name:t.name,sym:t.sym,cls:t.cls,current:t.eur,unc:!!t.unc,at:Date.now(),evm:t.contract,...(t.ch?{ch:t.ch}:{})}}}
-      else if(t.kmn){id='k_'+t.kmn.o;state.custom[id]={name:t.name,sym:'',cls:kmnCls(t),current:t.eur,at:Date.now(),kmn:t.kmn,w:owner,mode:t.mode,dep:t.dep,bor:t.bor,ltv:t.ltv,liq:t.liq}}
-      else if(id){if(t.xstock)state.mints[id]=t.mint;if(PRICES[id])PRICES[id][W-1]=t.eur}
-      else{id='m_'+t.mint+(t.staked?'_st':'');state.custom[id]={name:t.name,sym:t.sym,cls:STABLE.has(t.mint)?'cash':'crypto',current:t.eur,unc:!!t.unc,at:Date.now(),mint:t.mint}}
-      /* a repeat import only brings the quantity in line with the wallet: it adds (or sells) the difference from what earlier imports from this source added */
-      const src=E?'eth':S?'sol':'wallet',had=state.tx.filter(x=>x.a===id&&x.src===src&&x.type!=='div').reduce((q,x)=>q+(x.type==='sell'?-x.qty:x.qty),0),d=t.qty-had;
-      if(Math.abs(d)<=Math.max(1e-9,t.qty*1e-6))return;
-      state.tx.push({id:uid(),a:id,type:d>0?'buy':'sell',date,qty:+Math.abs(d).toPrecision(12),price:+px.toPrecision(8),fee:0,reason:'',src});n++});
-    {const g=goneList(flow.imp,E,S);$('sheet').querySelectorAll('input[data-g]:checked').forEach(c=>{const o=g[+c.dataset.g];if(!o)return;
-      const px=nowPrice(o.id)||state.custom[o.id]?.current||0;
-      state.tx.push({id:uid(),a:o.id,type:'sell',date,qty:+o.qty.toPrecision(12),price:+px.toPrecision(8),fee:0,reason:'',src:E?'eth':S?'sol':'wallet'});n++})}
-    state.onboarded=true;save();assetOptions('fAsset');render();closeSheet();toast(!n?'Όλα ήταν ήδη ενημερωμένα.':n===1?'Ενημερώθηκε 1 asset.':`Ενημερώθηκαν ${n} assets.`,1);
+    const E=flow.imp.src==='eth',held=heldBy(E),date=todayIso();state.ignore=state.ignore||{};let n=0;
+    $('sheet').querySelectorAll('.imp input[data-i]').forEach(c=>{const t=flow.imp.list[+c.dataset.i],k=impKey(t,E);
+      if(c.checked){delete state.ignore[k];return}
+      state.ignore[k]=1;
+      /* unticking something already tracked takes it out of the portfolio */
+      if(held[k]){const px=nowPrice(k)||state.custom[k]?.current||t.eur||0;state.tx.push({id:uid(),a:k,type:'sell',date,qty:+held[k].toPrecision(12),price:+px.toPrecision(8),fee:0,reason:'',src:E?'eth':'sol',auto:1});n++}});
+    if(flow.imp.src==='sol'&&flow.imp.addr)LS.set(SKEY,flow.imp.addr);
+    state.onboarded=true;save();closeSheet();if(!$('onb').hidden)renderOnb();
+    toast('Ενημέρωση από το wallet…');
+    await syncAll(true);
+    if(n){assetOptions('fAsset');render()}
     if(!$('onb').hidden)renderOnb();
     return;
   }
@@ -844,7 +896,9 @@ async function boot(){
   if(!state.onboarded&&!state.tx.length)openOnb();
   booted=true;arm();
   livePrices();if(wallet&&!PLAY)checkWallet(false);
-  setInterval(async()=>{if(document.visibilityState==='visible'){await loadLatest();livePrices()}},5*60e3);
+  setTimeout(()=>syncAll(true),1500);
+  setInterval(async()=>{if(document.visibilityState==='visible'){await loadLatest();livePrices();syncAll(true)}},5*60e3);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&Date.now()-lastSync>60e3)syncAll(true)});
 }
 $('loadRetry').addEventListener('click',boot);
 document.querySelectorAll('.markslot').forEach(el=>el.innerHTML=MARK);

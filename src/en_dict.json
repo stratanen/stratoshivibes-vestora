@@ -689,7 +689,17 @@
 "). Πάτα «Φωτογράφισε το QR» ή επικόλλησε τη διεύθυνση.": "). Tap “Photograph the QR” or paste the address.",
 "<p class=\"muted\"><b>Δεν υπάρχουν πια στο wallet</b> (ή αξία κάτω από 1 €). Αν τα πούλησες, διάλεξε να βγουν από το χαρτοφυλάκιο: θα καταγραφεί πώληση σήμερα, με τη σημερινή τιμή.": "<p class=\"muted\"><b>No longer in the wallet</b> (or worth under €1). If you sold them, tick them to take them out of the portfolio: a sale is recorded today at today's price.",
 " Μερικές θέσεις DeFi δεν διαβάστηκαν αυτή τη φορά, γι’ αυτό δεν είναι τικαρισμένα.": " Some DeFi positions could not be read this time, so these are not ticked.",
-"<p class=\"muted\"><b>Δεν υπάρχουν πια στο wallet</b> (ή αξία κάτω από 1 €). Δεν είναι τικαρισμένα. Αν τα πούλησες, τίκαρε όσα θέλεις να βγουν από το χαρτοφυλάκιο: θα καταγραφεί πώληση σήμερα, με τη σημερινή τιμή.": "<p class=\"muted\"><b>No longer in the wallet</b> (or worth under €1). Nothing here is ticked. If you sold them, tick the ones you want to take out of the portfolio: a sale is recorded today at today's price."
+"<p class=\"muted\"><b>Δεν υπάρχουν πια στο wallet</b> (ή αξία κάτω από 1 €). Δεν είναι τικαρισμένα. Αν τα πούλησες, τίκαρε όσα θέλεις να βγουν από το χαρτοφυλάκιο: θα καταγραφεί πώληση σήμερα, με τη σημερινή τιμή.": "<p class=\"muted\"><b>No longer in the wallet</b> (or worth under €1). Nothing here is ticked. If you sold them, tick the ones you want to take out of the portfolio: a sale is recorded today at today's price.",
+"<p class=\"muted small\">Μετά την εισαγωγή η εφαρμογή ενημερώνεται μόνη της από το wallet: σε κάθε άνοιγμα και κάθε 5 λεπτά. Ό,τι δεν τικάρεις δεν θα παρακολουθείται.</p>": "<p class=\"muted small\">After the import the app updates itself from the wallet: every time you open it and every 5 minutes. Anything you leave unticked will not be tracked.</p>",
+"1 νέο asset": "1 new asset",
+"νέα assets": "new assets",
+"1 αλλαγή ποσότητας": "1 quantity change",
+"αλλαγές ποσότητας": "quantity changes",
+"1 asset δεν υπάρχει πια": "1 asset no longer held",
+"assets δεν υπάρχουν πια": "assets no longer held",
+" (από το wallet)": " (from the wallet)",
+"Δεν ήταν δυνατή η ενημέρωση από το wallet. Θα ξαναδοκιμάσει σε λίγο.": "Could not update from the wallet. It will try again shortly.",
+"Ενημέρωση από το wallet…": "Updating from the wallet…"
 },
 "html": {
 "Φορτώνουν οι τιμές…": "Loading prices…",

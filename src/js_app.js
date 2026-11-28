@@ -459,23 +459,40 @@ async function syncChain(E){
     ok={tok:true,kmn:true};const hs=new Set(Object.keys(held));
     for(const a of addrs){const raw=a===wa?await walletCollect(a):await solPublicList(a);const r=await finishSolList(a,raw,hs);
       rows.push(...r.list.map(t=>({...t,owner:a})));if(r.defiMsg)ok.kmn=false}}
-  const tgt={};for(const t of rows){const k=impKey(t,E);if(tgt[k])tgt[k].qty+=t.qty;else tgt[k]={t,qty:t.qty}}
-  state.ignore=state.ignore||{};state.miss=state.miss||{};
+  const tgt={};for(const t of rows){const k=impKey(t,E);if(tgt[k]){tgt[k].qty+=t.qty;tgt[k].owners.add(t.owner)}else tgt[k]={t,qty:t.qty,owners:new Set([t.owner])}}
+  state.ignore=state.ignore||{};state.miss=state.miss||{};state.syncAt=state.syncAt||{};
   const date=todayIso(),src=E?'eth':'sol',out={add:0,chg:0,rem:0,pending:0};
+  /* Solana: the transactions behind a change are read from Helius, so a buy, sale or swap gets its real date and price.
+     Only what is left unexplained is recorded today, at today's price. */
+  let recent=null;const seen=new Set(state.tx.map(x=>x.ext).filter(Boolean));
+  const explain=async(k,d,owners)=>{
+    if(E||k.startsWith('k_')||k.endsWith('_st'))return d;
+    if(!recent){recent={};const since=Math.max(Date.now()-30*864e5,(state.syncAt.sol||Date.now()-2*864e5)-15*60e3);
+      for(const a of new Set(rows.map(r=>r.owner).filter(Boolean).concat(LS.get(SKEY)||[]))){try{for(const r of await solRecentRows(a,since)){if(r.ext&&seen.has(r.ext))continue;(recent[r.key]=recent[r.key]||[]).push(r)}}catch(e){console.warn('recent',e)}}}
+    const rs=(recent[k]||[]).filter(r=>r.qty>0);if(!rs.length)return d;
+    const net=rs.reduce((q,r)=>q+(r.type==='sell'?-r.qty:r.qty),0);
+    /* use them only when they explain the change (same direction, not more than the change) */
+    if(Math.sign(net)!==Math.sign(d)||Math.abs(net)>Math.abs(d)*(1+1e-6)+1e-9)return d;
+    const fb=nowPrice(k)||state.custom[k]?.current||0;
+    for(const r of rs){state.tx.push({id:uid(),a:k,type:r.type,date:r.date>todayIso()?todayIso():r.date,qty:+r.qty.toPrecision(12),price:+((r.price>0?r.price:fb)||0).toPrecision(8),fee:0,reason:'',src,auto:1,ext:r.ext});seen.add(r.ext)}
+    return d-net};
   for(const k in tgt){const {t,qty}=tgt[k],had=held[k]||0;
     if(state.ignore[k])continue;
     if(!had&&(t.unc||!(qty*t.eur>=1)))continue;
     delete state.miss[k];
-    const {id,px}=regAsset(t,E,t.owner),d=qty-had;
-    if(Math.abs(d)<=Math.max(1e-9,qty*1e-6))continue;
-    state.tx.push({id:uid(),a:id,type:d>0?'buy':'sell',date,qty:+Math.abs(d).toPrecision(12),price:+px.toPrecision(8),fee:0,reason:'',src,auto:1});
+    const {id,px}=regAsset(t,E,t.owner),d0=qty-had;
+    if(Math.abs(d0)<=Math.max(1e-9,qty*1e-6))continue;
+    const d=await explain(id,d0,tgt[k].owners);
+    if(Math.abs(d)>Math.max(1e-9,qty*1e-6))state.tx.push({id:uid(),a:id,type:d>0?'buy':'sell',date,qty:+Math.abs(d).toPrecision(12),price:+px.toPrecision(8),fee:0,reason:'',src,auto:1});
     had?out.chg++:out.add++}
   for(const k in held){if(tgt[k]||state.ignore[k])continue;
     const kind=k.startsWith('k_')?'kmn':/^(l_|mo_)/.test(k)?'lend':k.startsWith('h_')?'hl':'tok';
     if(ok[kind]===false)continue;
     const n=(state.miss[k]||0)+1;if(n<2){state.miss[k]=n;out.pending++;continue}
     delete state.miss[k];const px=nowPrice(k)||state.custom[k]?.current||0;
-    state.tx.push({id:uid(),a:k,type:'sell',date,qty:+held[k].toPrecision(12),price:+px.toPrecision(8),fee:0,reason:'',src,auto:1});out.rem++}
+    const d=await explain(k,-held[k]);
+    if(d<-1e-9)state.tx.push({id:uid(),a:k,type:'sell',date,qty:+(-d).toPrecision(12),price:+px.toPrecision(8),fee:0,reason:'',src,auto:1});out.rem++}
+  if(!out.pending)state.syncAt[E?'eth':'sol']=Date.now();
   return out}
 let syncing=false,lastSync=0,syncAgain=null;
 async function syncAll(quiet){

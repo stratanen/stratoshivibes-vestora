@@ -457,5 +457,23 @@ async function solHistoryRows(addr,onProg,stop){
   const rows=jupRows(all,{jpx,chain:true});
   return{rows,n:txs.length,oldest:txs.length?txs[txs.length-1].timestamp*1000:null,dropped:dropped.size};
 }
+/* recent transactions of a Solana address since a moment, priced with the same rules as the full history (used by the automatic sync) */
+async function solRecentRows(addr,sinceMs){
+  const key=HELIUS.split('api-key=')[1],base=`https://api-mainnet.helius-rpc.com/v0/addresses/${addr}/transactions?api-key=${key}&limit=100`;
+  const txs=[];let before='';
+  for(let pages=0;pages<3;pages++){let r,tries=0;
+    for(;;){r=await fetch(base+(before?'&before='+before:''));if(r.status!==429||tries++>4)break;await new Promise(f=>setTimeout(f,1200*tries))}
+    if(!r.ok)throw new Error('helius '+r.status);const page=await r.json();if(!Array.isArray(page)||!page.length)break;
+    const fresh=page.filter(x=>x.timestamp*1000>=sinceMs);txs.push(...fresh);if(fresh.length<page.length||page.length<100)break;before=page[page.length-1].signature}
+  const legs=[];
+  for(const x of txs){if(x.transactionError||!x.timestamp)continue;const t=x.timestamp*1000,date=new Date(t).toISOString().slice(0,10),ch={};
+    for(const a of x.accountData||[]){if(a.account===addr&&a.nativeBalanceChange)ch[MINT.SOL]=(ch[MINT.SOL]||0)+a.nativeBalanceChange/1e9;
+      for(const tb of a.tokenBalanceChanges||[])if(tb.userAccount===addr){const amt=Number(tb.rawTokenAmount?.tokenAmount)/10**(+tb.rawTokenAmount?.decimals||0);if(amt)ch[tb.mint]=(ch[tb.mint]||0)+amt}}
+    for(const [mint,c] of Object.entries(ch))if(Math.abs(c)>1e-12)legs.push({sig:x.signature,t,date,mint,sym:'',pre:NaN,ch:c,svc:x.source&&x.source!=='UNKNOWN'?String(x.source).toLowerCase().replace(/_/g,' '):''})}
+  if(!legs.length)return[];
+  const mints=[...new Set(legs.map(l=>l.mint))],jpx={};
+  for(let i=0;i<mints.length;i+=100){try{const r=await jfetch(JUPS+mints.slice(i,i+100).join(','));if(r.ok)for(const t of await r.json()){if(t.usdPrice>0)jpx[t.id]=t.usdPrice/FXL}}catch(e){console.warn('jup meta',e)}}
+  return jupRows(legs,{jpx,chain:true}).map(r=>({...r,key:r.a||'m_'+r.mint}));
+}
 function cxShowRows(rows,name,file){cxOpen();CX.chain=true;CX.reader={id:'jupiter',name,read:()=>rows};CX.src=name;CX.file=file;CX.data=[];CX.hdr=[];CX.ctx={};CX.merge=false;CX.gen=false;cxRebuild()}
 (()=>{const head=document.querySelector('#txPanel .phead .btns');if(!head)return;const b=document.createElement('button');b.className='btn';b.type='button';b.id='btnCsv';b.textContent=T('Εισαγωγή από CSV','Import from CSV');head.prepend(b);b.addEventListener('click',cxOpen)})();
